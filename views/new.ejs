@@ -25,6 +25,20 @@
 
 <div class="card form-card">
   <form action="/new" method="POST" class="entry-form" novalidate autocomplete="off">
+
+    <div class="form-group form-group-full template-selector-group">
+      <label for="template-select">Use Template (Optional)</label>
+      <select id="template-select" class="form-control">
+        <option value="">-- Select a template --</option>
+        <% if (locals.templates && templates.length > 0) { %>
+          <% templates.forEach(template => { %>
+            <option value="<%= template.id %>"><%= template.name %></option>
+          <% }) %>
+        <% } %>
+      </select>
+      <small class="form-text">Selecting a template will replace the current content below.</small>
+    </div>
+
     <div class="form-grid">
       <div class="form-group">
         <label for="title">Title <span class="required">*</span></label>

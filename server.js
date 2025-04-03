@@ -201,11 +201,7 @@ app.post("/login", async (req, res) => {
   try {
     const authData = await pb.collection("users").authWithPassword(email, password);
     req.session.user = authData.record;
-    const cookie = pb.authStore.exportToCookie({
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: false,
-      sameSite: "Lax",
-    });
+    const cookie = pb.authStore.exportToCookie({ secure: process.env.NODE_ENV === "production", httpOnly: false, sameSite: "Lax" });
     res.setHeader("Set-Cookie", cookie);
     req.session.token = cookie;
     const returnTo = req.session.returnTo || "/";
@@ -236,14 +232,8 @@ app.get("/", requireLogin, async (req, res, next) => {
   try {
     const userId = req.session.user.id;
     const filter = `owner = '${userId}'`;
-    const entries = await pb.collection("entries").getFullList({
-      sort: "-created",
-      filter: filter,
-    });
-    const entriesWithViewUrl = entries.map((entry) => ({
-      ...entry,
-      viewUrl: `/view/${entry.id}`,
-    }));
+    const entries = await pb.collection("entries").getFullList({ sort: "-created", filter: filter });
+    const entriesWithViewUrl = entries.map((entry) => ({ ...entry, viewUrl: `/view/${entry.id}` }));
     res.render("index", { entries: entriesWithViewUrl, pageTitle: "Dashboard" });
   } catch (error) {
     console.error("Error fetching user entries for dashboard:", error);
@@ -251,29 +241,40 @@ app.get("/", requireLogin, async (req, res, next) => {
   }
 });
 
-app.get("/new", requireLogin, (req, res) => {
-  res.render("new", { entry: null, errors: null, pageTitle: "Create New Entry" });
+app.get("/new", requireLogin, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const filter = `owner = '${userId}'`;
+    const templates = await pb.collection("templates").getFullList({
+      sort: "name",
+      filter: filter,
+      fields: "id,name",
+    });
+    res.render("new", { entry: null, errors: null, templates: templates, pageTitle: "Create New Entry" });
+  } catch (error) {
+    console.error("Error fetching templates for new entry page:", error);
+    res.render("new", { entry: null, errors: { general: "Could not load templates." }, templates: [], pageTitle: "Create New Entry" });
+  }
 });
 
 app.post("/new", requireLogin, async (req, res) => {
   const { title, type, domain, content, status, tags } = req.body;
-  const data = {
-    title,
-    type,
-    domain,
-    content,
-    status: status || "draft",
-    tags: tags || "",
-    views: 0,
-    owner: req.session.user.id,
-  };
+  const data = { title, type, domain, content, status: status || "draft", tags: tags || "", views: 0, owner: req.session.user.id };
   try {
     await pb.collection("entries").create(data);
     res.redirect("/");
   } catch (error) {
     console.error("Failed to create entry:", error);
     const pbErrors = error?.data?.data || {};
-    res.status(400).render("new", { entry: data, errors: pbErrors, pageTitle: "Create New Entry" });
+    try {
+      const userId = req.session.user.id;
+      const filter = `owner = '${userId}'`;
+      const templates = await pb.collection("templates").getFullList({ sort: "name", filter: filter, fields: "id,name" });
+      res.status(400).render("new", { entry: data, errors: pbErrors, templates: templates, pageTitle: "Create New Entry" });
+    } catch (templateError) {
+      console.error("Error fetching templates after entry creation failure:", templateError);
+      res.status(400).render("new", { entry: data, errors: pbErrors, templates: [], pageTitle: "Create New Entry" });
+    }
   }
 });
 
@@ -301,14 +302,7 @@ app.get("/edit/:id", requireLogin, async (req, res, next) => {
 
 app.post("/edit/:id", requireLogin, async (req, res, next) => {
   const { title, type, domain, content, status, tags } = req.body;
-  const data = {
-    title,
-    type,
-    domain,
-    content,
-    status: status || "draft",
-    tags: tags || "",
-  };
+  const data = { title, type, domain, content, status: status || "draft", tags: tags || "" };
   const entryId = req.params.id;
   try {
     await pb.collection("entries").update(entryId, data);
@@ -354,14 +348,114 @@ app.post("/delete/:id", requireLogin, async (req, res, next) => {
   }
 });
 
+app.get("/templates", requireLogin, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const filter = `owner = '${userId}'`;
+    const templates = await pb.collection("templates").getFullList({
+      sort: "name",
+      filter: filter,
+    });
+    res.render("templates/index", { templates: templates, pageTitle: "Manage Templates", message: req.query.message });
+  } catch (error) {
+    console.error("Error fetching templates:", error);
+    next(error);
+  }
+});
+
+app.get("/templates/new", requireLogin, (req, res) => {
+  res.render("templates/new", { template: null, errors: null, pageTitle: "Create New Template" });
+});
+
+app.post("/templates/new", requireLogin, async (req, res, next) => {
+  const { name, content } = req.body;
+  const data = {
+    name,
+    content,
+    owner: req.session.user.id,
+  };
+  try {
+    await pb.collection("templates").create(data);
+    res.redirect("/templates?message=Template created successfully");
+  } catch (error) {
+    console.error("Failed to create template:", error);
+    const pbErrors = error?.data?.data || {};
+    res.status(400).render("templates/new", { template: data, errors: pbErrors, pageTitle: "Create New Template" });
+  }
+});
+
+app.get("/templates/edit/:id", requireLogin, async (req, res, next) => {
+  try {
+    const templateId = req.params.id;
+    const userId = req.session.user.id;
+    const template = await pb.collection("templates").getOne(templateId);
+    if (template.owner !== userId) {
+      const err = new Error("Forbidden");
+      err.status = 403;
+      return next(err);
+    }
+    res.render("templates/edit", { template: template, errors: null, pageTitle: "Edit Template" });
+  } catch (error) {
+    console.error(`Failed to fetch template ${req.params.id} for edit:`, error);
+    if (error.status === 404) {
+      const err = new Error("Not Found");
+      err.status = 404;
+      return next(err);
+    }
+    next(error);
+  }
+});
+
+app.post("/templates/edit/:id", requireLogin, async (req, res, next) => {
+  const { name, content } = req.body;
+  const data = { name, content };
+  const templateId = req.params.id;
+  try {
+    await pb.collection("templates").update(templateId, data);
+    res.redirect("/templates?message=Template updated successfully");
+  } catch (error) {
+    console.error(`Failed to update template ${templateId}:`, error);
+    if (error.status === 403) {
+      return next(error);
+    }
+    const pbErrors = error?.data?.data || {};
+    try {
+      const originalTemplate = await pb.collection("templates").getOne(templateId);
+      const templateForRender = { ...originalTemplate, ...data };
+      res.status(400).render("templates/edit", { template: templateForRender, errors: pbErrors, pageTitle: "Edit Template" });
+    } catch (fetchError) {
+      console.error(`Error fetching original template ${templateId} after update failure:`, fetchError);
+      next(fetchError);
+    }
+  }
+});
+
+app.post("/templates/delete/:id", requireLogin, async (req, res, next) => {
+  const templateId = req.params.id;
+  try {
+    await pb.collection("templates").delete(templateId);
+    res.redirect("/templates?message=Template deleted successfully");
+  } catch (error) {
+    console.error(`Failed to delete template ${templateId}:`, error);
+    if (error.status === 404) {
+      const err = new Error("Not Found");
+      err.status = 404;
+      return next(err);
+    }
+    if (error.status === 403) {
+      const err = new Error("Forbidden");
+      err.status = 403;
+      return next(err);
+    }
+    res.redirect("/templates?message=Error deleting template");
+  }
+});
+
 app.get("/api/entries", requireLogin, async (req, res, next) => {
   try {
     const userId = req.session.user.id;
     const filter = `owner = '${userId}'`;
-    const records = await pb.collection("entries").getFullList({
-      sort: "-created",
-      filter: filter,
-    });
+    const records = await pb.collection("entries").getFullList({ sort: "-created", filter: filter });
     const entriesWithViewUrl = records.map((entry) => ({
       ...entry,
       viewUrl: `/view/${entry.id}`,
@@ -371,6 +465,69 @@ app.get("/api/entries", requireLogin, async (req, res, next) => {
   } catch (error) {
     console.error("API Error fetching user entries:", error);
     next(error);
+  }
+});
+
+app.post("/api/entries/bulk-action", requireLogin, async (req, res, next) => {
+  const { action, ids } = req.body;
+  const userId = req.session.user.id;
+  if (!action || !Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: "Invalid request: 'action' and 'ids' array are required." });
+  }
+  const results = await Promise.allSettled(
+    ids.map(async (id) => {
+      try {
+        if (action === "publish" || action === "draft") {
+          const newStatus = action === "publish" ? "published" : "draft";
+          await pb.collection("entries").update(id, { status: newStatus });
+          return { id, status: "fulfilled", action };
+        }
+        if (action === "delete") {
+          await pb.collection("entries").delete(id);
+          viewDb.run("DELETE FROM view_logs WHERE entry_id = ?", [id], (delErr) => {
+            if (delErr) console.error(`Error cleaning view logs for deleted entry ${id}:`, delErr.message);
+          });
+          return { id, status: "fulfilled", action };
+        }
+        throw new Error(`Unsupported bulk action: ${action}`);
+      } catch (error) {
+        console.warn(`Bulk action '${action}' failed for entry ${id} by user ${userId}: ${error.status} ${error.message}`);
+        return { id, status: "rejected", action, reason: error.message, statusCode: error.status || 500 };
+      }
+    }),
+  );
+  const fulfilled = results.filter((r) => r.status === "fulfilled").length;
+  const rejected = results.filter((r) => r.status === "rejected");
+  if (rejected.length === 0) {
+    res.status(200).json({ message: `Successfully performed action '${action}' on ${fulfilled} entries.` });
+  } else if (fulfilled > 0) {
+    res.status(207).json({
+      message: `Action '${action}' completed with some errors. ${fulfilled} succeeded, ${rejected.length} failed.`,
+      errors: rejected.map((r) => ({ id: r.id, reason: r.reason, status: r.statusCode })),
+    });
+  } else {
+    const firstErrorCode = rejected[0]?.statusCode || 500;
+    res.status(firstErrorCode).json({
+      error: `Failed to perform action '${action}' on any selected entries.`,
+      errors: rejected.map((r) => ({ id: r.id, reason: r.reason, status: r.statusCode })),
+    });
+  }
+});
+
+app.get("/api/templates/:id", requireLogin, async (req, res, next) => {
+  try {
+    const templateId = req.params.id;
+    const userId = req.session.user.id;
+    const template = await pb.collection("templates").getOne(templateId, {
+      fields: "content",
+    });
+    res.json(template);
+  } catch (error) {
+    console.error(`API Error fetching template ${req.params.id}:`, error);
+    if (error.status === 404 || error.status === 403) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    res.status(500).json({ error: "Failed to fetch template content" });
   }
 });
 

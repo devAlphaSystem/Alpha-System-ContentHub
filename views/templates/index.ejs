@@ -1,0 +1,54 @@
+<% locals.pageTitle='Manage Templates' %>
+
+<%- include('../partials/header', { pageTitle: locals.pageTitle }) %>
+
+<div class="content-header">
+  <h1> <%= locals.pageTitle %> </h1>
+  <a href="/templates/new" class="btn btn-primary"> <i class="fas fa-plus"></i> Create New Template </a>
+</div>
+
+<% if (locals.message) { %>
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle alert-icon"></i>
+    <span> <%= message %> </span>
+  </div>
+<% } %>
+
+<% if (templates.length> 0) { %>
+  <div class="card data-card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Template Name</th>
+            <th>Last Updated</th>
+            <th class="actions-column">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="templates-table-body">
+          <% templates.forEach(template=> { %>
+            <tr data-template-id="<%= template.id %>">
+              <td data-label="Name"> <%= template.name %> </td>
+              <td data-label="Updated"> <%= new Date(template.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
+              <td data-label="Actions" class="actions-cell">
+                <a href="/templates/edit/<%= template.id %>" class="btn btn-icon btn-edit" title="Edit Template"> <i class="fas fa-pencil-alt"></i> </a>
+                <form action="/templates/delete/<%= template.id %>" method="POST" class="delete-template-form" title="Delete Template">
+                  <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } else { %>
+  <div class="card empty-state-card">
+    <i class="fas fa-file-alt empty-state-icon"></i>
+    <h2>No templates yet</h2>
+    <p>Create reusable templates for your entries.</p>
+    <a href="/templates/new" class="btn btn-primary">Create First Template</a>
+  </div>
+<% } %>
+
+<%- include('../partials/footer') %>
