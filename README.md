@@ -89,14 +89,16 @@ Configuration is managed through a `.env` file in the project root.
       - **Name:** `entries`
       - **Fields:**
         - `title` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
-        - `type` (Type: `Select`, Required: Yes, Values: `changelog`, `documentation`, Max Select: 1)
+        - `type` (Type: `Select`, Required: Yes, Values: `changelog, documentation`, Max Select: 1)
         - `domain` (Type: `Text`, Required: Yes, Max Length: e.g., 100)
-        - `content` (Type: `Editor` or `Text`, Required: Yes, Max Length: e.g., 100000 or more - **Important:** Adjust based on your needs!)
+        - `content` (Type: `Editor` or `Text`, Required: Yes, Max Length: e.g., 500000 or more - **Important:** Adjust based on your needs!)
         - `views` (Type: `Number`, Required: No, Default Value: `0`, Min: `0`)
         - `owner` (Type: `Relation`, Collection: `users`, Max Select: 1)
+        - `status` (Type: `Select`, Required: Yes, Values: `draft, published`, Max Select: 1)
+        - `tags` (Type: `Text`, Required: No, Max Length: e.g., 250)
       - **API Rules:**
         - List: `owner.id = @request.auth.id`
-        - View: `empty` _(Publicly viewable)_
+        - View: `status = "published" || owner.id = @request.auth.id` _(Publicly viewable)_
         - Create: `owner.id = @request.auth.id`
         - Update: `owner.id = @request.auth.id`
         - Delete: `owner.id = @request.auth.id`
