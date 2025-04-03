@@ -39,15 +39,16 @@ Before you begin, ensure you have the following installed:
 
 1.  **Clone the repository:**
 
-    ```bash
-    git clone https://github.com/devAlphaSystem/Alpha-System-ContentHub.git
-    cd Alpha-System-ContentHub
-    ```
+```bash
+  git clone https://github.com/devAlphaSystem/Alpha-System-ContentHub.git
+  cd Alpha-System-ContentHub
+```
 
 2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
+
+```bash
+  npm install
+```
 
 ## Configuration
 
@@ -55,25 +56,25 @@ Configuration is managed through a `.env` file in the project root.
 
 1.  **Create `.env` and fill in the values:**
 
-    ```dotenv
-    # --- Core Settings ---
-    # PocketBase instance
-    POCKETBASE_URL=http://127.0.0.1:8090
-    POCKETBASE_ADMIN_EMAIL=your_admin_email@example.com
-    POCKETBASE_ADMIN_PASSWORD=your_admin_password
+```dotenv
+  # --- Core Settings ---
+  # PocketBase instance
+  POCKETBASE_URL=http://127.0.0.1:8090
+  POCKETBASE_ADMIN_EMAIL=your_admin_email@example.com
+  POCKETBASE_ADMIN_PASSWORD=your_admin_password
 
-    # "development" mode or "production"
-    NODE_ENV=development
+  # "development" mode or "production"
+  NODE_ENV=development
 
-    # Port for the NodeJS application to run on
-    PORT=3000
+  # Port for the NodeJS application to run on
+  PORT=3000
 
-    # --- Security ---
-    # Generate strong, random strings for these secrets!
-    # Use a password manager or online generator.
-    SESSION_SECRET=your-very-strong-random-secret-key-here
-    IP_HASH_SALT=another-very-strong-random-secret-for-hashing-ips
-    ```
+  # --- Security ---
+  # Generate strong, random strings for these secrets!
+  # Use a password manager or online generator.
+  SESSION_SECRET=your-very-strong-random-secret-key-here
+  IP_HASH_SALT=another-very-strong-random-secret-for-hashing-ips
+```
 
 2.  **Configure PocketBase Collections:**
 
@@ -86,6 +87,7 @@ Configuration is managed through a `.env` file in the project root.
       - Create at least one admin user via the UI so you can log into Content Hub.
 
     - **`entries` Collection (Create New):**
+
       - **Name:** `entries`
       - **Fields:**
         - `title` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
@@ -103,22 +105,38 @@ Configuration is managed through a `.env` file in the project root.
         - Update: `owner.id = @request.auth.id`
         - Delete: `owner.id = @request.auth.id`
 
+    - **`templates` Collection (Create New):**
+
+      - **Name:** `templates`
+      - **Fields:**
+        - `name` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
+        - `content` (Type: `Text`, Required: Yes, Max Length: e.g., 10000)
+        - `owner` (Type: `Relation`, Collection: `users`, Max Select: 1)
+      - **API Rules:**
+        - List: `owner.id = @request.auth.id`
+        - View: `owner.id = @request.auth.id`
+        - Create: `owner.id = @request.auth.id`
+        - Update: `owner.id = @request.auth.id`
+        - Delete: `owner.id = @request.auth.id`
+
 ## Running the Application
 
 1.  **Development Mode (with automatic restarts):**
 
     - Requires `nodemon` installed (`npm install -g nodemon` or add to `devDependencies`).
     - Run:
-      ```bash
+
+    ```bash
       npm run dev
-      ```
+    ```
 
 2.  **Production Mode:**
 
     - Run:
-      ```bash
+
+    ```bash
       npm start
-      ```
+    ```
 
 3.  **Access:**
     Open your browser and navigate to `http://localhost:3000` (or the port specified in your `.env` file).

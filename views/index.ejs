@@ -17,12 +17,26 @@
   </div>
 <% } %>
 
+<div id="bulk-actions-container" class="bulk-actions-container" style="display: none;">
+  <span id="bulk-selected-count">0</span> item(s) selected
+  <div class="bulk-actions-dropdown">
+    <button class="btn btn-secondary dropdown-toggle" type="button" id="bulk-actions-button"> Bulk Actions <i class="fas fa-chevron-down"></i> </button>
+    <div class="dropdown-menu" id="bulk-actions-menu">
+      <button class="dropdown-item" data-action="publish">Set Status: Published</button>
+      <button class="dropdown-item" data-action="draft">Set Status: Draft</button>
+      <div class="dropdown-divider"></div>
+      <button class="dropdown-item action-delete" data-action="delete">Delete Selected</button>
+    </div>
+  </div>
+</div>
+
 <% if (entries.length> 0) { %>
   <div class="card data-card">
     <div class="table-responsive">
       <table class="data-table">
         <thead>
           <tr>
+            <th class="checkbox-column"><input type="checkbox" id="select-all-checkbox" title="Select All"></th>
             <th>Title</th>
             <th>Status</th>
             <th>Type</th>
@@ -37,15 +51,14 @@
         <tbody id="entries-table-body">
           <% entries.forEach(entry=> { %>
             <tr data-entry-id="<%= entry.id %>">
+              <td class="checkbox-column"><input type="checkbox" class="entry-checkbox" value="<%= entry.id %>"></td>
               <td data-label="Title"><%= entry.title %></td>
               <td data-label="Status"><span class="badge status-badge status-<%= entry.status %>"> <%= entry.status %> </span></td>
               <td data-label="Type"><span class="badge type-badge type-<%= entry.type %>"> <%= entry.type %> </span></td>
               <td data-label="Tags" class="tags-cell">
                 <% if (entry.tags) { %>
                   <% entry.tags.split(',').map(tag=> tag.trim()).filter(tag => tag).forEach(tag => { %>
-                    <span class="badge tag-badge">
-                      <%= tag %>
-                    </span>
+                    <span class="badge tag-badge"> <%= tag %> </span>
                   <% }) %>
                 <% } else { %>
                   <span class="text-muted">-</span>
