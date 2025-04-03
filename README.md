@@ -57,8 +57,11 @@ Configuration is managed through a `.env` file in the project root.
 
     ```dotenv
     # --- Core Settings ---
-    # URL of your running PocketBase instance
+    # PocketBase instance
     POCKETBASE_URL=http://127.0.0.1:8090
+    POCKETBASE_ADMIN_EMAIL=your_admin_email@example.com
+    POCKETBASE_ADMIN_PASSWORD=your_admin_password
+
     # "development" mode or "production"
     NODE_ENV=development
 

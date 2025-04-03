@@ -1,11 +1,12 @@
 {
   "name": "alpha_system_contenthub",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
+  "type": "module",
   "author": "Anderson Polo",
   "license": "MIT",
   "description": "Our mission is to provide the simplest way for teams and individuals to create, manage, and publish elegant changelog notes and documentation using the power of Markdown.",

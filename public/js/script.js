@@ -1,4 +1,44 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const confirmModal = document.getElementById("confirm-modal");
+  const modalTitle = document.getElementById("modal-title");
+  const modalMessage = document.getElementById("modal-message");
+  const modalConfirmBtn = document.getElementById("modal-confirm-btn");
+  const modalCancelBtn = document.getElementById("modal-cancel-btn");
+  const modalCloseBtn = document.getElementById("modal-close-btn");
+  let formToSubmit = null;
+
+  const escapeHtml = (unsafe) => {
+    if (typeof unsafe !== "string") return unsafe;
+    return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  };
+
+  function showConfirmModal(form, title) {
+    formToSubmit = form;
+    if (modalTitle) modalTitle.textContent = "Confirm Deletion";
+    if (modalMessage) {
+      modalMessage.innerHTML = `Are you sure you want to delete "<strong>${escapeHtml(title)}</strong>"?<br>This action cannot be undone.`;
+    }
+    if (confirmModal) {
+      confirmModal.classList.add("is-visible");
+      confirmModal.setAttribute("aria-hidden", "false");
+    }
+  }
+
+  function hideConfirmModal() {
+    formToSubmit = null;
+    if (confirmModal) {
+      confirmModal.classList.remove("is-visible");
+      confirmModal.setAttribute("aria-hidden", "true");
+    }
+  }
+
+  function handleDeleteSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const title = form.closest("tr")?.querySelector("td[data-label='Title']")?.textContent || "this entry";
+    showConfirmModal(form, title);
+  }
+
   function attachDeleteListeners() {
     const deleteForms = document.querySelectorAll("form.delete-form");
     deleteForms.forEach((form) => {
@@ -7,15 +47,28 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function handleDeleteSubmit(event) {
-    const title = event.target.closest("tr")?.querySelector("td[data-label='Title']")?.textContent || "this entry";
-    const confirmation = confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`);
-    if (!confirmation) {
-      event.preventDefault();
-    }
-  }
-
   attachDeleteListeners();
+
+  modalConfirmBtn?.addEventListener("click", () => {
+    if (formToSubmit) {
+      formToSubmit.submit();
+    }
+    hideConfirmModal();
+  });
+
+  modalCancelBtn?.addEventListener("click", hideConfirmModal);
+  modalCloseBtn?.addEventListener("click", hideConfirmModal);
+  confirmModal?.addEventListener("click", (event) => {
+    if (event.target === confirmModal) {
+      hideConfirmModal();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && confirmModal?.classList.contains("is-visible")) {
+      hideConfirmModal();
+    }
+  });
 
   const themeToggleButton = document.getElementById("theme-toggle");
   const currentTheme = localStorage.getItem("theme") || "light";
@@ -160,37 +213,34 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Failed to refresh entries:", error);
       if (tableBody) tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading entries.</td></tr>';
     } finally {
-      refreshButton.disabled = false;
-      refreshButton.innerHTML = originalButtonHtml;
+      if (refreshButton) {
+        refreshButton.disabled = false;
+        refreshButton.innerHTML = originalButtonHtml;
+      }
     }
   });
 
   function renderTableRow(entry) {
-    const escape = (unsafe) => {
-      if (typeof unsafe !== "string") return unsafe;
-      return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-    };
-
     const formattedUpdated = entry.formattedUpdated || new Date(entry.updated).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    const viewUrl = entry.viewUrl || `/view/${escape(entry.id)}`;
+    const viewUrl = entry.viewUrl || `/view/${escapeHtml(entry.id)}`;
 
     return `
-      <tr data-entry-id="${escape(entry.id)}">
-        <td data-label="Title">${escape(entry.title)}</td>
+      <tr data-entry-id="${escapeHtml(entry.id)}">
+        <td data-label="Title">${escapeHtml(entry.title)}</td>
         <td data-label="Type">
-          <span class="badge badge-${escape(entry.type)}">${escape(entry.type)}</span>
+          <span class="badge badge-${escapeHtml(entry.type)}">${escapeHtml(entry.type)}</span>
         </td>
-        <td data-label="Domain">${escape(entry.domain)}</td>
+        <td data-label="Domain">${escapeHtml(entry.domain)}</td>
         <td data-label="Views">${entry.views || 0}</td>
         <td data-label="Updated">${formattedUpdated}</td>
         <td data-label="Actions" class="actions-cell">
           <a href="${viewUrl}" target="_blank" class="btn btn-icon btn-view" title="View Public Page">
             <i class="fas fa-eye"></i>
           </a>
-          <a href="/edit/${escape(entry.id)}" class="btn btn-icon btn-edit" title="Edit Entry">
+          <a href="/edit/${escapeHtml(entry.id)}" class="btn btn-icon btn-edit" title="Edit Entry">
             <i class="fas fa-pencil-alt"></i>
           </a>
-          <form action="/delete/${escape(entry.id)}" method="POST" class="delete-form" title="Delete Entry">
+          <form action="/delete/${escapeHtml(entry.id)}" method="POST" class="delete-form" title="Delete Entry">
             <button type="submit" class="btn btn-icon btn-delete">
               <i class="fas fa-trash-alt"></i>
             </button>
