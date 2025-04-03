@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+      <%= locals.pageTitle || 'Admin Dashboard' %>
+    </title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Icons (Font Awesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <!-- EasyMDE CSS -->
+    <link rel="stylesheet" href="/css/vendors/easymde.min.css">
+
+    <!-- PocketBase JS SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pocketbase/0.25.2/pocketbase.umd.js"> </script>
+
+    <!-- Main Admin Stylesheet -->
+    <link rel="stylesheet" href="/css/style.css">
+  </head>
+
+  <body class="admin-body">
+
+    <script>
+      const currentTheme = localStorage.getItem("theme") || "light";
+
+      if (currentTheme === "dark") {
+        document.body.classList.add("dark-mode");
+      } else {
+        document.body.classList.remove("dark-mode");
+      }
+    </script>
+
+    <div class="page-wrapper">
+      <%- include('sidebar') %>
+        <div class="main-content-wrapper">
+          <header class="top-bar">
+            <button class="mobile-nav-toggle" aria-label="Toggle Navigation">
+              <i class="fas fa-bars"></i>
+            </button>
+          </header>
+          <main class="page-content">

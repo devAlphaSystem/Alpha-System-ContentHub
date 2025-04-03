@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> <%= locals.pageTitle || 'Login' %> </title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    
+    <link rel="stylesheet" href="/css/style.css">
+
+    <style>
+      body.login-page {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: var(--page-bg);
+      }
+
+      .login-container {
+        width: 100%;
+        max-width: 400px;
+        padding: 20px;
+      }
+
+      .login-card {
+        background-color: var(--content-bg);
+        padding: 32px 40px;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-light);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .login-header {
+        text-align: center;
+        margin-bottom: 28px;
+      }
+
+      .login-header h1 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .login-header i {
+        font-size: 2rem;
+        color: var(--primary-color);
+        margin-bottom: 10px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-actions {
+        margin-top: 28px;
+        padding-top: 0;
+        border-top: none;
+      }
+
+      .form-actions .btn {
+        width: 100%;
+      }
+
+      .alert {
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+
+  <body class="admin-body login-page">
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-header">
+          <i class="fas fa-book-open"></i>
+          <h1>Content Hub Login</h1>
+        </div>
+
+        <% if (locals.error) { %>
+          <div class="alert alert-danger">
+            <i class="fas fa-exclamation-circle alert-icon"></i>
+            <span><%= error %></span>
+          </div>
+        <% } %>
+
+        <form action="/login" method="POST" novalidate>
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" required class="form-control" autofocus>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required class="form-control">
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <p style="text-align: center; margin-top: 20px; font-size: 0.8rem; color: var(--text-muted);">
+        <a href="/view/91y7b0ku84rds3o">View Latest Changelog</a>
+      </p>
+    </div>
+  </body>
+
+</html>
