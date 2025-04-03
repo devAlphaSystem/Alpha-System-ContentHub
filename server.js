@@ -28,7 +28,6 @@ const pbAdmin = new PocketBase(process.env.POCKETBASE_URL);
   try {
     await pbAdmin.admins.authWithPassword(process.env.POCKETBASE_ADMIN_EMAIL, process.env.POCKETBASE_ADMIN_PASSWORD);
     console.log("PocketBase Admin client authenticated successfully.");
-    pbAdmin.autoRefreshThreshold = 30 * 60;
   } catch (adminAuthError) {
     console.error("FATAL ERROR: PocketBase Admin authentication failed:", adminAuthError);
     process.exit(1);
@@ -42,6 +41,8 @@ if (!fs.existsSync(dbDir)) {
 
 const SQLiteStore = connectSqlite3(session);
 const sessionStore = new SQLiteStore({ db: "sessions.db", dir: dbDir });
+
+app.set("trust proxy", 1);
 
 app.use(
   session({
@@ -105,7 +106,10 @@ async function getPublicEntryById(id) {
   tempPb.authStore.clear();
   try {
     const record = await tempPb.collection("entries").getOne(id);
-    return record;
+    if (record && record.status === "published") {
+      return record;
+    }
+    return null;
   } catch (error) {
     if (error.status !== 404) {
       console.error(`Failed to fetch public entry ${id}:`, error);
@@ -147,9 +151,7 @@ app.get("/view/:id", async (req, res, next) => {
   try {
     const entry = await getPublicEntryById(entryId);
     if (!entry) {
-      const err = new Error("Not Found");
-      err.status = 404;
-      return next(err);
+      return next();
     }
     if (hashedIP) {
       const timeframeHours = 24;
@@ -254,8 +256,17 @@ app.get("/new", requireLogin, (req, res) => {
 });
 
 app.post("/new", requireLogin, async (req, res) => {
-  const { title, type, domain, content } = req.body;
-  const data = { title, type, domain, content, views: 0, owner: req.session.user.id };
+  const { title, type, domain, content, status, tags } = req.body;
+  const data = {
+    title,
+    type,
+    domain,
+    content,
+    status: status || "draft",
+    tags: tags || "",
+    views: 0,
+    owner: req.session.user.id,
+  };
   try {
     await pb.collection("entries").create(data);
     res.redirect("/");
@@ -289,8 +300,15 @@ app.get("/edit/:id", requireLogin, async (req, res, next) => {
 });
 
 app.post("/edit/:id", requireLogin, async (req, res, next) => {
-  const { title, type, domain, content } = req.body;
-  const data = { title, type, domain, content };
+  const { title, type, domain, content, status, tags } = req.body;
+  const data = {
+    title,
+    type,
+    domain,
+    content,
+    status: status || "draft",
+    tags: tags || "",
+  };
   const entryId = req.params.id;
   try {
     await pb.collection("entries").update(entryId, data);
@@ -340,7 +358,10 @@ app.get("/api/entries", requireLogin, async (req, res, next) => {
   try {
     const userId = req.session.user.id;
     const filter = `owner = '${userId}'`;
-    const records = await pb.collection("entries").getFullList({ sort: "-created", filter: filter });
+    const records = await pb.collection("entries").getFullList({
+      sort: "-created",
+      filter: filter,
+    });
     const entriesWithViewUrl = records.map((entry) => ({
       ...entry,
       viewUrl: `/view/${entry.id}`,
@@ -359,7 +380,7 @@ app.use((req, res, next) => {
   next(err);
 });
 
-app.use((err, req, res) => {
+app.use((err, req, res, next) => {
   res.locals.message = err.message;
   res.locals.error = process.env.NODE_ENV !== "production" ? err : {};
   const status = err.status || 500;
