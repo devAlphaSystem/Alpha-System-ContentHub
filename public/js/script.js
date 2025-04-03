@@ -123,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const charCountElement = document.getElementById("content-char-count");
-      const characterLimit = 10000;
+      const characterLimit = 50000;
 
       const updateCharCount = () => {
         if (!easyMDEInstance || !charCountElement) return;
@@ -207,11 +207,11 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         if (dataCard) dataCard.style.display = "none";
         if (emptyStateCard) emptyStateCard.style.display = "";
-        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">No entries found.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: var(--text-muted);">No entries found.</td></tr>';
       }
     } catch (error) {
       console.error("Failed to refresh entries:", error);
-      if (tableBody) tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading entries.</td></tr>';
+      if (tableBody) tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading entries.</td></tr>';
     } finally {
       if (refreshButton) {
         refreshButton.disabled = false;
@@ -223,13 +223,30 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderTableRow(entry) {
     const formattedUpdated = entry.formattedUpdated || new Date(entry.updated).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const viewUrl = entry.viewUrl || `/view/${escapeHtml(entry.id)}`;
+    let tagsHtml = '<span class="text-muted">-</span>';
+    if (entry.tags?.trim()) {
+      tagsHtml = entry.tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag)
+        .map((tag) => `<span class="badge tag-badge">${escapeHtml(tag)}</span>`)
+        .join(" ");
+    }
 
     return `
       <tr data-entry-id="${escapeHtml(entry.id)}">
         <td data-label="Title">${escapeHtml(entry.title)}</td>
-        <td data-label="Type">
-          <span class="badge badge-${escapeHtml(entry.type)}">${escapeHtml(entry.type)}</span>
+        <td data-label="Status">
+          <span class="badge status-badge status-${escapeHtml(entry.status)}">
+            ${escapeHtml(entry.status)}
+          </span>
         </td>
+        <td data-label="Type">
+          <span class="badge type-badge type-${escapeHtml(entry.type)}">
+            ${escapeHtml(entry.type)}
+          </span>
+        </td>
+        <td data-label="Tags" class="tags-cell">${tagsHtml}</td>
         <td data-label="Domain">${escapeHtml(entry.domain)}</td>
         <td data-label="Views">${entry.views || 0}</td>
         <td data-label="Updated">${formattedUpdated}</td>

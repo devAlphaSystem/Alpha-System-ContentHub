@@ -26,6 +26,9 @@
   --copy-btn-hover-bg: #ced4da;
   --theme-icon-sun: #fcc419;
   --theme-icon-moon: #495057;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
 
   --dark-bg-primary: #1a1a1a;
   --dark-bg-secondary: #2c2c2c;
@@ -539,4 +542,34 @@ body:not(.dark-mode) .theme-toggle-btn .fa-moon {
     padding: 1em 1.2em;
     font-size: 0.85rem;
   }
+}
+
+.entry-tags {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-primary);
+  line-height: 1.4;
+}
+
+.tag-badge {
+  display: inline-block;
+  background-color: var(--bg-inline-code);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  margin-right: 6px;
+  margin-bottom: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+body.dark-mode .entry-tags {
+  border-top-color: var(--dark-border-primary);
+}
+
+body.dark-mode .tag-badge {
+  background-color: var(--dark-bg-inline-code);
+  color: var(--dark-text-secondary);
 }

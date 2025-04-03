@@ -7,6 +7,8 @@
     <title>
       <%= entry.title %> - <%= entry.type==='changelog' ? 'Changelog' : 'Documentation' %>
     </title>
+    
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -61,6 +63,15 @@
           <h1 class="entry-title">
             <%= entry.title %>
           </h1>
+          
+          <% if (entry.tags && entry.tags.trim()) { %>
+            <div class="entry-tags">
+              <% entry.tags.split(',').map(tag => tag.trim()).filter(tag => tag).forEach(tag => { %>
+                <span class="tag-badge"><%= tag %></span>
+              <% }) %>
+            </div>
+          <% } %>
+
           <p class="publish-date">
             Updated: <%= new Date(entry.updated).toLocaleDateString('en-US', { year: 'numeric' , month: 'long' , day: 'numeric' }) %>
           </p>

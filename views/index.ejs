@@ -3,7 +3,7 @@
 <%- include('partials/header', { pageTitle: locals.pageTitle }) %>
 
 <div class="content-header">
-  <h1><%= locals.pageTitle %></h1>
+  <h1> <%= locals.pageTitle %> </h1>
   <div class="header-actions">
     <button id="refresh-entries-btn" class="btn btn-secondary" title="Refresh Table" style="margin-right: 10px;"> <i class="fas fa-sync-alt"></i> <span>Refresh</span> </button>
     <a href="/new" class="btn btn-primary"> <i class="fas fa-plus"></i> Create New Entry </a>
@@ -15,44 +15,58 @@
     <i class="fas fa-exclamation-triangle alert-icon"></i>
     <span>Failed to delete the entry. Please try again.</span>
   </div>
-<% } %> <% if (entries.length> 0) { %>
+<% } %>
 
-<div class="card data-card">
-  <div class="table-responsive">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Type</th>
-          <th>Domain</th>
-          <th>Views</th>
-          <th>Last Updated</th>
-          <th class="actions-column">Actions</th>
-        </tr>
-      </thead>
-
-      <tbody id="entries-table-body">
-        <% entries.forEach(entry=> { %>
+<% if (entries.length> 0) { %>
+  <div class="card data-card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
           <tr>
-            <td data-label="Title"><%= entry.title %></td>
-            <td data-label="Type"><span class="badge badge-<%= entry.type %>"> <%= entry.type %> </span></td>
-            <td data-label="Domain"><%= entry.domain %></td>
-            <td data-label="Views"><%= entry.views || 0 %></td>
-            <td data-label="Updated"><%= new Date(entry.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %></td>
-            <td data-label="Actions" class="actions-cell">
-              <a href="<%= entry.viewUrl %>" target="_blank" class="btn btn-icon btn-view" title="View Public Page"> <i class="fas fa-eye"></i> </a>
-              <a href="/edit/<%= entry.id %>" class="btn btn-icon btn-edit" title="Edit Entry"> <i class="fas fa-pencil-alt"></i> </a>
-              <form action="/delete/<%= entry.id %>" method="POST" class="delete-form" title="Delete Entry">
-                <button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button>
-              </form>
-            </td>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Type</th>
+            <th>Tags</th>
+            <th>Domain</th>
+            <th>Views</th>
+            <th>Last Updated</th>
+            <th class="actions-column">Actions</th>
           </tr>
-        <% }) %>
-      </tbody>
-    </table>
+        </thead>
+        
+        <tbody id="entries-table-body">
+          <% entries.forEach(entry=> { %>
+            <tr data-entry-id="<%= entry.id %>">
+              <td data-label="Title"><%= entry.title %></td>
+              <td data-label="Status"><span class="badge status-badge status-<%= entry.status %>"> <%= entry.status %> </span></td>
+              <td data-label="Type"><span class="badge type-badge type-<%= entry.type %>"> <%= entry.type %> </span></td>
+              <td data-label="Tags" class="tags-cell">
+                <% if (entry.tags) { %>
+                  <% entry.tags.split(',').map(tag=> tag.trim()).filter(tag => tag).forEach(tag => { %>
+                    <span class="badge tag-badge">
+                      <%= tag %>
+                    </span>
+                  <% }) %>
+                <% } else { %>
+                  <span class="text-muted">-</span>
+                <% } %>
+              </td>
+              <td data-label="Domain"> <%= entry.domain %> </td>
+              <td data-label="Views"> <%= entry.views || 0 %> </td>
+              <td data-label="Updated"> <%= new Date(entry.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
+              <td data-label="Actions" class="actions-cell">
+                <a href="<%= entry.viewUrl %>" target="_blank" class="btn btn-icon btn-view" title="View Public Page"> <i class="fas fa-eye"></i> </a>
+                <a href="/edit/<%= entry.id %>" class="btn btn-icon btn-edit" title="Edit Entry"> <i class="fas fa-pencil-alt"></i> </a>
+                <form action="/delete/<%= entry.id %>" method="POST" class="delete-form" title="Delete Entry">
+                  <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
   </div>
-</div>
-
 <% } else { %>
   <div class="card empty-state-card">
     <i class="fas fa-folder-open empty-state-icon"></i>
