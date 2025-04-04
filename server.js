@@ -35,7 +35,10 @@ const ITEMS_PER_PAGE = 10;
 // POCKETBASE SETUP
 // =============================================================================
 const pb = new PocketBase(process.env.POCKETBASE_URL);
+pb.autoCancellation(false);
+
 const pbAdmin = new PocketBase(process.env.POCKETBASE_URL);
+pbAdmin.autoCancellation(false);
 
 (async () => {
   try {
@@ -167,7 +170,7 @@ async function getPublicEntryById(id) {
   tempPb.authStore.clear();
 
   try {
-    const record = await tempPb.collection("entries").getOne(id);
+    const record = await tempPb.collection("entries_main").getOne(id);
 
     if (record && record.status === "published") {
       return record;
@@ -250,7 +253,7 @@ app.get("/view/:id", async (req, res, next) => {
             if (insertErr) console.error("Error inserting view log:", insertErr.message);
             else {
               pbAdmin
-                .collection("entries")
+                .collection("entries_main")
                 .update(entryId, { "views+": 1 })
                 .catch((pbUpdateError) => {
                   if (pbUpdateError?.status !== 404) {
@@ -359,7 +362,7 @@ app.get("/", requireLogin, async (req, res, next) => {
     const initialPage = 1;
     const initialSort = "-updated";
 
-    const resultList = await pb.collection("entries").getList(initialPage, ITEMS_PER_PAGE, {
+    const resultList = await pb.collection("entries_main").getList(initialPage, ITEMS_PER_PAGE, {
       sort: initialSort,
       filter: filter,
     });
@@ -443,7 +446,7 @@ app.post("/new", requireLogin, async (req, res) => {
   };
 
   try {
-    await pb.collection("entries").create(data);
+    await pb.collection("entries_main").create(data);
 
     res.redirect("/");
   } catch (error) {
@@ -479,7 +482,7 @@ app.get("/edit/:id", requireLogin, async (req, res, next) => {
   try {
     const entryId = req.params.id;
     const userId = req.session.user.id;
-    const record = await pb.collection("entries").getOne(entryId);
+    const record = await pb.collection("entries_main").getOne(entryId);
 
     if (record.owner !== userId) {
       const err = new Error("Forbidden");
@@ -516,7 +519,7 @@ app.post("/edit/:id", requireLogin, async (req, res, next) => {
   const entryId = req.params.id;
 
   try {
-    const record = await pb.collection("entries").getOne(entryId);
+    const record = await pb.collection("entries_main").getOne(entryId);
 
     if (record.owner !== req.session.user.id) {
       const err = new Error("Forbidden");
@@ -524,7 +527,7 @@ app.post("/edit/:id", requireLogin, async (req, res, next) => {
       return next(err);
     }
 
-    await pb.collection("entries").update(entryId, data);
+    await pb.collection("entries_main").update(entryId, data);
 
     res.redirect("/");
   } catch (error) {
@@ -537,7 +540,7 @@ app.post("/edit/:id", requireLogin, async (req, res, next) => {
     const pbErrors = error?.data?.data || {};
 
     try {
-      const originalEntry = await pb.collection("entries").getOne(entryId);
+      const originalEntry = await pb.collection("entries_main").getOne(entryId);
       const entryForRender = { ...originalEntry, ...data };
 
       res.status(400).render("edit", {
@@ -557,7 +560,7 @@ app.post("/delete/:id", requireLogin, async (req, res, next) => {
   const entryId = req.params.id;
 
   try {
-    const record = await pb.collection("entries").getOne(entryId);
+    const record = await pb.collection("entries_main").getOne(entryId);
 
     if (record.owner !== req.session.user.id) {
       const err = new Error("Forbidden");
@@ -565,7 +568,7 @@ app.post("/delete/:id", requireLogin, async (req, res, next) => {
       return next(err);
     }
 
-    await pb.collection("entries").delete(entryId);
+    await pb.collection("entries_main").delete(entryId);
 
     viewDb.run("DELETE FROM view_logs WHERE entry_id = ?", [entryId], (delErr) => {
       if (delErr) console.error(`Error cleaning view logs for ${entryId}:`, delErr.message);
@@ -580,6 +583,31 @@ app.post("/delete/:id", requireLogin, async (req, res, next) => {
     }
 
     res.redirect("/?error=delete_failed");
+  }
+});
+
+app.post("/delete-archived/:id", requireLogin, async (req, res, next) => {
+  const entryId = req.params.id;
+
+  try {
+    const record = await pbAdmin.collection("entries_archived").getOne(entryId);
+
+    if (record.owner !== req.session.user.id) {
+      const err = new Error("Forbidden");
+      err.status = 403;
+      return next(err);
+    }
+
+    await pbAdmin.collection("entries_archived").delete(entryId);
+
+    viewDb.run("DELETE FROM view_logs WHERE entry_id = ?", [entryId], (delErr) => {
+      if (delErr) console.error(`Error cleaning view logs for ${entryId}:`, delErr.message);
+    });
+
+    res.redirect("/archived?action=deleted");
+  } catch (error) {
+    console.error(`Failed to delete archived entry ${entryId}:`, error);
+    res.redirect("/archived?error=delete_failed");
   }
 });
 
@@ -761,6 +789,87 @@ app.post("/templates/delete/:id", requireLogin, async (req, res, next) => {
   }
 });
 
+app.get("/archived", requireLogin, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const filter = `owner = '${userId}'`;
+    const initialPage = 1;
+    const initialSort = "-updated";
+
+    const resultList = await pbAdmin.collection("entries_archived").getList(initialPage, ITEMS_PER_PAGE, {
+      sort: initialSort,
+      filter: filter,
+    });
+
+    const entriesWithViewUrl = resultList.items.map((entry) => ({
+      ...entry,
+      viewUrl: `/view/${entry.id}`,
+    }));
+
+    res.render("archived", {
+      entries: entriesWithViewUrl,
+      pageTitle: "Archived Entries",
+      pagination: {
+        page: resultList.page,
+        perPage: resultList.perPage,
+        totalItems: resultList.totalItems,
+        totalPages: resultList.totalPages,
+      },
+      initialSort: initialSort,
+    });
+  } catch (error) {
+    console.error("Error fetching archived entries:", error);
+    res.render("archived", {
+      entries: [],
+      pageTitle: "Archived Entries",
+      pagination: {
+        page: 1,
+        perPage: ITEMS_PER_PAGE,
+        totalItems: 0,
+        totalPages: 0,
+      },
+      initialSort: "-updated",
+      error: "Could not load entries.",
+    });
+  }
+});
+
+app.post("/archive/:id", requireLogin, async (req, res, next) => {
+  const entryId = req.params.id;
+  try {
+    const record = await pb.collection("entries_main").getOne(entryId);
+    if (record.owner !== req.session.user.id) {
+      const err = new Error("Forbidden");
+      err.status = 403;
+      return next(err);
+    }
+    await pbAdmin.collection("entries_archived").create(record);
+    await pb.collection("entries_main").delete(entryId);
+    res.redirect("/?action=archived");
+  } catch (error) {
+    console.error(`Failed to archive entry ${entryId}:`, error);
+    res.redirect("/?error=archive_failed");
+  }
+});
+
+app.post("/unarchive/:id", requireLogin, async (req, res, next) => {
+  const entryId = req.params.id;
+  try {
+    const record = await pbAdmin.collection("entries_archived").getOne(entryId);
+    if (record.owner !== req.session.user.id) {
+      const err = new Error("Forbidden");
+      err.status = 403;
+      return next(err);
+    }
+    await pb.collection("entries_main").create(record);
+    await pbAdmin.collection("entries_archived").delete(entryId);
+    res.redirect("/archived?action=unarchived");
+  } catch (error) {
+    console.error(`Failed to unarchive entry ${entryId}:`, error);
+    res.redirect("/archived?error=unarchive_failed");
+  }
+});
+
 // --- API Routes ---
 app.use("/api", apiLimiter);
 
@@ -772,7 +881,7 @@ app.get("/api/entries", requireLogin, async (req, res, next) => {
     const perPage = Number.parseInt(req.query.perPage) || ITEMS_PER_PAGE;
     const sort = req.query.sort || "-updated";
 
-    const resultList = await pb.collection("entries").getList(page, perPage, {
+    const resultList = await pb.collection("entries_main").getList(page, perPage, {
       sort: sort,
       filter: filter,
     });
@@ -806,40 +915,80 @@ app.post("/api/entries/bulk-action", requireLogin, async (req, res, next) => {
     return res.status(400).json({ error: "Invalid request: 'action' and 'ids' array are required." });
   }
 
+  const validActions = ["publish", "draft", "archive", "unarchive", "permanent-delete"];
+  if (!validActions.includes(action)) {
+    return res.status(400).json({ error: `Invalid bulk action: ${action}` });
+  }
+
   const results = await Promise.allSettled(
     ids.map(async (id) => {
       try {
-        const record = await pb.collection("entries").getOne(id, { fields: "owner" });
+        let record;
 
+        const sourceCollection = action === "unarchive" || action === "permanent-delete" ? "entries_archived" : "entries_main";
+        const targetCollection = action === "archive" ? "entries_archived" : action === "unarchive" ? "entries_main" : null;
+
+        const client = pbAdmin;
+
+        record = await client.collection(sourceCollection).getOne(id);
         if (record.owner !== userId) {
           throw Object.assign(new Error("Forbidden"), { status: 403 });
         }
 
-        if (action === "publish" || action === "draft") {
-          const newStatus = action === "publish" ? "published" : "draft";
-          await pb.collection("entries").update(id, { status: newStatus });
-          return { id, status: "fulfilled", action };
+        switch (action) {
+          case "publish":
+          case "draft":
+            if (sourceCollection !== "entries_main") {
+              throw new Error(`Action '${action}' cannot be applied to archived entries.`);
+            }
+
+            await client.collection("entries_main").update(id, { status: action });
+
+            break;
+          case "archive":
+            if (sourceCollection !== "entries_main" || !targetCollection) {
+              throw new Error("Invalid state for archive action.");
+            }
+
+            await client.collection(targetCollection).create({
+              ...record,
+              original_id: record.id,
+            });
+            await client.collection(sourceCollection).delete(id);
+
+            break;
+          case "unarchive":
+            if (sourceCollection !== "entries_archived" || !targetCollection) {
+              throw new Error("Invalid state for unarchive action.");
+            }
+
+            await client.collection(targetCollection).create({ ...record });
+            await client.collection(sourceCollection).delete(id);
+
+            break;
+          case "permanent-delete":
+            if (sourceCollection !== "entries_archived") {
+              throw new Error("Permanent delete only allowed for archived entries via bulk.");
+            }
+
+            await client.collection(sourceCollection).delete(id);
+
+            viewDb.run("DELETE FROM view_logs WHERE entry_id = ?", [id], (delErr) => {
+              if (delErr) console.error(`Error cleaning view logs for bulk deleted entry ${id}:`, delErr.message);
+            });
+
+            break;
         }
 
-        if (action === "delete") {
-          await pb.collection("entries").delete(id);
-
-          viewDb.run("DELETE FROM view_logs WHERE entry_id = ?", [id], (delErr) => {
-            if (delErr) console.error(`Error cleaning view logs for deleted entry ${id}:`, delErr.message);
-          });
-
-          return { id, status: "fulfilled", action };
-        }
-
-        throw new Error(`Unsupported bulk action: ${action}`);
+        return { id, status: "fulfilled", action };
       } catch (error) {
-        console.warn(`Bulk action '${action}' failed for entry ${id} by user ${userId}: ${error.status} ${error.message}`);
+        console.warn(`Bulk action '${action}' failed for entry ${id} by user ${userId}: ${error.status || ""} ${error.message}`);
 
         return {
           id,
           status: "rejected",
           action,
-          reason: error.message,
+          reason: error.message || "Unknown error",
           statusCode: error.status || 500,
         };
       }
@@ -857,21 +1006,25 @@ app.post("/api/entries/bulk-action", requireLogin, async (req, res, next) => {
     res.status(207).json({
       message: `Action '${action}' completed with some errors. ${fulfilled} succeeded, ${rejected.length} failed.`,
       errors: rejected.map((r) => ({
-        id: r.value.id,
-        reason: r.value.reason,
-        status: r.value.statusCode,
+        id: r.reason?.id || r.value?.id || "unknown",
+        reason: r.reason?.reason || r.value?.reason || "Unknown error",
+        status: r.reason?.statusCode || r.value?.statusCode || 500,
       })),
     });
   } else {
-    const firstErrorCode = rejected[0]?.value?.statusCode || 500;
+    const firstError = rejected[0]?.reason || rejected[0]?.value;
+    const firstErrorCode = firstError?.statusCode || 500;
 
     res.status(firstErrorCode).json({
       error: `Failed to perform action '${action}' on any selected entries.`,
-      errors: rejected.map((r) => ({
-        id: r.value.id,
-        reason: r.value.reason,
-        status: r.value.statusCode,
-      })),
+      errors: rejected.map((r) => {
+        const errorDetails = r.reason || r.value;
+        return {
+          id: errorDetails?.id || "unknown",
+          reason: errorDetails?.reason || "Unknown error",
+          status: errorDetails?.statusCode || 500,
+        };
+      }),
     });
   }
 });

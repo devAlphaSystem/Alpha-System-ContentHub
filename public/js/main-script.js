@@ -172,19 +172,8 @@ document.addEventListener("DOMContentLoaded", () => {
         day: "numeric",
         year: "numeric",
       });
+
     const viewUrl = entry.viewUrl || `/view/${escapeHtml(entry.id)}`;
-    let tagsHtml = '<span class="text-muted">-</span>';
-    if (entry.tags?.trim()) {
-      const tagsArray = entry.tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter((tag) => tag);
-      tagsHtml = "";
-      for (const tag of tagsArray) {
-        tagsHtml += `<span class="badge tag-badge">${escapeHtml(tag)}</span> `;
-      }
-      tagsHtml = tagsHtml.trim();
-    }
     const updatedTimestamp = new Date(entry.updated).getTime();
 
     return `
@@ -193,13 +182,13 @@ document.addEventListener("DOMContentLoaded", () => {
         <td data-label="Title">${escapeHtml(entry.title)}</td>
         <td data-label="Status"><span class="badge status-badge status-${escapeHtml(entry.status.toLowerCase())}">${escapeHtml(entry.status)}</span></td>
         <td data-label="Type"><span class="badge type-badge type-${escapeHtml(entry.type)}">${escapeHtml(entry.type)}</span></td>
-        <td data-label="Tags" class="tags-cell">${tagsHtml}</td>
         <td data-label="Domain">${escapeHtml(entry.domain)}</td>
         <td data-label="Views">${entry.views || 0}</td>
         <td data-label="Updated">${formattedUpdated}</td>
         <td data-label="Actions" class="actions-cell">
           <a href="${viewUrl}" target="_blank" class="btn btn-icon btn-view" title="View Public Page"><i class="fas fa-eye"></i></a>
           <a href="/edit/${escapeHtml(entry.id)}" class="btn btn-icon btn-edit" title="Edit Entry"><i class="fas fa-pencil-alt"></i></a>
+          <form action="/archive/${escapeHtml(entry.id)}" method="POST" class="archive-form" title="Archive Entry"><button type="submit" class="btn btn-icon btn-archive"><i class="fas fa-archive"></i></button></form>
           <form action="/delete/${escapeHtml(entry.id)}" method="POST" class="delete-form" title="Delete Entry"><button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button></form>
         </td>
       </tr>
@@ -380,13 +369,38 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
+   * Handles the submission event for archive forms.
+   * @param {Event} event The form submission event.
+   */
+  function handleArchiveSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const title = form.closest("tr")?.querySelector("td[data-label='Title']")?.textContent || "this entry";
+    const message = `Are you sure you want to archive "<strong>${escapeHtml(title)}</strong>"?`;
+    showConfirmModal({
+      form: form,
+      title: "Confirm Archive",
+      message: message,
+      action: "archive",
+      confirmText: "Archive",
+    });
+  }
+
+  /**
    * Attaches submit event listeners to all delete forms.
    */
   function attachDeleteListeners() {
     const deleteEntryForms = document.querySelectorAll("form.delete-form");
+    const archiveEntryForms = document.querySelectorAll("form.archive-form");
+
     for (const form of deleteEntryForms) {
       form.removeEventListener("submit", handleDeleteSubmit);
       form.addEventListener("submit", handleDeleteSubmit);
+    }
+
+    for (const form of archiveEntryForms) {
+      form.removeEventListener("submit", handleArchiveSubmit);
+      form.addEventListener("submit", handleArchiveSubmit);
     }
   }
 
@@ -723,6 +737,8 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (currentPath === "/new" && navId === "create") {
       link.classList.add("active");
     } else if (currentPath.startsWith("/templates") && navId === "templates") {
+      link.classList.add("active");
+    } else if (currentPath === "/archived" && navId === "archived") {
       link.classList.add("active");
     }
   }

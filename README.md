@@ -86,9 +86,28 @@ Configuration is managed through a `.env` file in the project root.
       - Ensure **"Allow email/password authentication?"** is **ENABLED**.
       - Create at least one admin user via the UI so you can log into Content Hub.
 
-    - **`entries` Collection (Create New):**
+    - **`entries_main` Collection (Create New):**
 
-      - **Name:** `entries`
+      - **Name:** `entries_main`
+      - **Fields:**
+        - `title` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
+        - `type` (Type: `Select`, Required: Yes, Values: `changelog, documentation`, Max Select: 1)
+        - `domain` (Type: `Text`, Required: Yes, Max Length: e.g., 100)
+        - `content` (Type: `Editor` or `Text`, Required: Yes, Max Length: e.g., 500000 or more - **Important:** Adjust based on your needs!)
+        - `views` (Type: `Number`, Required: No, Default Value: `0`, Min: `0`)
+        - `owner` (Type: `Relation`, Collection: `users`, Max Select: 1)
+        - `status` (Type: `Select`, Required: Yes, Values: `draft, published`, Max Select: 1)
+        - `tags` (Type: `Text`, Required: No, Max Length: e.g., 250)
+      - **API Rules:**
+        - List: `owner.id = @request.auth.id`
+        - View: `status = "published" || owner.id = @request.auth.id` _(Publicly viewable)_
+        - Create: `owner.id = @request.auth.id`
+        - Update: `owner.id = @request.auth.id`
+        - Delete: `owner.id = @request.auth.id`
+
+    - **`entries_archived` Collection (Create New):**
+
+      - **Name:** `entries_archived`
       - **Fields:**
         - `title` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
         - `type` (Type: `Select`, Required: Yes, Values: `changelog, documentation`, Max Select: 1)
