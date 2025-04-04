@@ -12,12 +12,28 @@ document.addEventListener("DOMContentLoaded", () => {
   const alertModalOkBtn = document.getElementById("alert-modal-ok-btn");
   const alertModalCloseBtn = document.getElementById("alert-modal-close-btn");
 
-  let templateConfirmCallback = null;
+  const themeToggleButton = document.getElementById("theme-toggle");
+  const contentTextArea = document.getElementById("content");
+  const templateContentTextArea = document.getElementById("template-content");
+  const mobileNavToggle = document.querySelector(".mobile-nav-toggle");
+  const sidebar = document.querySelector(".sidebar");
+  const templateSelect = document.getElementById("template-select");
 
+  let easyMDEInstance = null;
+  let templateEasyMDEInstance = null;
+
+  /**
+   * Shows a confirmation modal dialog.
+   * @param {object} options - Configuration options for the modal.
+   * @param {string} [options.title="Confirm Action"] - The title of the modal.
+   * @param {string} [options.message="Are you sure?"] - The message content (HTML allowed).
+   * @param {string} [options.confirmText="Confirm"] - Text for the confirm button.
+   * @param {string} [options.cancelText="Cancel"] - Text for the cancel button.
+   * @param {function} options.onConfirm - Callback function executed when confirmed.
+   * @param {function} [options.onCancel] - Callback function executed when cancelled.
+   */
   function showConfirmModal(options) {
-    const { title, message, action = "template", confirmText = "Confirm", cancelText = "Cancel", onConfirm, onCancel } = options;
-
-    templateConfirmCallback = action === "template" ? onConfirm : null;
+    const { title, message, confirmText = "Confirm", cancelText = "Cancel", onConfirm, onCancel } = options;
 
     if (modalTitle) modalTitle.textContent = title || "Confirm Action";
     if (modalMessage) modalMessage.innerHTML = message || "Are you sure?";
@@ -37,9 +53,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  /**
+   * Hides the confirmation modal dialog.
+   */
   function hideConfirmModal() {
-    templateConfirmCallback = null;
-
     if (confirmModal) {
       confirmModal.classList.remove("is-visible");
       confirmModal.setAttribute("aria-hidden", "true");
@@ -48,6 +65,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  /**
+   * Shows an alert modal dialog.
+   * @param {string} message - The message content (HTML allowed).
+   * @param {string} [title="Notification"] - The title of the modal.
+   */
   function showAlertModal(message, title = "Notification") {
     if (alertModalMessage) alertModalMessage.innerHTML = message;
     if (alertModalTitle) alertModalTitle.textContent = title;
@@ -57,6 +79,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  /**
+   * Hides the alert modal dialog.
+   */
   function hideAlertModal() {
     if (alertModal) {
       alertModal.classList.remove("is-visible");
@@ -64,50 +89,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  modalConfirmBtn?.addEventListener("click", () => {
-    if (templateConfirmCallback) {
-      templateConfirmCallback();
-    } else if (confirmModal._onConfirm) {
-      confirmModal._onConfirm();
-    }
-    hideConfirmModal();
-  });
-
-  modalCancelBtn?.addEventListener("click", () => {
-    if (confirmModal._onCancel) {
-      confirmModal._onCancel();
-    }
-    hideConfirmModal();
-  });
-
-  modalCloseBtn?.addEventListener("click", hideConfirmModal);
-
-  confirmModal?.addEventListener("click", (event) => {
-    if (event.target === confirmModal) {
-      hideConfirmModal();
-    }
-  });
-
-  alertModalOkBtn?.addEventListener("click", hideAlertModal);
-  alertModalCloseBtn?.addEventListener("click", hideAlertModal);
-  alertModal?.addEventListener("click", (event) => {
-    if (event.target === alertModal) {
-      hideAlertModal();
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      if (confirmModal?.classList.contains("is-visible")) {
-        hideConfirmModal();
-      } else if (alertModal?.classList.contains("is-visible")) {
-        hideAlertModal();
-      }
-    }
-  });
-
-  const themeToggleButton = document.getElementById("theme-toggle");
-
+  /**
+   * Applies the specified theme (light/dark) to the UI elements.
+   * @param {string} theme - The theme to apply ("light" or "dark").
+   */
   const applyTheme = (theme) => {
     if (theme === "dark") {
       document.body.classList.add("dark-mode");
@@ -134,6 +119,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
+  /**
+   * Sets the theme preference locally and attempts to save it on the server.
+   * @param {string} theme - The theme to set ("light" or "dark").
+   */
   async function setThemePreference(theme) {
     applyTheme(theme);
 
@@ -156,8 +145,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const errorData = await response.json();
         console.error("Failed to set theme preference on server:", response.status, errorData.error || response.statusText);
         showAlertModal("Could not save your theme preference to the server.", "Theme Error");
-      } else {
-        console.log(`Theme preference ${theme} saved to session.`);
       }
     } catch (error) {
       console.error("Network error sending theme preference:", error);
@@ -165,10 +152,117 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  modalConfirmBtn?.addEventListener("click", () => {
+    if (confirmModal && typeof confirmModal._onConfirm === "function") {
+      confirmModal._onConfirm();
+    }
+    hideConfirmModal();
+  });
+
+  modalCancelBtn?.addEventListener("click", () => {
+    if (confirmModal && typeof confirmModal._onCancel === "function") {
+      confirmModal._onCancel();
+    }
+    hideConfirmModal();
+  });
+
+  modalCloseBtn?.addEventListener("click", hideConfirmModal);
+
+  confirmModal?.addEventListener("click", (event) => {
+    if (event.target === confirmModal) {
+      hideConfirmModal();
+    }
+  });
+
+  alertModalOkBtn?.addEventListener("click", hideAlertModal);
+  alertModalCloseBtn?.addEventListener("click", hideAlertModal);
+
+  alertModal?.addEventListener("click", (event) => {
+    if (event.target === alertModal) {
+      hideAlertModal();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      if (confirmModal?.classList.contains("is-visible")) {
+        hideConfirmModal();
+      } else if (alertModal?.classList.contains("is-visible")) {
+        hideAlertModal();
+      }
+    }
+
+    const isSKey = event.key.toLowerCase() === "s";
+    const isModifierPressed = event.ctrlKey || event.metaKey;
+    if (isSKey && isModifierPressed) {
+      const entryForm = document.querySelector("form.entry-form, form.template-form");
+      if (entryForm && !confirmModal?.classList.contains("is-visible") && !alertModal?.classList.contains("is-visible")) {
+        event.preventDefault();
+        const submitButton = entryForm.querySelector('button[type="submit"]');
+        if (submitButton) {
+          submitButton.click();
+        } else {
+          entryForm.submit();
+        }
+      }
+    }
+  });
+
   themeToggleButton?.addEventListener("click", () => {
     const isDarkMode = document.body.classList.contains("dark-mode");
     const newTheme = isDarkMode ? "light" : "dark";
     setThemePreference(newTheme);
+  });
+
+  mobileNavToggle?.addEventListener("click", () => {
+    if (sidebar) sidebar.classList.toggle("is-open");
+  });
+
+  templateSelect?.addEventListener("change", async (event) => {
+    const templateId = event.target.value;
+
+    const applyTemplate = async () => {
+      try {
+        const response = await fetch(`/api/templates/${templateId}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch template: ${response.statusText}`);
+        }
+        const templateData = await response.json();
+        if (templateData?.content) {
+          if (easyMDEInstance) {
+            easyMDEInstance.value(templateData.content);
+          } else if (contentTextArea) {
+            contentTextArea.value = templateData.content;
+          }
+        }
+      } catch (error) {
+        console.error("Error applying template:", error);
+        showAlertModal("Could not load the selected template.", "Template Error");
+      }
+    };
+
+    if (!templateId) {
+      if (easyMDEInstance) easyMDEInstance.value("");
+      else if (contentTextArea) contentTextArea.value = "";
+      return;
+    }
+
+    const currentContent = easyMDEInstance ? easyMDEInstance.value() : contentTextArea?.value || "";
+    if (currentContent.trim() !== "") {
+      showConfirmModal({
+        title: "Confirm Template Use",
+        message: "Using a template will replace the current content. Continue?",
+        confirmText: "Replace Content",
+        onConfirm: () => {
+          applyTemplate();
+        },
+        onCancel: () => {
+          event.target.value = "";
+        },
+      });
+    } else {
+      applyTemplate();
+    }
   });
 
   const currentPath = window.location.pathname;
@@ -180,13 +274,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const href = link.getAttribute("href");
     const navId = link.dataset.navId;
 
-    if (href === currentPath || (currentPath === "/new" && navId === "dashboard") || (currentPath.startsWith("/edit/") && navId === "dashboard") || (currentPath.startsWith("/templates/new") && navId === "templates") || (currentPath.startsWith("/templates/edit/") && navId === "templates")) {
+    const isCurrentPath = href === currentPath;
+    const isNewEntry = currentPath === "/new" && navId === "dashboard";
+    const isEditEntry = currentPath.startsWith("/edit/") && navId === "dashboard";
+    const isNewTemplate = currentPath.startsWith("/templates/new") && navId === "templates";
+    const isEditTemplate = currentPath.startsWith("/templates/edit/") && navId === "templates";
+
+    if (isCurrentPath || isNewEntry || isEditEntry || isNewTemplate || isEditTemplate) {
       link.classList.add("active");
     }
   }
 
-  const contentTextArea = document.getElementById("content");
-  let easyMDEInstance = null;
   if (contentTextArea) {
     try {
       const customToolbar = ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "code", "table"];
@@ -209,6 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!easyMDEInstance || !charCountElement) return;
         const currentLength = easyMDEInstance.value().length;
         charCountElement.textContent = `${currentLength} / ${characterLimit}`;
+
         const easyMDEContainer = easyMDEInstance.element.closest(".EasyMDEContainer");
         if (currentLength > characterLimit) {
           charCountElement.classList.add("over-limit");
@@ -222,12 +321,11 @@ document.addEventListener("DOMContentLoaded", () => {
       updateCharCount();
       easyMDEInstance.codemirror.on("change", updateCharCount);
     } catch (error) {
-      console.error("Failed to initialize EasyMDE:", error);
+      console.error("Failed to initialize EasyMDE for content:", error);
+      showAlertModal("Failed to load the text editor.", "Editor Error");
     }
   }
 
-  const templateContentTextArea = document.getElementById("template-content");
-  let templateEasyMDEInstance = null;
   if (templateContentTextArea) {
     try {
       const customToolbar = ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "code", "table"];
@@ -244,73 +342,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (error) {
       console.error("Failed to initialize EasyMDE for template:", error);
+      showAlertModal("Failed to load the template editor.", "Editor Error");
     }
   }
-
-  const mobileNavToggle = document.querySelector(".mobile-nav-toggle");
-  const sidebar = document.querySelector(".sidebar");
-  mobileNavToggle?.addEventListener("click", () => {
-    if (sidebar) sidebar.classList.toggle("is-open");
-  });
-
-  document.addEventListener("keydown", (event) => {
-    const isSKey = event.key.toLowerCase() === "s";
-    const isModifierPressed = event.ctrlKey || event.metaKey;
-    if (isSKey && isModifierPressed) {
-      const entryForm = document.querySelector("form.entry-form, form.template-form");
-      if (entryForm && !confirmModal?.classList.contains("is-visible") && !alertModal?.classList.contains("is-visible")) {
-        event.preventDefault();
-        const submitButton = entryForm.querySelector('button[type="submit"]');
-        if (submitButton) {
-          submitButton.click();
-        } else {
-          entryForm.submit();
-        }
-      }
-    }
-  });
-
-  const templateSelect = document.getElementById("template-select");
-  templateSelect?.addEventListener("change", async (event) => {
-    const templateId = event.target.value;
-    const applyTemplate = async () => {
-      try {
-        const response = await fetch(`/api/templates/${templateId}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch template: ${response.statusText}`);
-        }
-        const templateData = await response.json();
-        if (templateData?.content && easyMDEInstance) {
-          easyMDEInstance.value(templateData.content);
-        } else if (templateData?.content && contentTextArea) {
-          contentTextArea.value = templateData.content;
-        }
-      } catch (error) {
-        console.error("Error applying template:", error);
-        showAlertModal("Could not load the selected template.", "Template Error");
-      }
-    };
-
-    if (!templateId) {
-      if (easyMDEInstance) easyMDEInstance.value("");
-      return;
-    }
-
-    if (easyMDEInstance && easyMDEInstance.value().trim() !== "") {
-      showConfirmModal({
-        title: "Confirm Template Use",
-        message: "Using a template will replace the current content. Continue?",
-        action: "template",
-        confirmText: "Replace Content",
-        onConfirm: () => {
-          applyTemplate();
-        },
-        onCancel: () => {
-          event.target.value = "";
-        },
-      });
-    } else {
-      applyTemplate();
-    }
-  });
 });

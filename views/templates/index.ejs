@@ -4,7 +4,10 @@
 
 <div class="content-header">
   <h1> <%= locals.pageTitle %> </h1>
-  <a href="/templates/new" class="btn btn-primary"> <i class="fas fa-plus"></i> Create New Template </a>
+  <div class="header-actions">
+    <button id="refresh-templates-btn" class="btn btn-secondary" title="Refresh Table" style="margin-right: 10px;"> <i class="fas fa-sync-alt"></i> <span>Refresh</span> </button>
+    <a href="/templates/new" class="btn btn-primary"> <i class="fas fa-plus"></i> Create New Template </a>
+  </div>
 </div>
 
 <% if (locals.message) { %>
@@ -14,35 +17,48 @@
   </div>
 <% } %>
 
-<% if (templates.length> 0) { %>
-  <div class="card data-card">
-    <div class="table-responsive">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th data-sort-key="name" style="cursor: pointer;">Template Name <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-            <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-            <th class="actions-column">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="templates-table-body">
-          <% templates.forEach(template=> { %>
-            <tr data-template-id="<%= template.id %>" data-updated-timestamp="<%= template.updated %>">
-              <td data-label="Name"> <%= template.name %> </td>
-              <td data-label="Updated"> <%= new Date(template.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
-              <td data-label="Actions" class="actions-cell">
-                <a href="/templates/edit/<%= template.id %>" class="btn btn-icon btn-edit" title="Edit Template"> <i class="fas fa-pencil-alt"></i> </a>
-                <form action="/templates/delete/<%= template.id %>" method="POST" class="delete-template-form" title="Delete Template">
-                  <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
-                </form>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+<% if (locals.error && locals.error==='Could not load templates.' ) { %>
+  <div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle alert-icon"></i>
+    <span>Error loading templates. Please try refreshing the page or contact support.</span>
   </div>
-<% } else { %>
+<% } %>
+
+<div class="card data-card <% if (templates.length === 0 && !locals.error) { %>hidden<% } %>">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-sort-key="name" style="cursor: pointer;">Template Name <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort-down"></i></span></th>
+          <th class="actions-column">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="templates-table-body">
+        <% templates.forEach(template=> { %>
+          <tr data-template-id="<%= template.id %>" data-updated-timestamp="<%= new Date(template.updated).getTime() %>">
+            <td data-label="Name"> <%= template.name %> </td>
+            <td data-label="Updated"> <%= new Date(template.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
+            <td data-label="Actions" class="actions-cell">
+              <a href="/templates/edit/<%= template.id %>" class="btn btn-icon btn-edit" title="Edit Template"> <i class="fas fa-pencil-alt"></i> </a>
+              <form action="/templates/delete/<%= template.id %>" method="POST" class="delete-template-form" title="Delete Template">
+                <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination-controls card-footer">
+    <button id="prev-page-btn" class="btn btn-secondary" disabled> <i class="fas fa-chevron-left"></i> Previous </button>
+    <span id="page-info" class="page-info-text"> Page <%= pagination.page %> of <%= pagination.totalPages %> (<%= pagination.totalItems %> items) </span>
+    <button id="next-page-btn" class="btn btn-secondary" <% if (pagination.page>= pagination.totalPages) { %>disabled<% } %>> Next <i class="fas fa-chevron-right"></i> </button>
+  </div>
+</div>
+
+<% if (templates.length === 0 && !locals.error) { %>
   <div class="card empty-state-card">
     <i class="fas fa-file-alt empty-state-icon"></i>
     <h2>No templates yet</h2>

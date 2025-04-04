@@ -2,20 +2,17 @@ document.addEventListener("DOMContentLoaded", () => {
   hljs.highlightAll();
 
   const codeBlocks = document.querySelectorAll(".markdown-body pre");
-  for (let i = 0; i < codeBlocks.length; i++) {
-    const preElement = codeBlocks[i];
+
+  for (const preElement of codeBlocks) {
     const codeElement = preElement.querySelector("code");
-    if (!codeElement) continue;
+    if (!codeElement) {
+      continue;
+    }
 
     const copyButton = document.createElement("button");
     copyButton.className = "copy-code-button";
     copyButton.setAttribute("aria-label", "Copy code to clipboard");
     copyButton.innerHTML = '<i class="fas fa-copy"></i> Copy';
-
-    const checkIcon = document.createElement("i");
-    checkIcon.className = "fas fa-check";
-    copyButton.appendChild(checkIcon);
-
     preElement.appendChild(copyButton);
 
     copyButton.addEventListener("click", () => {
@@ -28,7 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
           setTimeout(() => {
             copyButton.innerHTML = '<i class="fas fa-copy"></i> Copy';
             copyButton.classList.remove("copied");
-            copyButton.appendChild(checkIcon);
           }, 2000);
         })
         .catch((err) => {
@@ -36,7 +32,6 @@ document.addEventListener("DOMContentLoaded", () => {
           copyButton.innerText = "Error";
           setTimeout(() => {
             copyButton.innerHTML = '<i class="fas fa-copy"></i> Copy';
-            copyButton.appendChild(checkIcon);
           }, 2000);
         });
     });
@@ -44,27 +39,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const tocContainer = document.getElementById("toc");
   const contentArea = document.getElementById("markdown-content-area");
+
   if (tocContainer && contentArea) {
     const headings = contentArea.querySelectorAll("h2, h3, h4");
     const tocList = document.createElement("ul");
+    const existingSlugs = new Set();
 
-    for (let i = 0; i < headings.length; i++) {
-      const heading = headings[i];
+    for (const heading of headings) {
       const level = Number.parseInt(heading.tagName.substring(1), 10);
-      const text = heading.textContent.trim();
+      const text = heading.textContent?.trim() ?? "";
 
-      const slug = text
+      if (!text) {
+        continue;
+      }
+
+      const baseSlug = text
         .toLowerCase()
         .replace(/\s+/g, "-")
         .replace(/[^\w-]+/g, "");
 
+      let uniqueSlug = baseSlug;
       let counter = 1;
-      let uniqueSlug = slug;
-      while (document.getElementById(uniqueSlug)) {
-        uniqueSlug = `${slug}-${counter}`;
+      while (existingSlugs.has(uniqueSlug) || document.getElementById(uniqueSlug)) {
+        uniqueSlug = `${baseSlug}-${counter}`;
         counter++;
       }
       heading.id = uniqueSlug;
+      existingSlugs.add(uniqueSlug);
 
       const listItem = document.createElement("li");
       listItem.classList.add(`toc-h${level}`);
@@ -81,48 +82,55 @@ document.addEventListener("DOMContentLoaded", () => {
       tocContainer.appendChild(tocList);
     } else {
       const tocTitle = document.querySelector(".toc-title");
-      if (tocTitle) tocTitle.style.display = "none";
-    }
-  }
-
-  const tocLinks = tocContainer?.querySelectorAll("a");
-  const observerOptions = {
-    rootMargin: "-50px 0px -50% 0px",
-    threshold: 0,
-  };
-
-  const observerCallback = (entries) => {
-    for (let i = 0; i < entries.length; i++) {
-      const entry = entries[i];
-      const id = entry.target.getAttribute("id");
-      const correspondingLink = tocContainer?.querySelector(`a[href="#${id}"]`);
-
-      if (entry.isIntersecting) {
-        if (tocLinks) {
-          for (let j = 0; j < tocLinks.length; j++) {
-            tocLinks[j].classList.remove("active");
-          }
-        }
-        correspondingLink?.classList.add("active");
+      if (tocTitle) {
+        tocTitle.style.display = "none";
       }
     }
-  };
 
-  const observer = new IntersectionObserver(observerCallback, observerOptions);
-  const sectionsToObserve = contentArea?.querySelectorAll("h2, h3, h4");
-  if (sectionsToObserve) {
-    for (let i = 0; i < sectionsToObserve.length; i++) {
-      observer.observe(sectionsToObserve[i]);
+    const tocLinks = tocContainer.querySelectorAll("a");
+    const observerOptions = {
+      rootMargin: "-50px 0px -50% 0px",
+      threshold: 0,
+    };
+
+    let lastActiveLink = null;
+
+    const observerCallback = (entries) => {
+      let topmostVisibleEntry = null;
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          if (!topmostVisibleEntry || entry.boundingClientRect.top < topmostVisibleEntry.boundingClientRect.top) {
+            topmostVisibleEntry = entry;
+          }
+        }
+      }
+
+      if (topmostVisibleEntry) {
+        const id = topmostVisibleEntry.target.getAttribute("id");
+        const correspondingLink = tocContainer.querySelector(`a[href="#${id}"]`);
+
+        if (correspondingLink && correspondingLink !== lastActiveLink) {
+          if (lastActiveLink) {
+            lastActiveLink.classList.remove("active");
+          }
+          correspondingLink.classList.add("active");
+          lastActiveLink = correspondingLink;
+        }
+      }
+    };
+
+    const observer = new IntersectionObserver(observerCallback, observerOptions);
+    const sectionsToObserve = contentArea.querySelectorAll("h2, h3, h4");
+
+    for (const section of sectionsToObserve) {
+      observer.observe(section);
     }
   }
 
   const themeToggleButton = document.getElementById("theme-toggle");
   themeToggleButton?.addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
-    let theme = "light";
-    if (document.body.classList.contains("dark-mode")) {
-      theme = "dark";
-    }
+    const theme = document.body.classList.contains("dark-mode") ? "dark" : "light";
     localStorage.setItem("theme", theme);
   });
 });
