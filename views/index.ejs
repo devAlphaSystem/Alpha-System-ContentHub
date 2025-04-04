@@ -14,10 +14,17 @@
   </div>
 </div>
 
-<% if (locals.error && error==='delete_failed' ) { %>
+<% if (locals.error && locals.error==='delete_failed' ) { %>
   <div class="alert alert-danger">
     <i class="fas fa-exclamation-triangle alert-icon"></i>
     <span>Failed to delete the entry. Please try again.</span>
+  </div>
+<% } %>
+
+<% if (locals.error && locals.error==='Could not load entries.' ) { %>
+  <div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle alert-icon"></i>
+    <span>Error loading entries. Please try refreshing the page or contact support.</span>
   </div>
 <% } %>
 
@@ -34,57 +41,63 @@
   </div>
 </div>
 
-<% if (entries.length> 0) { %>
-  <div class="card data-card">
-    <div class="table-responsive">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th class="checkbox-column"><input type="checkbox" id="select-all-checkbox" title="Select All"></th>
-            <th data-sort-key="title" style="cursor: pointer;">Title <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-            <th data-sort-key="status" style="cursor: pointer;">Status <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-            <th data-sort-key="type" style="cursor: pointer;">Type <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-            <th>Tags</th>
-            <th data-sort-key="domain" style="cursor: pointer;">Domain <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-            <th data-sort-key="views" style="cursor: pointer;">Views <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-            <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-            <th class="actions-column">Actions</th>
-          </tr>
-        </thead>
+<div class="card data-card <% if (entries.length === 0 && !locals.error) { %>hidden<% } %>">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th class="checkbox-column"><input type="checkbox" id="select-all-checkbox" title="Select All"></th>
+          <th data-sort-key="title" style="cursor: pointer;">Title <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="status" style="cursor: pointer;">Status <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="type" style="cursor: pointer;">Type <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th>Tags</th>
+          <th data-sort-key="domain" style="cursor: pointer;">Domain <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="views" style="cursor: pointer;">Views <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort-down"></i></span></th>
+          <th class="actions-column">Actions</th>
+        </tr>
+      </thead>
 
-        <tbody id="entries-table-body">
-          <% entries.forEach(entry=> { %>
-            <tr data-entry-id="<%= entry.id %>" data-updated-timestamp="<%= entry.updated %>" data-views-value="<%= entry.views || 0 %>">
-              <td class="checkbox-column"><input type="checkbox" class="entry-checkbox" value="<%= entry.id %>"></td>
-              <td data-label="Title"><%= entry.title %></td>
-              <td data-label="Status"><span class="badge status-badge status-<%= entry.status.toLowerCase() %>"> <%= entry.status %> </span></td>
-              <td data-label="Type"><span class="badge type-badge type-<%= entry.type %>"> <%= entry.type %> </span></td>
-              <td data-label="Tags" class="tags-cell">
-                <% if (entry.tags) { %>
-                  <% entry.tags.split(',').map(tag=> tag.trim()).filter(tag => tag).forEach(tag => { %>
-                    <span class="badge tag-badge"> <%= tag %> </span>
-                  <% }) %>
-                <% } else { %>
-                  <span class="text-muted">-</span>
-                <% } %>
-              </td>
-              <td data-label="Domain"> <%= entry.domain %> </td>
-              <td data-label="Views"> <%= entry.views || 0 %> </td>
-              <td data-label="Updated"> <%= new Date(entry.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
-              <td data-label="Actions" class="actions-cell">
-                <a href="<%= entry.viewUrl %>" target="_blank" class="btn btn-icon btn-view" title="View Public Page"> <i class="fas fa-eye"></i> </a>
-                <a href="/edit/<%= entry.id %>" class="btn btn-icon btn-edit" title="Edit Entry"> <i class="fas fa-pencil-alt"></i> </a>
-                <form action="/delete/<%= entry.id %>" method="POST" class="delete-form" title="Delete Entry">
-                  <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
-                </form>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+      <tbody id="entries-table-body">
+        <% entries.forEach(entry=> { %>
+          <tr data-entry-id="<%= entry.id %>" data-updated-timestamp="<%= new Date(entry.updated).getTime() %>" data-views-value="<%= entry.views || 0 %>">
+            <td class="checkbox-column"><input type="checkbox" class="entry-checkbox" value="<%= entry.id %>"></td>
+            <td data-label="Title"><%= entry.title %></td>
+            <td data-label="Status"><span class="badge status-badge status-<%= entry.status.toLowerCase() %>"> <%= entry.status %> </span></td>
+            <td data-label="Type"><span class="badge type-badge type-<%= entry.type %>"> <%= entry.type %> </span></td>
+            <td data-label="Tags" class="tags-cell">
+              <% if (entry.tags) { %>
+                <% entry.tags.split(',').map(tag=> tag.trim()).filter(tag => tag).forEach(tag => { %>
+                  <span class="badge tag-badge"> <%= tag %> </span>
+                <% }) %>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+            <td data-label="Domain"> <%= entry.domain %> </td>
+            <td data-label="Views"> <%= entry.views || 0 %> </td>
+            <td data-label="Updated"> <%= new Date(entry.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
+            <td data-label="Actions" class="actions-cell">
+              <a href="<%= entry.viewUrl %>" target="_blank" class="btn btn-icon btn-view" title="View Public Page"> <i class="fas fa-eye"></i> </a>
+              <a href="/edit/<%= entry.id %>" class="btn btn-icon btn-edit" title="Edit Entry"> <i class="fas fa-pencil-alt"></i> </a>
+              <form action="/delete/<%= entry.id %>" method="POST" class="delete-form" title="Delete Entry">
+                <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
   </div>
-<% } else { %>
+
+  <div class="pagination-controls card-footer">
+    <button id="prev-page-btn" class="btn btn-secondary" disabled> <i class="fas fa-chevron-left"></i> Previous </button>
+    <span id="page-info" class="page-info-text"> Page <%= pagination.page %> of <%= pagination.totalPages %> (<%= pagination.totalItems %> items) </span>
+    <button id="next-page-btn" class="btn btn-secondary" <% if (pagination.page>= pagination.totalPages) { %>disabled<% } %>> Next <i class="fas fa-chevron-right"></i> </button>
+  </div>
+</div>
+
+<% if (entries.length === 0 && !locals.error) { %>
   <div class="card empty-state-card">
     <i class="fas fa-folder-open empty-state-icon"></i>
     <h2>No entries yet</h2>

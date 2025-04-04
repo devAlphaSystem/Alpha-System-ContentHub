@@ -29,6 +29,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
+const ITEMS_PER_PAGE = 10;
 
 // =============================================================================
 // POCKETBASE SETUP
@@ -355,18 +356,45 @@ app.get("/", requireLogin, async (req, res, next) => {
   try {
     const userId = req.session.user.id;
     const filter = `owner = '${userId}'`;
-    const entries = await pb.collection("entries").getFullList({ sort: "-created", filter: filter });
+    const initialPage = 1;
+    const initialSort = "-updated";
 
-    const entriesWithViewUrl = entries.map((entry) => ({
+    const resultList = await pb.collection("entries").getList(initialPage, ITEMS_PER_PAGE, {
+      sort: initialSort,
+      filter: filter,
+    });
+
+    const entriesWithViewUrl = resultList.items.map((entry) => ({
       ...entry,
       viewUrl: `/view/${entry.id}`,
     }));
 
-    res.render("index", { entries: entriesWithViewUrl, pageTitle: "Dashboard" });
+    res.render("index", {
+      entries: entriesWithViewUrl,
+      pageTitle: "Dashboard",
+      pagination: {
+        page: resultList.page,
+        perPage: resultList.perPage,
+        totalItems: resultList.totalItems,
+        totalPages: resultList.totalPages,
+      },
+      initialSort: initialSort,
+    });
   } catch (error) {
     console.error("Error fetching user entries for dashboard:", error);
 
-    next(error);
+    res.render("index", {
+      entries: [],
+      pageTitle: "Dashboard",
+      pagination: {
+        page: 1,
+        perPage: ITEMS_PER_PAGE,
+        totalItems: 0,
+        totalPages: 0,
+      },
+      initialSort: "-updated",
+      error: "Could not load entries.",
+    });
   }
 });
 
@@ -543,7 +571,7 @@ app.post("/delete/:id", requireLogin, async (req, res, next) => {
       if (delErr) console.error(`Error cleaning view logs for ${entryId}:`, delErr.message);
     });
 
-    res.redirect("/");
+    res.redirect("/?action=deleted");
   } catch (error) {
     console.error(`Failed to delete entry ${entryId}:`, error);
 
@@ -560,21 +588,43 @@ app.get("/templates", requireLogin, async (req, res, next) => {
   try {
     const userId = req.session.user.id;
     const filter = `owner = '${userId}'`;
+    const initialPage = 1;
+    const initialSort = "-updated";
 
-    const templates = await pb.collection("templates").getFullList({
-      sort: "name",
+    const resultList = await pb.collection("templates").getList(initialPage, ITEMS_PER_PAGE, {
+      sort: initialSort,
       filter: filter,
+      fields: "id,name,updated",
     });
 
     res.render("templates/index", {
-      templates: templates,
+      templates: resultList.items,
       pageTitle: "Manage Templates",
       message: req.query.message,
+      pagination: {
+        page: resultList.page,
+        perPage: resultList.perPage,
+        totalItems: resultList.totalItems,
+        totalPages: resultList.totalPages,
+      },
+      initialSort: initialSort,
     });
   } catch (error) {
     console.error("Error fetching templates:", error);
 
-    next(error);
+    res.render("templates/index", {
+      templates: [],
+      pageTitle: "Manage Templates",
+      message: null,
+      pagination: {
+        page: 1,
+        perPage: ITEMS_PER_PAGE,
+        totalItems: 0,
+        totalPages: 0,
+      },
+      initialSort: "-updated",
+      error: "Could not load templates.",
+    });
   }
 });
 
@@ -718,9 +768,16 @@ app.get("/api/entries", requireLogin, async (req, res, next) => {
   try {
     const userId = req.session.user.id;
     const filter = `owner = '${userId}'`;
-    const records = await pb.collection("entries").getFullList({ sort: "-created", filter: filter });
+    const page = Number.parseInt(req.query.page) || 1;
+    const perPage = Number.parseInt(req.query.perPage) || ITEMS_PER_PAGE;
+    const sort = req.query.sort || "-updated";
 
-    const entriesWithViewUrl = records.map((entry) => ({
+    const resultList = await pb.collection("entries").getList(page, perPage, {
+      sort: sort,
+      filter: filter,
+    });
+
+    const entriesWithDetails = resultList.items.map((entry) => ({
       ...entry,
       viewUrl: `/view/${entry.id}`,
       formattedUpdated: new Date(entry.updated).toLocaleDateString("en-US", {
@@ -730,11 +787,14 @@ app.get("/api/entries", requireLogin, async (req, res, next) => {
       }),
     }));
 
-    res.json(entriesWithViewUrl);
+    res.json({
+      ...resultList,
+      items: entriesWithDetails,
+    });
   } catch (error) {
     console.error("API Error fetching user entries:", error);
 
-    next(error);
+    res.status(500).json({ error: "Failed to fetch entries" });
   }
 });
 
@@ -816,14 +876,48 @@ app.post("/api/entries/bulk-action", requireLogin, async (req, res, next) => {
   }
 });
 
+// API endpoint for fetching templates with pagination
+app.get("/api/templates", requireLogin, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const filter = `owner = '${userId}'`;
+    const page = Number.parseInt(req.query.page) || 1;
+    const perPage = Number.parseInt(req.query.perPage) || ITEMS_PER_PAGE;
+    const sort = req.query.sort || "-updated";
+
+    const resultList = await pb.collection("templates").getList(page, perPage, {
+      sort: sort,
+      filter: filter,
+      fields: "id,name,updated",
+    });
+
+    const templatesWithDetails = resultList.items.map((template) => ({
+      ...template,
+      formattedUpdated: new Date(template.updated).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    }));
+
+    res.json({
+      ...resultList,
+      items: templatesWithDetails,
+    });
+  } catch (error) {
+    console.error("API Error fetching user templates:", error);
+
+    res.status(500).json({ error: "Failed to fetch templates" });
+  }
+});
+
+// API endpoint for fetching a single template's content (used on /new entry page)
 app.get("/api/templates/:id", requireLogin, async (req, res, next) => {
   try {
     const templateId = req.params.id;
     const userId = req.session.user.id;
 
-    const template = await pb.collection("templates").getOne(templateId, {
-      fields: "content, owner",
-    });
+    const template = await pb.collection("templates").getOne(templateId);
 
     if (template.owner !== userId) {
       return res.status(403).json({ error: "Forbidden" });
