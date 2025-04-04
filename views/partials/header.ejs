@@ -28,17 +28,7 @@
     <link rel="stylesheet" href="/css/style.css">
   </head>
 
-  <body class="admin-body">
-
-    <script>
-      const currentTheme = localStorage.getItem("theme") || "light";
-
-      if (currentTheme === "dark") {
-        document.body.classList.add("dark-mode");
-      } else {
-        document.body.classList.remove("dark-mode");
-      }
-    </script>
+  <body class="admin-body <%= (locals.theme === 'dark' ? 'dark-mode' : '') %>">
 
     <div class="page-wrapper">
       <%- include('sidebar') %>
@@ -48,4 +38,5 @@
               <i class="fas fa-bars"></i>
             </button>
           </header>
+          
           <main class="page-content">

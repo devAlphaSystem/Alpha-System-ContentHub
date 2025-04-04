@@ -2,9 +2,10 @@ document.addEventListener("DOMContentLoaded", () => {
   hljs.highlightAll();
 
   const codeBlocks = document.querySelectorAll(".markdown-body pre");
-  codeBlocks.forEach((preElement) => {
+  for (let i = 0; i < codeBlocks.length; i++) {
+    const preElement = codeBlocks[i];
     const codeElement = preElement.querySelector("code");
-    if (!codeElement) return;
+    if (!codeElement) continue;
 
     const copyButton = document.createElement("button");
     copyButton.className = "copy-code-button";
@@ -39,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }, 2000);
         });
     });
-  });
+  }
 
   const tocContainer = document.getElementById("toc");
   const contentArea = document.getElementById("markdown-content-area");
@@ -47,7 +48,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const headings = contentArea.querySelectorAll("h2, h3, h4");
     const tocList = document.createElement("ul");
 
-    headings.forEach((heading) => {
+    for (let i = 0; i < headings.length; i++) {
+      const heading = headings[i];
       const level = Number.parseInt(heading.tagName.substring(1), 10);
       const text = heading.textContent.trim();
 
@@ -73,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       listItem.appendChild(link);
       tocList.appendChild(listItem);
-    });
+    }
 
     if (tocList.hasChildNodes()) {
       tocContainer.appendChild(tocList);
@@ -90,21 +92,29 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const observerCallback = (entries) => {
-    entries.forEach((entry) => {
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
       const id = entry.target.getAttribute("id");
       const correspondingLink = tocContainer?.querySelector(`a[href="#${id}"]`);
 
       if (entry.isIntersecting) {
-        tocLinks?.forEach((link) => link.classList.remove("active"));
+        if (tocLinks) {
+          for (let j = 0; j < tocLinks.length; j++) {
+            tocLinks[j].classList.remove("active");
+          }
+        }
         correspondingLink?.classList.add("active");
       }
-    });
+    }
   };
 
   const observer = new IntersectionObserver(observerCallback, observerOptions);
-  contentArea?.querySelectorAll("h2, h3, h4").forEach((section) => {
-    observer.observe(section);
-  });
+  const sectionsToObserve = contentArea?.querySelectorAll("h2, h3, h4");
+  if (sectionsToObserve) {
+    for (let i = 0; i < sectionsToObserve.length; i++) {
+      observer.observe(sectionsToObserve[i]);
+    }
+  }
 
   const themeToggleButton = document.getElementById("theme-toggle");
   themeToggleButton?.addEventListener("click", () => {

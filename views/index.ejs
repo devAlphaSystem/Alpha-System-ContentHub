@@ -5,6 +5,10 @@
 <div class="content-header">
   <h1> <%= locals.pageTitle %> </h1>
   <div class="header-actions">
+    <div id="status-filter-btn" class="status-filter btn" title="Filter by Status (All / Draft / Published)">
+      <span id="filter-draft" class="filter-option active" data-status="draft">D</span>
+      <span id="filter-published" class="filter-option active" data-status="published">P</span>
+    </div>
     <button id="refresh-entries-btn" class="btn btn-secondary" title="Refresh Table" style="margin-right: 10px;"> <i class="fas fa-sync-alt"></i> <span>Refresh</span> </button>
     <a href="/new" class="btn btn-primary"> <i class="fas fa-plus"></i> Create New Entry </a>
   </div>
@@ -37,23 +41,23 @@
         <thead>
           <tr>
             <th class="checkbox-column"><input type="checkbox" id="select-all-checkbox" title="Select All"></th>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Type</th>
+            <th data-sort-key="title" style="cursor: pointer;">Title <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+            <th data-sort-key="status" style="cursor: pointer;">Status <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+            <th data-sort-key="type" style="cursor: pointer;">Type <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
             <th>Tags</th>
-            <th>Domain</th>
-            <th>Views</th>
-            <th>Last Updated</th>
+            <th data-sort-key="domain" style="cursor: pointer;">Domain <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+            <th data-sort-key="views" style="cursor: pointer;">Views <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+            <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
             <th class="actions-column">Actions</th>
           </tr>
         </thead>
-        
+
         <tbody id="entries-table-body">
           <% entries.forEach(entry=> { %>
-            <tr data-entry-id="<%= entry.id %>">
+            <tr data-entry-id="<%= entry.id %>" data-updated-timestamp="<%= entry.updated %>" data-views-value="<%= entry.views || 0 %>">
               <td class="checkbox-column"><input type="checkbox" class="entry-checkbox" value="<%= entry.id %>"></td>
               <td data-label="Title"><%= entry.title %></td>
-              <td data-label="Status"><span class="badge status-badge status-<%= entry.status %>"> <%= entry.status %> </span></td>
+              <td data-label="Status"><span class="badge status-badge status-<%= entry.status.toLowerCase() %>"> <%= entry.status %> </span></td>
               <td data-label="Type"><span class="badge type-badge type-<%= entry.type %>"> <%= entry.type %> </span></td>
               <td data-label="Tags" class="tags-cell">
                 <% if (entry.tags) { %>
