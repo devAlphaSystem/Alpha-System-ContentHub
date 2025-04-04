@@ -36,6 +36,7 @@
       <button class="dropdown-item" data-action="publish">Set Status: Published</button>
       <button class="dropdown-item" data-action="draft">Set Status: Draft</button>
       <div class="dropdown-divider"></div>
+      <button class="dropdown-item" data-action="archive">Archive Selected</button>
       <button class="dropdown-item action-delete" data-action="delete">Delete Selected</button>
     </div>
   </div>
@@ -50,7 +51,6 @@
           <th data-sort-key="title" style="cursor: pointer;">Title <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
           <th data-sort-key="status" style="cursor: pointer;">Status <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
           <th data-sort-key="type" style="cursor: pointer;">Type <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-          <th>Tags</th>
           <th data-sort-key="domain" style="cursor: pointer;">Domain <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
           <th data-sort-key="views" style="cursor: pointer;">Views <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
           <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort-down"></i></span></th>
@@ -65,21 +65,15 @@
             <td data-label="Title"><%= entry.title %></td>
             <td data-label="Status"><span class="badge status-badge status-<%= entry.status.toLowerCase() %>"> <%= entry.status %> </span></td>
             <td data-label="Type"><span class="badge type-badge type-<%= entry.type %>"> <%= entry.type %> </span></td>
-            <td data-label="Tags" class="tags-cell">
-              <% if (entry.tags) { %>
-                <% entry.tags.split(',').map(tag=> tag.trim()).filter(tag => tag).forEach(tag => { %>
-                  <span class="badge tag-badge"> <%= tag %> </span>
-                <% }) %>
-              <% } else { %>
-                <span class="text-muted">-</span>
-              <% } %>
-            </td>
             <td data-label="Domain"> <%= entry.domain %> </td>
             <td data-label="Views"> <%= entry.views || 0 %> </td>
             <td data-label="Updated"> <%= new Date(entry.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
             <td data-label="Actions" class="actions-cell">
               <a href="<%= entry.viewUrl %>" target="_blank" class="btn btn-icon btn-view" title="View Public Page"> <i class="fas fa-eye"></i> </a>
               <a href="/edit/<%= entry.id %>" class="btn btn-icon btn-edit" title="Edit Entry"> <i class="fas fa-pencil-alt"></i> </a>
+              <form action="/archive/<%= entry.id %>" method="POST" class="archive-form" title="Archive Entry">
+                <button type="submit" class="btn btn-icon btn-archive"> <i class="fas fa-archive"></i> </button>
+              </form>
               <form action="/delete/<%= entry.id %>" method="POST" class="delete-form" title="Delete Entry">
                 <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
               </form>

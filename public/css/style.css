@@ -593,6 +593,21 @@ body.dark-mode .btn-view:hover {
   background-color: rgba(var(--dark-success-color), 0.1);
 }
 
+.btn-archive {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-archive:hover {
+  background-color: rgba(var(--warning-color), 0.1);
+  color: var(--warning-color);
+}
+
+body.dark-mode .btn-archive:hover {
+  background-color: rgba(var(--dark-warning-color), 0.1);
+}
+
 .table-responsive {
   overflow-x: auto;
   width: 100%;
@@ -720,7 +735,7 @@ body.dark-mode .pagination-controls {
 .actions-cell {
   display: flex;
   gap: 0px;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .badge {

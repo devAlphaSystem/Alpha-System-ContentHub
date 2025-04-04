@@ -1,0 +1,62 @@
+<% locals.pageTitle='Archived Entries' %>
+
+<%- include('partials/header', { pageTitle: locals.pageTitle }) %>
+
+<div class="content-header">
+  <h1> <%= locals.pageTitle %> </h1>
+  <div class="header-actions">
+    <a href="/" class="btn btn-secondary">Back to Active</a>
+  </div>
+</div>
+
+<div class="card data-card <% if (entries.length === 0) { %>hidden<% } %>">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-label="Title">Title</th>
+          <th data-label="Status">Status</th>
+          <th data-label="Type">Type</th>
+          <th data-label="Domain">Domain</th>
+          <th data-label="Archived">Archived Date</th>
+          <th data-label="Actions">Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% for (const entry of entries) { %>
+          <tr data-entry-id="<%= entry.id %>">
+            <td data-label="Title"><%= entry.title %></td>
+            <td data-label="Status"><span class="badge status-badge status-<%= entry.status.toLowerCase() %>"> <%= entry.status %> </span></td>
+            <td data-label="Type"><span class="badge type-badge type-<%= entry.type %>"> <%= entry.type %> </span></td>
+            <td data-label="Domain"><%= entry.domain %></td>
+            <td data-label="Archived"> <%= new Date(entry.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
+            <td class="actions-cell">
+              <form action="/unarchive/<%= entry.id %>" method="POST" class="unarchive-form" title="Unarchive">
+                <button type="submit" class="btn btn-icon btn-edit">
+                  <i class="fas fa-box-open"></i>
+                </button>
+              </form>
+              <form action="/delete-archived/<%= entry.id %>" method="POST" class="delete-form" title="Delete Permanently">
+                <button type="submit" class="btn btn-icon btn-delete">
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<% if (entries.length === 0 && !locals.error) { %>
+  <div class="card empty-state-card">
+    <i class="fas fa-folder-open empty-state-icon"></i>
+    <h2>No entries yet</h2>
+    <p>Get started by creating your first changelog or documentation entry.</p>
+    <a href="/new" class="btn btn-primary">Create First Entry</a>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>
