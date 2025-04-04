@@ -20,14 +20,14 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>Template Name</th>
-            <th>Last Updated</th>
+            <th data-sort-key="name" style="cursor: pointer;">Template Name <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+            <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
             <th class="actions-column">Actions</th>
           </tr>
         </thead>
         <tbody id="templates-table-body">
           <% templates.forEach(template=> { %>
-            <tr data-template-id="<%= template.id %>">
+            <tr data-template-id="<%= template.id %>" data-updated-timestamp="<%= template.updated %>">
               <td data-label="Name"> <%= template.name %> </td>
               <td data-label="Updated"> <%= new Date(template.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
               <td data-label="Actions" class="actions-cell">
@@ -51,4 +51,4 @@
   </div>
 <% } %>
 
-<%- include('../partials/footer') %>
+<%- include('../partials/footer', { scriptPath: '/js/templates-script.js' }) %>

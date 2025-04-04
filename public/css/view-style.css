@@ -30,21 +30,21 @@
   --radius-md: 6px;
   --radius-lg: 8px;
 
-  --dark-bg-primary: #1a1a1a;
-  --dark-bg-secondary: #2c2c2c;
-  --dark-bg-code-block: #252525;
-  --dark-bg-inline-code: #333333;
-  --dark-bg-toc: #252525;
+  --dark-bg-primary: #1f2937;
+  --dark-bg-secondary: #111827;
+  --dark-bg-code-block: #1f2937;
+  --dark-bg-inline-code: #374151;
+  --dark-bg-toc: #1f2937;
   --dark-text-primary: #e9ecef;
   --dark-text-secondary: #adb5bd;
   --dark-text-muted: #868e96;
-  --dark-text-code: #f06595;
-  --dark-border-primary: #373a3f;
+  --dark-text-code: #60a5fa;
+  --dark-border-primary: #374151;
   --dark-border-secondary: #495057;
   --dark-link-color: #4dabf7;
   --dark-link-hover-color: #74c0fc;
   --dark-toc-link-color: #adb5bd;
-  --dark-toc-link-hover-bg: #373a3f;
+  --dark-toc-link-hover-bg: #374151;
   --dark-toc-link-active-color: #4dabf7;
   --dark-toc-link-active-border: #4dabf7;
   --dark-shadow-color: rgba(0, 0, 0, 0.2);
@@ -52,7 +52,7 @@
   --dark-type-changelog-text: #a5d8ff;
   --dark-type-docs-bg: #033a2a;
   --dark-type-docs-text: #96f2d7;
-  --dark-copy-btn-bg: #373a3f;
+  --dark-copy-btn-bg: #374151;
   --dark-copy-btn-text: #adb5bd;
   --dark-copy-btn-hover-bg: #495057;
   --dark-theme-icon-sun: #fcc419;

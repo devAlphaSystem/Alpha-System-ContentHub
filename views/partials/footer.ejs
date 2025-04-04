@@ -4,22 +4,22 @@
           <p>&copy; <%= new Date().getFullYear() %> Alpha System</p>
         </footer>
       </div>
+    </div>
 
-      <div id="confirm-modal" class="modal-overlay" aria-hidden="true">
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-message">
-          <div class="modal-header">
-            <h3 id="modal-title" class="modal-title-text">Confirm Action</h3>
-            <button id="modal-close-btn" class="modal-close-btn" aria-label="Close">&times;</button>
-          </div>
-          <div class="modal-body">
-            <p id="modal-message">Are you sure you want to proceed?</p>
-          </div>
-          <div class="modal-footer">
-            <button id="modal-cancel-btn" class="btn btn-secondary">Cancel</button>
-            <button id="modal-confirm-btn" class="btn btn-danger">
-              <i class="fas fa-trash-alt"></i> Delete
-            </button>
-          </div>
+    <div id="confirm-modal" class="modal-overlay" aria-hidden="true">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-message">
+        <div class="modal-header">
+          <h3 id="modal-title" class="modal-title-text">Confirm Action</h3>
+          <button id="modal-close-btn" class="modal-close-btn" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="modal-message">Are you sure you want to proceed?</p>
+        </div>
+        <div class="modal-footer">
+          <button id="modal-cancel-btn" class="btn btn-secondary">Cancel</button>
+          <button id="modal-confirm-btn" class="btn btn-danger">
+            <i class="fas fa-trash-alt"></i> Delete
+          </button>
         </div>
       </div>
     </div>
@@ -46,7 +46,7 @@
     <script src="/js/vendors/disable-dev-tools.js"></script>
 
     <!-- Admin JS -->
-    <script src="/js/script.js"></script>
+    <script src="<%= locals.scriptPath || '/js/main-script.js' %>"></script>
   </body>
 
 </html>
