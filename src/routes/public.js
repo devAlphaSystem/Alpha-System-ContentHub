@@ -1,7 +1,7 @@
 import express from "express";
 import { marked } from "marked";
 import { pbAdmin, previewPasswordLimiter } from "../config.js";
-import { getPublicEntryById, getDraftEntryForPreview, sanitizeHtml, hashPreviewPassword, logEntryView } from "../utils.js";
+import { getPublicEntryById, getDraftEntryForPreview, sanitizeHtml, hashPreviewPassword, logEntryView, logAuditEvent } from "../utils.js";
 
 const router = express.Router();
 
@@ -75,15 +75,17 @@ router.get("/preview/:token", async (req, res, next) => {
 router.post("/preview/:token", previewPasswordLimiter, async (req, res, next) => {
   const token = req.params.token;
   const { password } = req.body;
+  let previewRecord;
 
   if (!password) {
     return res.redirect(`/preview/${token}/password?error=Password is required`);
   }
 
   try {
-    const previewRecord = await pbAdmin.collection("entries_previews").getFirstListItem(`token = '${token}' && expires_at > @now`);
+    previewRecord = await pbAdmin.collection("entries_previews").getFirstListItem(`token = '${token}' && expires_at > @now`);
 
     if (!previewRecord.password_hash) {
+      logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, { token: token, reason: "No password hash set" });
       return res.status(400).redirect(`/preview/${token}/password?error=Invalid request`);
     }
 
@@ -91,13 +93,17 @@ router.post("/preview/:token", previewPasswordLimiter, async (req, res, next) =>
     if (submittedHash === previewRecord.password_hash) {
       if (!req.session.validPreviews) req.session.validPreviews = {};
       req.session.validPreviews[token] = true;
+      logAuditEvent(req, "PREVIEW_PASSWORD_SUCCESS", "entries_previews", previewRecord.id, { token: token, entryId: previewRecord.entry });
       return res.redirect(`/preview/${token}`);
     }
+    logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord.id, { token: token, reason: "Incorrect password" });
     return res.redirect(`/preview/${token}/password?error=Incorrect password`);
   } catch (error) {
     if (error.status === 404) {
+      logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, { token: token, reason: "Invalid/expired link" });
       return res.redirect(`/preview/${token}/password?error=Invalid or expired link`);
     }
+    logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, { token: token, error: error?.message });
     console.error(`Error processing password for token ${token}:`, error);
     next(error);
   }

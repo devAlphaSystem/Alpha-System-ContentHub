@@ -33,7 +33,7 @@
             <td data-label="Archived"> <%= new Date(entry.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
             <td class="actions-cell">
               <form action="/unarchive/<%= entry.id %>" method="POST" class="unarchive-form" title="Unarchive">
-                <button type="submit" class="btn btn-icon btn-edit">
+                <button type="submit" class="btn btn-icon btn-unarchive">
                   <i class="fas fa-box-open"></i>
                 </button>
               </form>

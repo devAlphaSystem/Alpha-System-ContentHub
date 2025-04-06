@@ -83,9 +83,9 @@ export const configuredHelmet = helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "https://cdnjs.cloudflare.com"],
-      styleSrc: ["'self'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com", "'unsafe-inline'"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
-      imgSrc: ["'self'", "data:", POCKETBASE_URL],
+      styleSrc: ["'self'", "https://*", "'unsafe-inline'"],
+      fontSrc: ["'self'", "https://*", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", POCKETBASE_URL, "https://*"],
       connectSrc: ["'self'", POCKETBASE_URL],
       formAction: ["'self'"],
     },

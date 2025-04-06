@@ -165,3 +165,46 @@ export function clearEntryViewLogs(entryId) {
     }
   });
 }
+
+export async function logAuditEvent(req, action, targetCollection, targetRecord, details) {
+  if (!action) {
+    console.error("Audit log attempt failed: Action is required.");
+    return;
+  }
+
+  let userId = null;
+  let ipAddress = null;
+
+  if (req?.session?.user) {
+    userId = req.session.user.id;
+  }
+
+  if (req) {
+    ipAddress = getIP(req);
+  }
+
+  if (!userId && action !== "SYSTEM_ADMIN_AUTH" && action !== "POCKETBASE_ADMIN_AUTH_SUCCESS") {
+    const allowedSystemActions = ["PREVIEW_PASSWORD_SUCCESS", "PREVIEW_PASSWORD_FAILURE"];
+    if (!allowedSystemActions.includes(action)) {
+      console.warn(`Audit log for action '${action}' is missing user ID.`);
+    }
+  }
+
+  const logData = {
+    user: userId,
+    action: action,
+    target_collection: targetCollection || null,
+    target_record: targetRecord || null,
+    ip_address: ipAddress,
+    details: details || null,
+  };
+
+  try {
+    await pbAdmin.collection("audit_logs").create(logData);
+  } catch (error) {
+    console.error(`Failed to write audit log for action '${action}':`, error?.message || error);
+    if (error?.data?.data) {
+      console.error("Audit Log Error Details:", error.data.data);
+    }
+  }
+}

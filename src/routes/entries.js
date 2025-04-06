@@ -1,8 +1,8 @@
 import express from "express";
 import crypto from "node:crypto";
-import { pb, pbAdmin, ITEMS_PER_PAGE, PREVIEW_TOKEN_EXPIRY_HOURS } from "../config.js";
+import { pb, pbAdmin, apiLimiter, ITEMS_PER_PAGE, PREVIEW_TOKEN_EXPIRY_HOURS } from "../config.js";
 import { requireLogin } from "../middleware.js";
-import { getUserTemplates, getEntryForOwner, getArchivedEntryForOwner, clearEntryViewLogs, hashPreviewPassword } from "../utils.js";
+import { getUserTemplates, getEntryForOwner, getArchivedEntryForOwner, clearEntryViewLogs, hashPreviewPassword, logAuditEvent } from "../utils.js";
 
 const router = express.Router();
 
@@ -17,6 +17,17 @@ router.get("/", requireLogin, async (req, res) => {
       sort: initialSort,
       filter: filter,
     });
+
+    let collectionsList = [];
+    try {
+      const allCollectionsResult = await pbAdmin.collection("entries_main").getFullList({
+        filter: `owner = '${userId}' && collection != ''`,
+        fields: "collection",
+      });
+      collectionsList = [...new Set(allCollectionsResult.map((item) => item.collection).filter(Boolean))].sort();
+    } catch (collectionError) {
+      console.warn("Could not fetch collections list:", collectionError);
+    }
 
     const entriesWithViewUrl = resultList.items.map((entry) => ({
       ...entry,
@@ -33,6 +44,7 @@ router.get("/", requireLogin, async (req, res) => {
         totalPages: resultList.totalPages,
       },
       initialSort: initialSort,
+      collectionsList: collectionsList,
       error: req.query.error,
       action: req.query.action,
     });
@@ -48,6 +60,7 @@ router.get("/", requireLogin, async (req, res) => {
         totalPages: 0,
       },
       initialSort: "-updated",
+      collectionsList: [],
       error: "Could not load entries.",
       action: null,
     });
@@ -74,7 +87,7 @@ router.get("/new", requireLogin, async (req, res) => {
 });
 
 router.post("/new", requireLogin, async (req, res) => {
-  const { title, type, domain, content, status, tags } = req.body;
+  const { title, type, domain, content, status, tags, collection } = req.body;
   const userId = req.session.user.id;
 
   const data = {
@@ -84,6 +97,7 @@ router.post("/new", requireLogin, async (req, res) => {
     content,
     status: status || "draft",
     tags: tags || "",
+    collection: collection || "",
     views: 0,
     owner: userId,
     has_staged_changes: false,
@@ -92,13 +106,16 @@ router.post("/new", requireLogin, async (req, res) => {
     staged_domain: null,
     staged_content: null,
     staged_tags: null,
+    staged_collection: null,
   };
 
   try {
-    await pb.collection("entries_main").create(data);
+    const newRecord = await pb.collection("entries_main").create(data);
+    logAuditEvent(req, "ENTRY_CREATE", "entries_main", newRecord.id, { title: newRecord.title, status: newRecord.status });
     res.redirect("/");
   } catch (error) {
     console.error("Failed to create entry:", error);
+    logAuditEvent(req, "ENTRY_CREATE_FAILURE", "entries_main", null, { error: error?.message, data });
     const pbErrors = error?.data?.data || {
       general: "Failed to create entry. Please check the form.",
     };
@@ -140,6 +157,7 @@ router.get("/edit/:id", requireLogin, async (req, res, next) => {
       entryDataForForm.domain = record.staged_domain ?? record.domain;
       entryDataForForm.content = record.staged_content ?? record.content;
       entryDataForForm.tags = record.staged_tags ?? record.tags;
+      entryDataForForm.collection = record.collection;
     }
 
     res.render("edit", {
@@ -162,22 +180,26 @@ router.get("/edit/:id", requireLogin, async (req, res, next) => {
 router.post("/edit/:id", requireLogin, async (req, res, next) => {
   const entryId = req.params.id;
   const userId = req.session.user.id;
-  const { title, type, domain, content, status, tags } = req.body;
+  const { title, type, domain, content, status, tags, collection } = req.body;
   const submittedStatus = status || "draft";
 
+  let originalRecord;
   try {
-    const originalRecord = await pbAdmin.collection("entries_main").getOne(entryId);
+    originalRecord = await pbAdmin.collection("entries_main").getOne(entryId);
     if (originalRecord.owner !== userId) {
       const err = new Error("Forbidden");
       err.status = 403;
+      logAuditEvent(req, "ENTRY_UPDATE_FAILURE", "entries_main", entryId, { reason: "Forbidden" });
       return next(err);
     }
 
     let updateData = {};
     const wasPublished = originalRecord.status === "published";
     const isStayingPublished = submittedStatus === "published";
+    let actionType = "ENTRY_UPDATE";
 
     if (wasPublished && isStayingPublished) {
+      actionType = "ENTRY_STAGE_CHANGES";
       updateData = {
         staged_title: title,
         staged_type: type,
@@ -185,6 +207,7 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
         staged_content: content,
         staged_tags: tags || "",
         has_staged_changes: true,
+        collection: collection || "",
       };
     } else {
       updateData = {
@@ -193,6 +216,7 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
         domain,
         content,
         tags: tags || "",
+        collection: collection || "",
         status: submittedStatus,
         has_staged_changes: false,
         staged_title: null,
@@ -200,13 +224,21 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
         staged_domain: null,
         staged_content: null,
         staged_tags: null,
+        staged_collection: null,
       };
+      if (wasPublished && submittedStatus === "draft") {
+        actionType = "ENTRY_UNPUBLISH";
+      } else if (!wasPublished && submittedStatus === "published") {
+        actionType = "ENTRY_PUBLISH";
+      }
     }
 
-    await pbAdmin.collection("entries_main").update(entryId, updateData);
+    const updatedRecord = await pbAdmin.collection("entries_main").update(entryId, updateData);
+    logAuditEvent(req, actionType, "entries_main", entryId, { title: updatedRecord.title, status: updatedRecord.status });
     res.redirect("/");
   } catch (error) {
     console.error(`Failed to update/stage entry ${entryId}:`, error);
+    logAuditEvent(req, "ENTRY_UPDATE_FAILURE", "entries_main", entryId, { error: error?.message });
 
     if (error.status === 403 || error.status === 404) {
       return next(error);
@@ -217,7 +249,7 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
     };
 
     try {
-      const recordForRender = await pbAdmin.collection("entries_main").getOne(entryId);
+      const recordForRender = originalRecord || (await pbAdmin.collection("entries_main").getOne(entryId));
       if (recordForRender.owner !== userId) return next(new Error("Forbidden"));
 
       const entryDataForForm = {
@@ -228,11 +260,18 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
         content,
         status: submittedStatus,
         tags,
+        collection,
       };
 
       let isEditingStaged = false;
       if (recordForRender.status === "published" && recordForRender.has_staged_changes) {
         isEditingStaged = true;
+        entryDataForForm.title = recordForRender.staged_title ?? recordForRender.title;
+        entryDataForForm.type = recordForRender.staged_type ?? recordForRender.type;
+        entryDataForForm.domain = recordForRender.staged_domain ?? recordForRender.domain;
+        entryDataForForm.content = recordForRender.staged_content ?? recordForRender.content;
+        entryDataForForm.tags = recordForRender.staged_tags ?? recordForRender.tags;
+        entryDataForForm.collection = collection ?? recordForRender.collection;
       }
 
       res.status(400).render("edit", {
@@ -253,11 +292,14 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
 router.post("/delete/:id", requireLogin, async (req, res, next) => {
   const entryId = req.params.id;
   const userId = req.session.user.id;
+  let entryTitle = entryId;
 
   try {
-    await getEntryForOwner(entryId, userId);
+    const entry = await getEntryForOwner(entryId, userId);
+    entryTitle = entry.title;
     await pb.collection("entries_main").delete(entryId);
     clearEntryViewLogs(entryId);
+    logAuditEvent(req, "ENTRY_DELETE", "entries_main", entryId, { title: entryTitle });
 
     try {
       const previewTokens = await pbAdmin.collection("entries_previews").getFullList({ filter: `entry = '${entryId}'`, fields: "id" });
@@ -271,6 +313,7 @@ router.post("/delete/:id", requireLogin, async (req, res, next) => {
     res.redirect("/?action=deleted");
   } catch (error) {
     console.error(`Failed to delete entry ${entryId}:`, error);
+    logAuditEvent(req, "ENTRY_DELETE_FAILURE", "entries_main", entryId, { title: entryTitle, error: error?.message });
     if (error.status === 403 || error.status === 404) {
       return next(error);
     }
@@ -281,23 +324,27 @@ router.post("/delete/:id", requireLogin, async (req, res, next) => {
 router.post("/archive/:id", requireLogin, async (req, res, next) => {
   const entryId = req.params.id;
   const userId = req.session.user.id;
+  let originalRecord;
 
   try {
-    const record = await getEntryForOwner(entryId, userId);
+    originalRecord = await getEntryForOwner(entryId, userId);
 
-    const archiveData = { ...record, original_id: record.id };
+    const archiveData = { ...originalRecord, original_id: originalRecord.id };
     archiveData.id = undefined;
     archiveData.collectionId = undefined;
     archiveData.collectionName = undefined;
+    archiveData.files = undefined;
     archiveData.has_staged_changes = false;
     archiveData.staged_title = null;
     archiveData.staged_type = null;
     archiveData.staged_domain = null;
     archiveData.staged_content = null;
     archiveData.staged_tags = null;
+    archiveData.staged_collection = null;
 
-    await pbAdmin.collection("entries_archived").create(archiveData);
+    const archivedRecord = await pbAdmin.collection("entries_archived").create(archiveData);
     await pbAdmin.collection("entries_main").delete(entryId);
+    logAuditEvent(req, "ENTRY_ARCHIVE", "entries_main", entryId, { title: originalRecord.title, archivedId: archivedRecord.id });
 
     try {
       const previewTokens = await pbAdmin.collection("entries_previews").getFullList({ filter: `entry = '${entryId}'`, fields: "id" });
@@ -311,6 +358,7 @@ router.post("/archive/:id", requireLogin, async (req, res, next) => {
     res.redirect("/?action=archived");
   } catch (error) {
     console.error(`Failed to archive entry ${entryId}:`, error);
+    logAuditEvent(req, "ENTRY_ARCHIVE_FAILURE", "entries_main", entryId, { title: originalRecord?.title, error: error?.message });
     if (error.status === 403 || error.status === 404) {
       return next(error);
     }
@@ -369,11 +417,12 @@ router.get("/archived", requireLogin, async (req, res) => {
 router.post("/unarchive/:id", requireLogin, async (req, res, next) => {
   const entryId = req.params.id;
   const userId = req.session.user.id;
+  let originalRecord;
 
   try {
-    const record = await getArchivedEntryForOwner(entryId, userId);
+    originalRecord = await getArchivedEntryForOwner(entryId, userId);
 
-    const mainData = { ...record };
+    const mainData = { ...originalRecord };
     mainData.id = undefined;
     mainData.original_id = undefined;
     mainData.collectionId = undefined;
@@ -384,13 +433,16 @@ router.post("/unarchive/:id", requireLogin, async (req, res, next) => {
     mainData.staged_domain = null;
     mainData.staged_content = null;
     mainData.staged_tags = null;
+    mainData.staged_collection = null;
 
-    await pbAdmin.collection("entries_main").create(mainData);
+    const newMainRecord = await pbAdmin.collection("entries_main").create(mainData);
     await pbAdmin.collection("entries_archived").delete(entryId);
+    logAuditEvent(req, "ENTRY_UNARCHIVE", "entries_archived", entryId, { title: originalRecord.title, newId: newMainRecord.id });
 
     res.redirect("/archived?action=unarchived");
   } catch (error) {
     console.error(`Failed to unarchive entry ${entryId}:`, error);
+    logAuditEvent(req, "ENTRY_UNARCHIVE_FAILURE", "entries_archived", entryId, { title: originalRecord?.title, error: error?.message });
     if (error.status === 403 || error.status === 404) {
       return next(error);
     }
@@ -401,20 +453,57 @@ router.post("/unarchive/:id", requireLogin, async (req, res, next) => {
 router.post("/delete-archived/:id", requireLogin, async (req, res, next) => {
   const entryId = req.params.id;
   const userId = req.session.user.id;
+  let record;
 
   try {
-    const record = await getArchivedEntryForOwner(entryId, userId);
+    record = await getArchivedEntryForOwner(entryId, userId);
     await pbAdmin.collection("entries_archived").delete(entryId);
     const idToClean = record.original_id || entryId;
     clearEntryViewLogs(idToClean);
+    logAuditEvent(req, "ENTRY_ARCHIVED_DELETE", "entries_archived", entryId, { title: record.title, originalId: record.original_id });
 
     res.redirect("/archived?action=deleted");
   } catch (error) {
     console.error(`Failed to delete archived entry ${entryId}:`, error);
+    logAuditEvent(req, "ENTRY_ARCHIVED_DELETE_FAILURE", "entries_archived", entryId, { title: record?.title, error: error?.message });
     if (error.status === 403 || error.status === 404) {
       return next(error);
     }
     res.redirect("/archived?error=delete_failed");
+  }
+});
+
+router.get("/audit-log", requireLogin, async (req, res, next) => {
+  try {
+    const initialPage = 1;
+    const initialSort = "-created";
+
+    const resultList = await pbAdmin.collection("audit_logs").getList(initialPage, ITEMS_PER_PAGE, {
+      sort: initialSort,
+      expand: "user",
+    });
+
+    res.render("audit-log", {
+      logs: resultList.items,
+      pageTitle: "Audit Log",
+      pagination: {
+        page: resultList.page,
+        perPage: resultList.perPage,
+        totalItems: resultList.totalItems,
+        totalPages: resultList.totalPages,
+      },
+      initialSort: initialSort,
+      error: null,
+    });
+  } catch (error) {
+    console.error("Error fetching audit logs for page view:", error);
+    res.render("audit-log", {
+      logs: [],
+      pageTitle: "Audit Log",
+      pagination: { page: 1, perPage: ITEMS_PER_PAGE, totalItems: 0, totalPages: 0 },
+      initialSort: "-created",
+      error: "Could not load audit logs.",
+    });
   }
 });
 

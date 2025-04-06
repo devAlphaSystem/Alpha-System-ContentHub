@@ -90,15 +90,16 @@ Configuration is managed through a `.env` file in the project root.
 
       - **Name:** `entries_main`
       - **Fields:**
-        - `title` & `staged_title` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
-        - `type` & `staged_type` (Type: `Select`, Required: Yes, Values: `changelog, documentation`, Max Select: 1)
-        - `domain` & `staged_domain` (Type: `Text`, Required: Yes, Max Length: e.g., 100)
-        - `content` & `staged_content` (Type: `Editor` or `Text`, Required: Yes, Max Length: e.g., 500000 or more - **Important:** Adjust based on your needs!)
-        - `views` (Type: `Number`, Required: No, Default Value: `0`, Min: `0`)
+        - `title` & `staged_title` (Type: `Text`, Max Length: e.g., 200)
+        - `type` & `staged_type` (Type: `Select`, Values: `changelog, documentation`, Max Select: 1)
+        - `domain` & `staged_domain` (Type: `Text`, Max Length: e.g., 100)
+        - `content` & `staged_content` (Type: `Editor` or `Text`, Max Length: e.g., 500000 or more - **Important:** Adjust based on your needs!)
+        - `views` (Type: `Number`, Default Value: `0`, Min: `0`)
         - `owner` (Type: `Relation`, Collection: `users`, Max Select: 1)
-        - `status` (Type: `Select`, Required: Yes, Values: `draft, published`, Max Select: 1)
-        - `tags` & `staged_tags` (Type: `Text`, Required: No, Max Length: e.g., 250)
-        - `has_staged_changes` (Type: `Bool`, Required: Yes)
+        - `status` (Type: `Select`, Values: `draft, published`, Max Select: 1)
+        - `tags` & `staged_tags` (Type: `Text`, Max Length: e.g., 250)
+        - `has_staged_changes` (Type: `Bool`)
+        - `collection` (Type: `Text`)
       - **API Rules:**
         - List: `owner.id = @request.auth.id`
         - View: `status = "published" || owner.id = @request.auth.id` _(Publicly viewable)_
@@ -110,14 +111,15 @@ Configuration is managed through a `.env` file in the project root.
 
       - **Name:** `entries_archived`
       - **Fields:**
-        - `title` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
-        - `type` (Type: `Select`, Required: Yes, Values: `changelog, documentation`, Max Select: 1)
-        - `domain` (Type: `Text`, Required: Yes, Max Length: e.g., 100)
-        - `content` (Type: `Editor` or `Text`, Required: Yes, Max Length: e.g., 500000 or more - **Important:** Adjust based on your needs!)
-        - `views` (Type: `Number`, Required: No, Default Value: `0`, Min: `0`)
+        - `title` (Type: `Text`, Max Length: e.g., 200)
+        - `type` (Type: `Select`, Values: `changelog, documentation`, Max Select: 1)
+        - `domain` (Type: `Text`, Max Length: e.g., 100)
+        - `content` (Type: `Editor` or `Text`, Max Length: e.g., 500000 or more - **Important:** Must follow `entries_main` value!)
+        - `views` (Type: `Number`, Default Value: `0`, Min: `0`)
         - `owner` (Type: `Relation`, Collection: `users`, Max Select: 1)
-        - `status` (Type: `Select`, Required: Yes, Values: `draft, published`, Max Select: 1)
-        - `tags` (Type: `Text`, Required: No, Max Length: e.g., 250)
+        - `status` (Type: `Select`, Values: `draft, published`, Max Select: 1)
+        - `tags` (Type: `Text`, Max Length: e.g., 250)
+        - `collection` (Type: `Text`)
       - **API Rules:**
         - List: `owner.id = @request.auth.id`
         - View: `status = "published" || owner.id = @request.auth.id` _(Publicly viewable)_
@@ -130,9 +132,9 @@ Configuration is managed through a `.env` file in the project root.
       - **Name:** `entries_previews`
       - **Fields:**
         - `entry` (Type: `Relation`, Collection: `entries_main`, Max Select: 1)
-        - `token` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
-        - `expires_at` (Type: `DateTime`, Required: Yes)
-        - `password_hash` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
+        - `token` (Type: `Text`, Max Length: e.g., 200)
+        - `expires_at` (Type: `DateTime`)
+        - `password_hash` (Type: `Text`, Max Length: e.g., 200)
       - **API Rules:**
         - List: `Superusers Only`
         - View: `Empty` _(Publicly viewable)_
@@ -144,8 +146,8 @@ Configuration is managed through a `.env` file in the project root.
 
       - **Name:** `templates`
       - **Fields:**
-        - `name` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
-        - `content` (Type: `Text`, Required: Yes, Max Length: e.g., 10000)
+        - `name` (Type: `Text`, Max Length: e.g., 200)
+        - `content` (Type: `Text`, Max Length: e.g., 10000)
         - `owner` (Type: `Relation`, Collection: `users`, Max Select: 1)
       - **API Rules:**
         - List: `owner.id = @request.auth.id`
@@ -153,6 +155,23 @@ Configuration is managed through a `.env` file in the project root.
         - Create: `owner.id = @request.auth.id`
         - Update: `owner.id = @request.auth.id`
         - Delete: `owner.id = @request.auth.id`
+
+    - **`audit_logs` Collection (Create New):**
+
+      - **Name:** `audit_logs`
+      - **Fields:**
+        - `user` (Type: `Relation`, Collection: `users`, Max Select: 1)
+        - `action` (Type: `Text`, Max Length: e.g., 200)
+        - `target_collection` (Type: `Text`, Max Length: e.g., 200)
+        - `target_record` (Type: `Text`, Max Length: e.g., 200)
+        - `details` (Type: `JSON`, Max Size: e.g., Default)
+        - `ip_address` (Type: `Text`, Max Length: e.g., 200)
+      - **API Rules:**
+        - List: `Superusers Only`
+        - View: `Superusers Only`
+        - Create: `Superusers Only`
+        - Update: `Superusers Onlyid`
+        - Delete: `Superusers Only`
 
 ## Running the Application
 
