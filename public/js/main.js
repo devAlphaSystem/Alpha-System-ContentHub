@@ -1,17 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const confirmModal = document.getElementById("confirm-modal");
-  const modalTitle = document.getElementById("modal-title");
-  const modalMessage = document.getElementById("modal-message");
-  const modalConfirmBtn = document.getElementById("modal-confirm-btn");
-  const modalCancelBtn = document.getElementById("modal-cancel-btn");
-  const modalCloseBtn = document.getElementById("modal-close-btn");
-
-  const alertModal = document.getElementById("alert-modal");
-  const alertModalTitle = document.getElementById("alert-modal-title");
-  const alertModalMessage = document.getElementById("alert-modal-message");
-  const alertModalOkBtn = document.getElementById("alert-modal-ok-btn");
-  const alertModalCloseBtn = document.getElementById("alert-modal-close-btn");
-
   const statusFilterBtn = document.getElementById("status-filter-btn");
   const filterDraftOption = document.getElementById("filter-draft");
   const filterPublishedOption = document.getElementById("filter-published");
@@ -31,7 +18,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const emptyStateCard = document.querySelector(".empty-state-card");
   const tableElement = document.querySelector(".data-table");
 
-  let formToSubmit = null;
+  const collectionFilterSelect = document.getElementById("collection-filter-select");
+
   const currentFilterState = { draft: true, published: true };
   let currentPage = 1;
   let totalPages = 1;
@@ -40,141 +28,14 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentSortKey = "updated";
   let currentSortDir = "desc";
   let isLoading = false;
+  let currentCollectionFilter = "";
 
-  /**
-   * Escapes HTML special characters in a string.
-   * @param {string} unsafe The potentially unsafe string.
-   * @returns {string} The escaped string.
-   */
-  const escapeHtml = (unsafe) => {
-    if (typeof unsafe !== "string") return unsafe;
-    return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-  };
-
-  /**
-   * Shows the confirmation modal.
-   * @param {object} options Configuration options for the modal.
-   * @param {HTMLFormElement} [options.form] The form to submit on confirmation (for standard submits).
-   * @param {string} [options.title] Modal title.
-   * @param {string} [options.message] Modal message (HTML allowed).
-   * @param {string} [options.action='delete'] Type of action ('delete', 'archive', 'publish-staged', 'bulk', etc.).
-   * @param {string} [options.confirmText='Confirm'] Text for the confirm button.
-   * @param {string} [options.cancelText='Cancel'] Text for the cancel button.
-   * @param {function} [options.onConfirm] Callback function on confirm (for API calls).
-   * @param {function} [options.onCancel] Callback function on cancel.
-   * @param {object} [options.details] Extra details (e.g., for bulk actions).
-   */
-  function showConfirmModal(options) {
-    const { form, title, message, action = "delete", confirmText = "Confirm", cancelText = "Cancel", onConfirm, onCancel, details } = options;
-
-    formToSubmit = onConfirm ? null : form || null;
-
-    if (modalConfirmBtn) {
-      modalConfirmBtn.removeAttribute("data-is-bulk");
-      modalConfirmBtn.removeAttribute("data-bulk-action");
-      modalConfirmBtn.removeAttribute("data-bulk-ids");
-    }
-
-    const isBulk = action.startsWith("bulk");
-    if (isBulk && details) {
-      if (modalConfirmBtn) {
-        modalConfirmBtn.dataset.isBulk = "true";
-        modalConfirmBtn.dataset.bulkAction = details.action;
-        modalConfirmBtn.dataset.bulkIds = JSON.stringify(details.ids);
-      }
-    }
-
-    if (modalTitle) modalTitle.textContent = title || (action === "delete" ? "Confirm Deletion" : "Confirm Action");
-    if (modalMessage) modalMessage.innerHTML = message || "Are you sure?";
-
-    if (modalConfirmBtn) {
-      const isDeleteStyle = action === "delete" || action === "bulk-delete";
-      const isPublishStyle = action === "publish-staged" || action === "bulk-publish-staged";
-      let btnClass = "btn ";
-      let btnIcon = "";
-
-      if (isDeleteStyle) {
-        btnClass += "btn-danger";
-        btnIcon = '<i class="fas fa-trash-alt"></i> ';
-      } else if (isPublishStyle) {
-        btnClass += "btn-success";
-        btnIcon = '<i class="fas fa-upload"></i> ';
-      } else {
-        btnClass += "btn-primary";
-      }
-
-      modalConfirmBtn.className = btnClass;
-      modalConfirmBtn.innerHTML = `${btnIcon}${escapeHtml(confirmText)}`;
-    }
-
-    if (modalCancelBtn) modalCancelBtn.textContent = cancelText;
-
-    if (confirmModal) {
-      confirmModal.classList.add("is-visible");
-      confirmModal.setAttribute("aria-hidden", "false");
-      confirmModal._onConfirm = onConfirm;
-      confirmModal._onCancel = onCancel;
-    }
-  }
-
-  /**
-   * Hides the confirmation modal.
-   */
-  function hideConfirmModal() {
-    formToSubmit = null;
-
-    if (modalConfirmBtn) {
-      modalConfirmBtn.removeAttribute("data-is-bulk");
-      modalConfirmBtn.removeAttribute("data-bulk-action");
-      modalConfirmBtn.removeAttribute("data-bulk-ids");
-    }
-
-    if (confirmModal) {
-      confirmModal.classList.remove("is-visible");
-      confirmModal.setAttribute("aria-hidden", "true");
-      confirmModal._onConfirm = undefined;
-      confirmModal._onCancel = undefined;
-    }
-  }
-
-  /**
-   * Shows the alert modal.
-   * @param {string} message The message to display (HTML allowed).
-   * @param {string} [title='Notification'] The title of the alert modal.
-   */
-  function showAlertModal(message, title = "Notification") {
-    if (alertModalMessage) alertModalMessage.innerHTML = message;
-    if (alertModalTitle) alertModalTitle.textContent = title;
-    if (alertModal) {
-      alertModal.classList.add("is-visible");
-      alertModal.setAttribute("aria-hidden", "false");
-    }
-  }
-
-  /**
-   * Hides the alert modal.
-   */
-  function hideAlertModal() {
-    if (alertModal) {
-      alertModal.classList.remove("is-visible");
-      alertModal.setAttribute("aria-hidden", "true");
-    }
-  }
-
-  /**
-   * Updates the visual state of the status filter buttons.
-   */
   function updateFilterButtonUI() {
     if (!filterDraftOption || !filterPublishedOption) return;
     filterDraftOption.classList.toggle("active", currentFilterState.draft);
     filterPublishedOption.classList.toggle("active", currentFilterState.published);
   }
 
-  /**
-   * Renders a single table row for an entry.
-   * @param {object} entry The entry data object.
-   * @returns {string} The HTML string for the table row.
-   */
   function renderTableRow(entry) {
     const formattedUpdated =
       entry.formattedUpdated ||
@@ -198,6 +59,8 @@ document.addEventListener("DOMContentLoaded", () => {
       `
       : "";
 
+    const collectionDisplay = entry.collection ? escapeHtml(entry.collection) : "-";
+
     return `
       <tr data-entry-id="${escapeHtml(entry.id)}" data-updated-timestamp="${updatedTimestamp}" data-views-value="${entry.views || 0}">
         <td class="checkbox-column"><input type="checkbox" class="entry-checkbox" value="${escapeHtml(entry.id)}"></td>
@@ -206,6 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <span class="badge status-badge status-${escapeHtml(entry.status.toLowerCase())}">${escapeHtml(entry.status)}</span>
           ${stagedBadge}
         </td>
+        <td data-label="Collection">${collectionDisplay}</td>
         <td data-label="Type"><span class="badge type-badge type-${escapeHtml(entry.type)}">${escapeHtml(entry.type)}</span></td>
         <td data-label="Domain">${escapeHtml(entry.domain)}</td>
         <td data-label="Views">${entry.views || 0}</td>
@@ -221,9 +85,6 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
-  /**
-   * Updates the pagination controls (buttons and info text).
-   */
   function updatePaginationControls() {
     if (!paginationControls) return;
 
@@ -244,10 +105,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  /**
-   * Renders the table body with the provided entries.
-   * @param {Array<object>} entries Array of entry objects for the current page.
-   */
   function renderTable(entries) {
     if (!entriesTableBody || !tableElement) return;
 
@@ -277,9 +134,6 @@ document.addEventListener("DOMContentLoaded", () => {
     updateBulkActionUI();
   }
 
-  /**
-   * Fetches entries from the API based on current state.
-   */
   async function fetchEntries() {
     if (isLoading) return;
     isLoading = true;
@@ -291,9 +145,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (prevPageBtn) prevPageBtn.disabled = true;
     if (nextPageBtn) nextPageBtn.disabled = true;
     if (selectAllCheckbox) selectAllCheckbox.disabled = true;
+    if (collectionFilterSelect) collectionFilterSelect.disabled = true;
 
     const sortParam = `${currentSortDir === "desc" ? "-" : ""}${currentSortKey}`;
-    const url = `/api/entries?page=${currentPage}&perPage=${itemsPerPage}&sort=${sortParam}&fields=*,has_staged_changes`;
+    let url = `/api/entries?page=${currentPage}&perPage=${itemsPerPage}&sort=${sortParam}&fields=*,has_staged_changes`;
+    if (currentCollectionFilter && currentCollectionFilter !== "") {
+      url += `&collection=${encodeURIComponent(currentCollectionFilter)}`;
+    }
 
     try {
       const response = await fetch(url);
@@ -311,7 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
       applyTableFilter();
     } catch (error) {
       console.error("Failed to fetch entries:", error);
-      showAlertModal("Error loading entries. Please try refreshing the page.", "Loading Error");
+      window.showAlertModal("Error loading entries. Please try refreshing the page.", "Loading Error");
       if (entriesTableBody && tableElement) {
         const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 9;
         entriesTableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading entries.</td></tr>`;
@@ -329,13 +187,11 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshButton.innerHTML = `<i class="fas fa-sync-alt"></i> <span>Refresh</span>`;
       }
       if (selectAllCheckbox) selectAllCheckbox.disabled = false;
+      if (collectionFilterSelect) collectionFilterSelect.disabled = false;
       updatePaginationControls();
     }
   }
 
-  /**
-   * Applies the current status filter to the visible rows in the table.
-   */
   function applyTableFilter() {
     if (!entriesTableBody) return;
 
@@ -374,10 +230,6 @@ document.addEventListener("DOMContentLoaded", () => {
     updateBulkActionUI();
   }
 
-  /**
-   * Handles the submission event for standard action forms (delete, archive).
-   * @param {Event} event The form submission event.
-   */
   function handleStandardFormSubmit(event) {
     if (!event.target.classList.contains("delete-form") && !event.target.classList.contains("archive-form")) {
       return;
@@ -407,14 +259,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (options.title) {
-      showConfirmModal(options);
+      window.showConfirmModal(options);
     }
   }
 
-  /**
-   * Handles clicks on buttons intended for JS/API actions (like Publish Staged).
-   * @param {Event} event The click event.
-   */
   function handleApiButtonClick(event) {
     const button = event.target.closest(".js-publish-staged-btn");
     if (!button) {
@@ -429,7 +277,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    showConfirmModal({
+    window.showConfirmModal({
       title: "Confirm Publish",
       message: `Are you sure you want to publish the staged changes for "<strong>${escapeHtml(title)}</strong>"?<br>This will overwrite the current live content.`,
       action: "publish-staged",
@@ -438,10 +286,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /**
-   * Handles the API call for publishing staged changes for a single entry.
-   * @param {string} apiUrl The API endpoint URL.
-   */
   async function handlePublishStagedConfirm(apiUrl) {
     if (isLoading) return;
     isLoading = true;
@@ -459,22 +303,19 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(result.error || `HTTP error ${response.status}`);
       }
 
-      showAlertModal(result.message || "Staged changes published.", "Success");
+      window.showAlertModal(result.message || "Staged changes published.", "Success");
 
       setTimeout(async () => {
         await fetchEntries();
       }, 100);
     } catch (error) {
       console.error("Failed to publish staged changes:", error);
-      showAlertModal(`Error publishing changes: ${error.message}`, "Publish Error");
+      window.showAlertModal(`Error publishing changes: ${error.message}`, "Publish Error");
     } finally {
       isLoading = false;
     }
   }
 
-  /**
-   * Attaches event listeners for table actions using event delegation.
-   */
   function attachActionListeners() {
     entriesTableBody?.removeEventListener("submit", handleStandardFormSubmit);
     entriesTableBody?.removeEventListener("click", handleApiButtonClick);
@@ -483,9 +324,6 @@ document.addEventListener("DOMContentLoaded", () => {
     entriesTableBody?.addEventListener("click", handleApiButtonClick);
   }
 
-  /**
-   * Updates the visibility and count of the bulk action bar.
-   */
   function updateBulkActionUI() {
     if (!entriesTableBody) return;
     const visibleCheckboxes = entriesTableBody.querySelectorAll("tr:not([style*='display: none']) .entry-checkbox");
@@ -507,29 +345,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  /**
-   * Handles changes to individual entry checkboxes.
-   * @param {Event} event The change event.
-   */
   function handleCheckboxChange(event) {
     if (event.target.classList.contains("entry-checkbox")) {
       updateBulkActionUI();
     }
   }
 
-  /**
-   * Attaches change event listeners to entry checkboxes within the table body.
-   */
   function attachEntryCheckboxListeners() {
     entriesTableBody?.removeEventListener("change", handleCheckboxChange);
     entriesTableBody?.addEventListener("change", handleCheckboxChange);
   }
 
-  /**
-   * Handles the confirmation of a bulk action via the modal.
-   * @param {string} action The action to perform.
-   * @param {Array<string>} ids Array of entry IDs.
-   */
   async function handleBulkActionConfirm(action, ids) {
     if (!bulkActionsButton || isLoading) return;
     isLoading = true;
@@ -550,12 +376,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!response.ok) {
         console.error("Bulk action failed:", response.status, result);
-        showAlertModal(`Error ${response.status}: ${result.error || result.message || "Bulk action failed."}`, "Bulk Action Error");
+        window.showAlertModal(`Error ${response.status}: ${result.error || result.message || "Bulk action failed."}`, "Bulk Action Error");
       } else {
         if (response.status === 207) {
-          showAlertModal(result.message || "Action completed with some errors.", "Partial Success");
+          window.showAlertModal(result.message || "Action completed with some errors.", "Partial Success");
         } else {
-          showAlertModal(result.message || `Bulk action '${action}' completed successfully.`, "Success");
+          window.showAlertModal(result.message || `Bulk action '${action}' completed successfully.`, "Success");
         }
         setTimeout(async () => {
           await fetchEntries();
@@ -563,7 +389,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (error) {
       console.error("Error performing bulk action fetch:", error);
-      showAlertModal("An unexpected network or server error occurred during the bulk action.", "Bulk Action Error");
+      window.showAlertModal("An unexpected network or server error occurred during the bulk action.", "Bulk Action Error");
     } finally {
       isLoading = false;
       if (bulkActionsButton) {
@@ -574,9 +400,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  /**
-   * Attaches click event listeners to sortable table headers.
-   */
   function attachSortListeners() {
     const sortableHeaders = document.querySelectorAll(".data-table th[data-sort-key]");
     for (const header of sortableHeaders) {
@@ -614,109 +437,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
   }
-
-  /**
-   * Applies the selected theme (light/dark).
-   * @param {string} theme The theme name ('light' or 'dark').
-   */
-  const applyTheme = (theme) => {
-    document.body.classList.toggle("dark-mode", theme === "dark");
-  };
-
-  /**
-   * Sets the theme preference locally and on the server.
-   * @param {string} theme The theme name ('light' or 'dark').
-   */
-  async function setThemePreference(theme) {
-    applyTheme(theme);
-
-    try {
-      localStorage.setItem("theme", theme);
-    } catch (e) {
-      console.warn("Could not save theme to localStorage:", e);
-    }
-
-    try {
-      const response = await fetch("/api/set-theme", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ theme: theme }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Failed to set theme preference on server:", response.status, errorData.error || response.statusText);
-        showAlertModal("Could not save your theme preference to the server.", "Theme Error");
-      }
-    } catch (error) {
-      console.error("Network error sending theme preference:", error);
-      showAlertModal("Network error saving your theme preference.", "Theme Error");
-    }
-  }
-
-  modalConfirmBtn?.addEventListener("click", () => {
-    const isBulk = modalConfirmBtn.dataset.isBulk === "true";
-    const bulkAction = modalConfirmBtn.dataset.bulkAction;
-    const bulkIdsJson = modalConfirmBtn.dataset.bulkIds;
-
-    if (formToSubmit) {
-      formToSubmit.submit();
-    } else if (isBulk && bulkAction && bulkIdsJson) {
-      try {
-        const bulkIds = JSON.parse(bulkIdsJson);
-        handleBulkActionConfirm(bulkAction, bulkIds);
-      } catch (e) {
-        console.error("Error parsing bulk IDs or calling handler:", e);
-        showAlertModal("An error occurred processing the bulk action data.", "Error");
-      }
-    } else if (confirmModal._onConfirm) {
-      confirmModal._onConfirm();
-    }
-
-    hideConfirmModal();
-  });
-
-  modalCancelBtn?.addEventListener("click", () => {
-    if (confirmModal._onCancel) {
-      confirmModal._onCancel();
-    }
-    hideConfirmModal();
-  });
-
-  modalCloseBtn?.addEventListener("click", hideConfirmModal);
-
-  confirmModal?.addEventListener("click", (event) => {
-    if (event.target === confirmModal) {
-      hideConfirmModal();
-    }
-  });
-
-  alertModalOkBtn?.addEventListener("click", hideAlertModal);
-  alertModalCloseBtn?.addEventListener("click", hideAlertModal);
-  alertModal?.addEventListener("click", (event) => {
-    if (event.target === alertModal) {
-      hideAlertModal();
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      if (confirmModal?.classList.contains("is-visible")) {
-        hideConfirmModal();
-      } else if (alertModal?.classList.contains("is-visible")) {
-        hideAlertModal();
-      }
-    }
-  });
-
-  const themeToggleButton = document.getElementById("theme-toggle");
-  themeToggleButton?.addEventListener("click", () => {
-    const isDarkMode = document.body.classList.contains("dark-mode");
-    const newTheme = isDarkMode ? "light" : "dark";
-    setThemePreference(newTheme);
-  });
 
   refreshButton?.addEventListener("click", () => {
     if (!isLoading) {
@@ -774,12 +494,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isDelete) message += "<br>This action cannot be undone.";
         if (isPublishStaged) message += "<br>This will overwrite live content.";
 
-        showConfirmModal({
+        window.showConfirmModal({
           details: { action, ids: selectedIds },
           title: "Confirm Bulk Action",
           message: message,
           action: `bulk-${action}`,
           confirmText: isDelete ? "Delete" : isPublishStaged ? "Publish" : "Confirm",
+          onConfirm: () => handleBulkActionConfirm(action, selectedIds),
         });
       }
     }
@@ -805,6 +526,13 @@ document.addEventListener("DOMContentLoaded", () => {
     applyTableFilter();
   });
 
+  collectionFilterSelect?.addEventListener("change", () => {
+    if (isLoading) return;
+    currentCollectionFilter = collectionFilterSelect.value;
+    currentPage = 1;
+    fetchEntries();
+  });
+
   const initialSortHeader = document.querySelector(`.data-table th[data-sort-key="${currentSortKey}"]`);
   if (initialSortHeader) {
     const icon = initialSortHeader.querySelector(".sort-icon i");
@@ -812,26 +540,6 @@ document.addEventListener("DOMContentLoaded", () => {
       icon.className = currentSortDir === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
     }
   }
-
-  const currentPath = window.location.pathname;
-  const sidebarLinks = document.querySelectorAll(".sidebar-nav .nav-link");
-  for (const link of sidebarLinks) {
-    link.classList.remove("active");
-    const navId = link.dataset.navId;
-    if ((currentPath === "/" || currentPath.startsWith("/edit/") || currentPath === "/new") && navId === "dashboard") {
-      link.classList.add("active");
-    } else if (currentPath.startsWith("/templates") && navId === "templates") {
-      link.classList.add("active");
-    } else if (currentPath === "/archived" && navId === "archived") {
-      link.classList.add("active");
-    }
-  }
-
-  const mobileNavToggle = document.querySelector(".mobile-nav-toggle");
-  const sidebar = document.querySelector(".sidebar");
-  mobileNavToggle?.addEventListener("click", () => {
-    sidebar?.classList.toggle("is-open");
-  });
 
   attachActionListeners();
   attachEntryCheckboxListeners();
@@ -878,15 +586,20 @@ document.addEventListener("DOMContentLoaded", () => {
       else if (actionMessage === "archived") messageText = "Entry archived successfully.";
       else if (actionMessage === "unarchived") messageText = "Entry unarchived successfully.";
       else if (actionMessage === "published_staged") messageText = "Staged changes published successfully.";
-      showAlertModal(messageText, "Success");
+      window.showAlertModal(messageText, "Success");
     } else if (errorMessage) {
       let messageText = "An error occurred.";
       if (errorMessage === "delete_failed") messageText = "Failed to delete the entry.";
       else if (errorMessage === "archive_failed") messageText = "Failed to archive the entry.";
       else if (errorMessage === "unarchive_failed") messageText = "Failed to unarchive the entry.";
       else if (errorMessage === "publish_staged_failed") messageText = "Failed to publish staged changes.";
-      showAlertModal(messageText, "Error");
+      window.showAlertModal(messageText, "Error");
     }
     window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  if (collectionFilterSelect) {
+    collectionFilterSelect.value = "";
+    currentCollectionFilter = "";
   }
 });

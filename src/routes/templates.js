@@ -1,7 +1,7 @@
 import express from "express";
 import { pb, ITEMS_PER_PAGE } from "../config.js";
 import { requireLogin } from "../middleware.js";
-import { getTemplateForEdit } from "../utils.js";
+import { getTemplateForEdit, logAuditEvent } from "../utils.js";
 
 const router = express.Router();
 
@@ -68,10 +68,12 @@ router.post("/new", requireLogin, async (req, res) => {
   };
 
   try {
-    await pb.collection("templates").create(data);
+    const newTemplate = await pb.collection("templates").create(data);
+    logAuditEvent(req, "TEMPLATE_CREATE", "templates", newTemplate.id, { name: newTemplate.name });
     res.redirect("/templates?message=Template created successfully");
   } catch (error) {
     console.error("Failed to create template:", error);
+    logAuditEvent(req, "TEMPLATE_CREATE_FAILURE", "templates", null, { error: error?.message, data });
     const pbErrors = error?.data?.data || {
       general: "Failed to create template.",
     };
@@ -110,10 +112,12 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
 
   try {
     await getTemplateForEdit(templateId, userId);
-    await pb.collection("templates").update(templateId, data);
+    const updatedTemplate = await pb.collection("templates").update(templateId, data);
+    logAuditEvent(req, "TEMPLATE_UPDATE", "templates", templateId, { name: updatedTemplate.name });
     res.redirect("/templates?message=Template updated successfully");
   } catch (error) {
     console.error(`Failed to update template ${templateId}:`, error);
+    logAuditEvent(req, "TEMPLATE_UPDATE_FAILURE", "templates", templateId, { error: error?.message, data });
     if (error.status === 403 || error.status === 404) {
       return next(error);
     }
@@ -137,13 +141,17 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
 router.post("/delete/:id", requireLogin, async (req, res, next) => {
   const templateId = req.params.id;
   const userId = req.session.user.id;
+  let templateName = templateId;
 
   try {
-    await getTemplateForEdit(templateId, userId);
+    const template = await getTemplateForEdit(templateId, userId);
+    templateName = template.name;
     await pb.collection("templates").delete(templateId);
+    logAuditEvent(req, "TEMPLATE_DELETE", "templates", templateId, { name: templateName });
     res.redirect("/templates?message=Template deleted successfully");
   } catch (error) {
     console.error(`Failed to delete template ${templateId}:`, error);
+    logAuditEvent(req, "TEMPLATE_DELETE_FAILURE", "templates", templateId, { name: templateName, error: error?.message });
     if (error.status === 403 || error.status === 404) {
       return next(error);
     }

@@ -68,6 +68,12 @@
       </div>
 
       <div class="form-group">
+        <label for="collection">Collection</label>
+        <input type="text" id="collection" name="collection" class="form-control" placeholder="e.g., Project Alpha" value="<%= locals.entry ? entry.collection : '' %>">
+        <small class="form-text">Assign this entry to a collection (optional).</small>
+      </div>
+
+      <div class="form-group">
         <label for="tags">Tags</label>
         <input type="text" id="tags" name="tags" class="form-control" placeholder="Comma-separated, e.g., api, frontend, v2" value="<%= locals.entry ? entry.tags : '' %>">
         <small class="form-text">Separate multiple tags with commas.</small>
@@ -90,4 +96,4 @@
   </form>
 </div>
 
-<%- include('partials/footer', { scriptPath: '/js/editor-script.js' }) %>
+<%- include('partials/footer', { scriptPath: '/js/editor.js' }) %>

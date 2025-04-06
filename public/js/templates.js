@@ -1,17 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const confirmModal = document.getElementById("confirm-modal");
-  const modalTitle = document.getElementById("modal-title");
-  const modalMessage = document.getElementById("modal-message");
-  const modalConfirmBtn = document.getElementById("modal-confirm-btn");
-  const modalCancelBtn = document.getElementById("modal-cancel-btn");
-  const modalCloseBtn = document.getElementById("modal-close-btn");
-
-  const alertModal = document.getElementById("alert-modal");
-  const alertModalTitle = document.getElementById("alert-modal-title");
-  const alertModalMessage = document.getElementById("alert-modal-message");
-  const alertModalOkBtn = document.getElementById("alert-modal-ok-btn");
-  const alertModalCloseBtn = document.getElementById("alert-modal-close-btn");
-
   const templatesTableBody = document.getElementById("templates-table-body");
   const refreshButton = document.getElementById("refresh-templates-btn");
   const paginationControls = document.querySelector(".pagination-controls");
@@ -22,7 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const emptyStateCard = document.querySelector(".empty-state-card");
   const tableElement = document.querySelector(".data-table");
 
-  let formToSubmit = null;
   let currentPage = 1;
   let totalPages = 1;
   let totalItems = 0;
@@ -31,96 +17,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentSortDir = "desc";
   let isLoading = false;
 
-  /**
-   * Escapes HTML special characters in a string.
-   * @param {string} unsafe The potentially unsafe string.
-   * @returns {string} The escaped string.
-   */
-  const escapeHtml = (unsafe) => {
-    if (typeof unsafe !== "string") return unsafe;
-    return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-  };
-
-  /**
-   * Shows the confirmation modal.
-   * @param {object} options Configuration options for the modal.
-   * @param {HTMLFormElement} [options.form] The form to submit on confirmation.
-   * @param {string} [options.title] Modal title.
-   * @param {string} [options.message] Modal message (HTML allowed).
-   * @param {string} [options.action='delete'] Type of action ('delete', etc.).
-   * @param {string} [options.confirmText='Confirm'] Text for the confirm button.
-   * @param {string} [options.cancelText='Cancel'] Text for the cancel button.
-   * @param {function} [options.onConfirm] Callback function on confirm.
-   * @param {function} [options.onCancel] Callback function on cancel.
-   */
-  function showConfirmModal(options) {
-    const { form, title, message, action = "delete", confirmText = "Confirm", cancelText = "Cancel", onConfirm, onCancel } = options;
-
-    formToSubmit = form || null;
-
-    if (modalTitle) modalTitle.textContent = title || (action === "delete" ? "Confirm Deletion" : "Confirm Action");
-    if (modalMessage) modalMessage.innerHTML = message || "Are you sure?";
-
-    if (modalConfirmBtn) {
-      const isDelete = action === "delete";
-      modalConfirmBtn.className = `btn ${isDelete ? "btn-danger" : "btn-primary"}`;
-      modalConfirmBtn.textContent = confirmText;
-      if (isDelete) modalConfirmBtn.innerHTML = `<i class="fas fa-trash-alt"></i> ${confirmText}`;
-    }
-
-    if (modalCancelBtn) modalCancelBtn.textContent = cancelText;
-
-    if (confirmModal) {
-      confirmModal.classList.add("is-visible");
-      confirmModal.setAttribute("aria-hidden", "false");
-      confirmModal._onConfirm = onConfirm;
-      confirmModal._onCancel = onCancel;
-    }
-  }
-
-  /**
-   * Hides the confirmation modal.
-   */
-  function hideConfirmModal() {
-    formToSubmit = null;
-
-    if (confirmModal) {
-      confirmModal.classList.remove("is-visible");
-      confirmModal.setAttribute("aria-hidden", "true");
-      confirmModal._onConfirm = null;
-      confirmModal._onCancel = null;
-    }
-  }
-
-  /**
-   * Shows the alert modal.
-   * @param {string} message The message to display (HTML allowed).
-   * @param {string} [title='Notification'] The title of the alert modal.
-   */
-  function showAlertModal(message, title = "Notification") {
-    if (alertModalMessage) alertModalMessage.innerHTML = message;
-    if (alertModalTitle) alertModalTitle.textContent = title;
-    if (alertModal) {
-      alertModal.classList.add("is-visible");
-      alertModal.setAttribute("aria-hidden", "false");
-    }
-  }
-
-  /**
-   * Hides the alert modal.
-   */
-  function hideAlertModal() {
-    if (alertModal) {
-      alertModal.classList.remove("is-visible");
-      alertModal.setAttribute("aria-hidden", "true");
-    }
-  }
-
-  /**
-   * Renders a single table row for a template.
-   * @param {object} template The template data object.
-   * @returns {string} The HTML string for the table row.
-   */
   function renderTableRow(template) {
     const formattedUpdated =
       template.formattedUpdated ||
@@ -143,9 +39,6 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
-  /**
-   * Updates the pagination controls (buttons and info text).
-   */
   function updatePaginationControls() {
     if (!paginationControls) return;
 
@@ -166,10 +59,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  /**
-   * Renders the table body with the provided templates.
-   * @param {Array<object>} templates Array of template objects for the current page.
-   */
   function renderTable(templates) {
     if (!templatesTableBody || !tableElement) return;
 
@@ -198,9 +87,6 @@ document.addEventListener("DOMContentLoaded", () => {
     attachDeleteListeners();
   }
 
-  /**
-   * Fetches templates from the API based on current state.
-   */
   async function fetchTemplates() {
     if (isLoading) return;
     isLoading = true;
@@ -230,7 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updatePaginationControls();
     } catch (error) {
       console.error("Failed to fetch templates:", error);
-      showAlertModal("Error loading templates. Please try refreshing the page.", "Loading Error");
+      window.showAlertModal("Error loading templates. Please try refreshing the page.", "Loading Error");
       if (templatesTableBody && tableElement) {
         const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 3;
         templatesTableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading templates.</td></tr>`;
@@ -251,17 +137,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  /**
-   * Handles the submission event for delete forms.
-   * @param {Event} event The form submission event.
-   */
   function handleDeleteSubmit(event) {
     event.preventDefault();
     const form = event.target;
     if (form.classList.contains("delete-template-form")) {
       const name = form.closest("tr")?.querySelector("td[data-label='Name']")?.textContent || "this template";
       const message = `Are you sure you want to delete the template "<strong>${escapeHtml(name)}</strong>"?<br>This action cannot be undone.`;
-      showConfirmModal({
+      window.showConfirmModal({
         form: form,
         title: "Confirm Deletion",
         message: message,
@@ -271,9 +153,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  /**
-   * Attaches submit event listeners to all delete forms.
-   */
   function attachDeleteListeners() {
     const deleteTemplateForms = document.querySelectorAll("form.delete-template-form");
     for (const form of deleteTemplateForms) {
@@ -282,9 +161,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  /**
-   * Attaches click event listeners to sortable table headers.
-   */
   function attachSortListeners() {
     const sortableHeaders = document.querySelectorAll(".data-table th[data-sort-key]");
     for (const header of sortableHeaders) {
@@ -322,96 +198,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  /**
-   * Applies the selected theme (light/dark).
-   * @param {string} theme The theme name ('light' or 'dark').
-   */
-  const applyTheme = (theme) => {
-    document.body.classList.toggle("dark-mode", theme === "dark");
-  };
-
-  /**
-   * Sets the theme preference locally and on the server.
-   * @param {string} theme The theme name ('light' or 'dark').
-   */
-  async function setThemePreference(theme) {
-    applyTheme(theme);
-
-    try {
-      localStorage.setItem("theme", theme);
-    } catch (e) {
-      console.warn("Could not save theme to localStorage:", e);
-    }
-
-    try {
-      const response = await fetch("/api/set-theme", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ theme: theme }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Failed to set theme preference on server:", response.status, errorData.error || response.statusText);
-        showAlertModal("Could not save your theme preference to the server.", "Theme Error");
-      }
-    } catch (error) {
-      console.error("Network error sending theme preference:", error);
-      showAlertModal("Network error saving your theme preference.", "Theme Error");
-    }
-  }
-
-  modalConfirmBtn?.addEventListener("click", () => {
-    if (formToSubmit) {
-      formToSubmit.submit();
-    } else if (confirmModal._onConfirm) {
-      confirmModal._onConfirm();
-    }
-    hideConfirmModal();
-  });
-
-  modalCancelBtn?.addEventListener("click", () => {
-    if (confirmModal._onCancel) {
-      confirmModal._onCancel();
-    }
-    hideConfirmModal();
-  });
-
-  modalCloseBtn?.addEventListener("click", hideConfirmModal);
-
-  confirmModal?.addEventListener("click", (event) => {
-    if (event.target === confirmModal) {
-      hideConfirmModal();
-    }
-  });
-
-  alertModalOkBtn?.addEventListener("click", hideAlertModal);
-  alertModalCloseBtn?.addEventListener("click", hideAlertModal);
-  alertModal?.addEventListener("click", (event) => {
-    if (event.target === alertModal) {
-      hideAlertModal();
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      if (confirmModal?.classList.contains("is-visible")) {
-        hideConfirmModal();
-      } else if (alertModal?.classList.contains("is-visible")) {
-        hideAlertModal();
-      }
-    }
-  });
-
-  const themeToggleButton = document.getElementById("theme-toggle");
-  themeToggleButton?.addEventListener("click", () => {
-    const isDarkMode = document.body.classList.contains("dark-mode");
-    const newTheme = isDarkMode ? "light" : "dark";
-    setThemePreference(newTheme);
-  });
-
   refreshButton?.addEventListener("click", () => {
     if (!isLoading) {
       fetchTemplates();
@@ -440,26 +226,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  const currentPath = window.location.pathname;
-  const sidebarLinks = document.querySelectorAll(".sidebar-nav .nav-link");
-  for (const link of sidebarLinks) {
-    link.classList.remove("active");
-    const navId = link.dataset.navId;
-    if ((currentPath === "/" || currentPath.startsWith("/edit/")) && navId === "dashboard") {
-      link.classList.add("active");
-    } else if (currentPath === "/new" && navId === "create") {
-      link.classList.add("active");
-    } else if (currentPath.startsWith("/templates") && navId === "templates") {
-      link.classList.add("active");
-    }
-  }
-
-  const mobileNavToggle = document.querySelector(".mobile-nav-toggle");
-  const sidebar = document.querySelector(".sidebar");
-  mobileNavToggle?.addEventListener("click", () => {
-    sidebar?.classList.toggle("is-open");
-  });
-
   attachDeleteListeners();
   attachSortListeners();
 
@@ -484,6 +250,8 @@ document.addEventListener("DOMContentLoaded", () => {
   updatePaginationControls();
 
   if (templatesTableBody && templatesTableBody.children.length === 0 && (!emptyStateCard?.style.display || emptyStateCard?.style.display === "none")) {
-    fetchTemplates();
+    if (totalItems > 0 || !initialPaginationData) {
+      fetchTemplates();
+    }
   }
 });
