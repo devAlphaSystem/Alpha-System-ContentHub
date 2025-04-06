@@ -26,6 +26,17 @@
   --copy-btn-hover-bg: #ced4da;
   --theme-icon-sun: #fcc419;
   --theme-icon-moon: #495057;
+  --danger-color: #d93025;
+  --danger-hover-color: #a50e0e;
+  --danger-light-bg: #fce8e6;
+  --danger-light-border: #f5c6c4;
+  --warning-color: #f9ab00;
+  --warning-hover-color: #e9710a;
+  --success-color: #1e8e3e;
+  --success-hover-color: #185e31;
+  --info-color: #17a2b8;
+  --info-light-bg: #e3fafc;
+  --info-light-border: #a5f3fc;
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
@@ -63,6 +74,17 @@
   --dark-copy-btn-hover-bg: #495057;
   --dark-theme-icon-sun: #fcc419;
   --dark-theme-icon-moon: #e9ecef;
+  --dark-danger-color: #f87171;
+  --dark-danger-hover-color: #fca5a5;
+  --dark-danger-light-bg: #452323;
+  --dark-danger-light-border: #5f3030;
+  --dark-warning-color: #facc15;
+  --dark-warning-hover-color: #fde047;
+  --dark-success-color: #4ade80;
+  --dark-success-hover-color: #86efac;
+  --dark-info-color: #67e8f9;
+  --dark-info-light-bg: #1f3b4a;
+  --dark-info-light-border: #305568;
 }
 
 *,
@@ -944,19 +966,24 @@ body.dark-mode .markdown-body code:not(pre > code) {
 .mt-0 {
   margin-top: 0 !important;
 }
+
 .mb-0 {
   margin-bottom: 0 !important;
 }
+
 .my-0 {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
 }
+
 .pt-0 {
   padding-top: 0 !important;
 }
+
 .pb-0 {
   padding-bottom: 0 !important;
 }
+
 .py-0 {
   padding-top: 0 !important;
   padding-bottom: 0 !important;

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Use the pageTitle passed from the server route -->
+    <title><%= locals.pageTitle || '[PREVIEW]' %></title>
+
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Icons (Font Awesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <!-- Highlight CSS -->
+    <link rel="stylesheet" href="/css/vendors/hljs-theme.css">
+
+    <!-- Main View Stylesheet -->
+    <link rel="stylesheet" href="/css/view-style.css">
+
+    <!-- Add styles for the preview banner -->
+    <style>
+      .preview-banner {
+        background-color: var(--warning-color);
+        color: #fff;
+        padding: 10px 20px;
+        text-align: center;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 1001;
+        border-bottom: 1px solid var(--warning-hover-color);
+      }
+
+      body.dark-mode .preview-banner {
+        background-color: var(--dark-warning-color);
+        color: var(--dark-page-bg);
+        border-bottom-color: var(--dark-warning-hover-color);
+      }
+
+      .page-wrapper {
+        padding-top: 45px;
+      }
+
+      .main-content {
+        padding-top: 0;
+      }
+    </style>
+  </head>
+
+  <body class="public-view">
+
+    <script>
+      const currentTheme = localStorage.getItem("theme") || "light";
+
+      if (currentTheme === "dark") {
+        document.body.classList.add("dark-mode");
+      }
+    </script>
+
+    <% if (locals.isPreview) { %>
+      <div class="preview-banner">
+        <i class="fas fa-eye"></i> DRAFT PREVIEW - Content may change.
+      </div>
+    <% } %>
+
+    <div class="page-wrapper" style="padding-top: 0;">
+      <aside class="sidebar">
+        <div class="sidebar-sticky-content">
+          <h3 class="toc-title">On this page</h3>
+          <nav id="toc" class="table-of-contents"></nav>
+          <div class="theme-toggle-container">
+            <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme">
+              <i class="fas fa-sun"></i>
+              <i class="fas fa-moon"></i>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main-content" style="padding-top: 25px;">
+        <header class="content-header">
+          <div class="header-meta">
+            <span class="entry-type <%= entry.type %>">
+              <%= entry.type==='changelog' ? 'Changelog' : 'Documentation' %>
+            </span>
+            <span class="separator">/</span>
+            <span class="entry-domain">
+              <%= entry.domain %>
+            </span>
+          </div>
+          <h1 class="entry-title">
+            <%= entry.title %>
+          </h1>
+          
+          <% if (entry.tags && entry.tags.trim()) { %>
+            <div class="entry-tags">
+              <% entry.tags.split(',').map(tag => tag.trim()).filter(tag => tag).forEach(tag => { %>
+                <span class="tag-badge"><%= tag %></span>
+              <% }) %>
+            </div>
+          <% } %>
+
+          <p class="publish-date">
+            Updated: <%= new Date(entry.updated).toLocaleDateString('en-US', { year: 'numeric' , month: 'long' , day: 'numeric' }) %>
+          </p>
+        </header>
+
+        <article id="markdown-content-area" class="markdown-body">
+          <%- contentHtml %>
+        </article>
+      </div>
+    </div>
+    
+    <!-- Highlight JS -->
+    <script src="/js/vendors/highlight.min.js"></script>
+
+    <!-- Alpha System - Disable Dev Tools -->
+    <script src="/js/vendors/disable-dev-tools.js"></script>
+
+    <!-- View JS -->
+    <script src="/js/view-script.js"></script>
+  </body>
+
+</html>

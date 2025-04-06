@@ -18,6 +18,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const mobileNavToggle = document.querySelector(".mobile-nav-toggle");
   const sidebar = document.querySelector(".sidebar");
   const templateSelect = document.getElementById("template-select");
+  const sharePreviewButton = document.getElementById("share-preview-btn");
+  const entryId = contentTextArea?.dataset.entryId;
+
+  const passwordCheckbox = document.getElementById("set-preview-password-check");
+  const passwordInput = document.getElementById("preview-password-input");
 
   let easyMDEInstance = null;
   let templateEasyMDEInstance = null;
@@ -152,6 +157,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  /**
+   * Copies text to the clipboard and shows feedback on a button.
+   * @param {string} textToCopy The text to copy.
+   * @param {HTMLButtonElement} buttonElement The button to show feedback on.
+   */
+  function copyToClipboard(textToCopy, buttonElement) {
+    navigator.clipboard
+      .writeText(textToCopy)
+      .then(() => {
+        const originalHtml = buttonElement.innerHTML;
+        buttonElement.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        buttonElement.disabled = true;
+        setTimeout(() => {
+          buttonElement.innerHTML = originalHtml;
+          buttonElement.disabled = false;
+        }, 2000);
+      })
+      .catch((err) => {
+        console.error("Failed to copy text: ", err);
+        showAlertModal("Could not copy link to clipboard.", "Copy Error");
+      });
+  }
+
   modalConfirmBtn?.addEventListener("click", () => {
     if (confirmModal && typeof confirmModal._onConfirm === "function") {
       confirmModal._onConfirm();
@@ -262,6 +290,87 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     } else {
       applyTemplate();
+    }
+  });
+
+  passwordCheckbox?.addEventListener("change", () => {
+    if (passwordInput) {
+      passwordInput.style.display = passwordCheckbox.checked ? "inline-block" : "none";
+      if (!passwordCheckbox.checked) {
+        passwordInput.value = "";
+      }
+    }
+  });
+
+  sharePreviewButton?.addEventListener("click", async () => {
+    if (!entryId) {
+      showAlertModal("Cannot generate preview link: Entry ID is missing.", "Error");
+      return;
+    }
+
+    let passwordToSend = null;
+    if (passwordCheckbox?.checked) {
+      passwordToSend = passwordInput?.value;
+      if (!passwordToSend || passwordToSend.trim() === "") {
+        showAlertModal("Please enter a password or uncheck the 'Require Password' box.", "Password Missing");
+        passwordInput?.focus();
+        return;
+      }
+    }
+
+    sharePreviewButton.disabled = true;
+    sharePreviewButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Generating...`;
+
+    const requestBody = {};
+    if (passwordToSend) {
+      requestBody.password = passwordToSend;
+    }
+
+    try {
+      const response = await fetch(`/api/entries/${entryId}/generate-preview`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const expiryDate = new Date(result.expiresAt);
+      const formattedExpiry = expiryDate.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+      const passwordNotice = result.hasPassword ? '<p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;"><strong>Password protected.</strong></p>' : "";
+
+      const modalContent = `
+        <p>Shareable preview link generated successfully:</p>
+        <input type="text" class="form-control" value="${result.previewUrl}" readonly style="margin-bottom: 10px;">
+        <button id="copy-preview-link-btn" class="btn btn-secondary btn-sm">
+          <i class="fas fa-copy"></i> Copy Link
+        </button>
+        ${passwordNotice}
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">
+          Link expires: ${formattedExpiry}
+        </p>
+      `;
+      showAlertModal(modalContent, "Preview Link Generated");
+
+      const copyBtn = document.getElementById("copy-preview-link-btn");
+      copyBtn?.addEventListener("click", () => {
+        copyToClipboard(result.previewUrl, copyBtn);
+      });
+    } catch (error) {
+      console.error("Failed to generate preview link:", error);
+      showAlertModal(`Could not generate preview link: ${error.message}`, "Error");
+    } finally {
+      sharePreviewButton.disabled = false;
+      sharePreviewButton.innerHTML = `<i class="fas fa-share-alt"></i> Share Preview`;
     }
   });
 
