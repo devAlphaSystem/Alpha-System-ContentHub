@@ -6,6 +6,21 @@ import { pb, pbAdmin, viewDb, IP_HASH_SALT, VIEW_TIMEFRAME_HOURS } from "./confi
 const window = new JSDOM("").window;
 const purify = DOMPurify(window);
 
+const DEFAULT_TEMPLATES = [
+  {
+    name: "Basic Changelog Entry",
+    content: "### ✨ New Features\n\n*   Description of a new feature.\n\n### 🐛 Bug Fixes\n\n*   Description of a bug fix.\n\n###  verbeterungen Improvements\n\n*   Description of an improvement.",
+  },
+  {
+    name: "API Documentation Section",
+    content: `## Endpoint: \`/api/v1/resource\`\n\n**Method:** \`GET\`\n\n**Description:** Retrieves a list of resources.\n\n**Parameters:**\n\n| Name     | Type   | Description                |\n| :------- | :----- | :------------------------- |\n| \`limit\`  | number | *Optional*. Max items per page. |\n| \`offset\` | number | *Optional*. Items to skip.    |\n\n**Response:**\n\n\`\`\`json\n{\n  "data": [\n    { "id": "...", "name": "..." }\n  ],\n  "pagination": { ... }\n}\n\`\`\``,
+  },
+  {
+    name: "Simple Documentation Page",
+    content: "# Getting Started\n\nWelcome to the documentation!\n\n## Installation\n\nInstructions on how to install...\n\n## Configuration\n\nDetails about configuration options...",
+  },
+];
+
 export function getIP(req) {
   const forwarded = req.headers["x-forwarded-for"];
   if (forwarded) {
@@ -57,13 +72,38 @@ export async function getDraftEntryForPreview(id) {
 }
 
 export async function getUserTemplates(userId) {
+  const filter = `owner = '${userId}'`;
+  const fields = "id,name";
+
   try {
-    const filter = `owner = '${userId}'`;
-    const templates = await pb.collection("templates").getFullList({
+    let templates = await pb.collection("templates").getFullList({
       sort: "name",
       filter: filter,
-      fields: "id,name",
+      fields: fields,
+      $autoCancel: false,
     });
+
+    if (templates.length === 0) {
+      console.log(`No templates found for user ${userId}. Creating defaults...`);
+      const creationPromises = DEFAULT_TEMPLATES.map((templateData) => {
+        const dataToCreate = {
+          ...templateData,
+          owner: userId,
+        };
+        return pb.collection("templates").create(dataToCreate);
+      });
+
+      try {
+        const createdTemplates = await Promise.all(creationPromises);
+        console.log(`Successfully created ${createdTemplates.length} default templates for user ${userId}.`);
+        templates = createdTemplates.map((t) => ({ id: t.id, name: t.name }));
+        templates.sort((a, b) => a.name.localeCompare(b.name));
+      } catch (creationError) {
+        console.error(`Error creating default templates for user ${userId}:`, creationError);
+        return [];
+      }
+    }
+
     return templates;
   } catch (error) {
     console.error(`Error fetching templates for user ${userId}:`, error);

@@ -1012,3 +1012,114 @@ body.dark-mode .markdown-body code:not(pre > code) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.nav-buttons-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 32px;
+  margin-bottom: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-light);
+}
+
+.nav-button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text-secondary);
+  background-color: var(--content-bg);
+  transition: all 0.15s ease;
+  text-decoration: none;
+  min-width: 150px;
+}
+
+.nav-button:hover {
+  background-color: var(--page-bg);
+  border-color: var(--input-hover-border);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+.nav-button.prev {
+  justify-content: flex-start;
+}
+
+.nav-button.next {
+  justify-content: flex-end;
+}
+
+.nav-button i {
+  font-size: 0.9em;
+  margin: 0 8px;
+}
+
+.nav-button.prev i {
+  margin-right: 8px;
+  margin-left: 0;
+}
+
+.nav-button.next i {
+  margin-left: 8px;
+  margin-right: 0;
+}
+
+body.dark-mode .nav-buttons-container {
+  border-top-color: var(--dark-border-light);
+}
+
+body.dark-mode .nav-button {
+  border-color: var(--dark-border-color);
+  color: var(--dark-text-secondary);
+  background-color: var(--dark-content-bg);
+}
+
+body.dark-mode .nav-button:hover {
+  background-color: var(--dark-page-bg);
+  border-color: var(--dark-input-hover-border);
+  color: var(--dark-text-primary);
+  box-shadow: var(--dark-shadow-xs);
+}
+
+.nav-buttons-container > .nav-button:only-child {
+  flex-grow: 0;
+  min-width: 200px;
+}
+
+.nav-buttons-container > .nav-button.prev:only-child {
+  justify-content: center;
+}
+
+.nav-buttons-container > .nav-button.next:only-child {
+  justify-content: center;
+  margin-left: auto;
+}
+
+@media (max-width: 576px) {
+  .nav-buttons-container {
+    flex-direction: column;
+  }
+
+  .nav-button {
+    width: 100%;
+  }
+
+  .nav-button.prev {
+    justify-content: center;
+  }
+
+  .nav-button.next {
+    justify-content: center;
+    margin-left: 0;
+  }
+}

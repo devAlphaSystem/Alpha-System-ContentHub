@@ -179,7 +179,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (contentTextArea && entryId) {
     try {
-      const customToolbar = ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "code", "table"];
+      const customToolbar = [
+        "bold",
+        "italic",
+        "heading",
+        "|",
+        "quote",
+        "unordered-list",
+        "ordered-list",
+        "|",
+        "link",
+        "image",
+        "code",
+        "table",
+        "|",
+        {
+          name: "navButtons",
+          action: function customFunction(editor) {
+            const cm = editor.codemirror;
+            const output = "```nav-buttons\nprev: [Previous Text](/previous-url)\nnext: [Next Text](/next-url)\n```";
+            cm.replaceSelection(output);
+            const cursorPos = cm.getCursor();
+            cm.setCursor(cursorPos.line - 2, 7);
+            cm.focus();
+          },
+          className: "fa fa-arrows-alt-h",
+          title: "Insert Previous/Next Buttons Block",
+        },
+      ];
+
       easyMDEInstance = new EasyMDE({
         element: contentTextArea,
         spellChecker: false,

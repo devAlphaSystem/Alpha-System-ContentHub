@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const mobileNavToggle = document.querySelector(".mobile-nav-toggle");
   const sidebar = document.querySelector(".sidebar");
+  const mobileNavBackdrop = document.getElementById("mobile-nav-backdrop");
 
   window.showConfirmModal = (options) => {
     const { title, message, confirmText = "Confirm", cancelText = "Cancel", onConfirm, onCancel, action = "confirm", details, form } = options;
@@ -176,6 +177,11 @@ document.addEventListener("DOMContentLoaded", () => {
         detailsModal.classList.remove("is-visible");
         detailsModal.setAttribute("aria-hidden", "true");
       }
+      if (sidebar?.classList.contains("is-open")) {
+        sidebar.classList.remove("is-open");
+        mobileNavBackdrop?.classList.remove("is-visible");
+        document.body.classList.remove("mobile-menu-open");
+      }
     }
   });
 
@@ -186,7 +192,15 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   mobileNavToggle?.addEventListener("click", () => {
-    sidebar?.classList.toggle("is-open");
+    const isOpen = sidebar?.classList.toggle("is-open");
+    mobileNavBackdrop?.classList.toggle("is-visible", isOpen);
+    document.body.classList.toggle("mobile-menu-open", isOpen);
+  });
+
+  mobileNavBackdrop?.addEventListener("click", () => {
+    sidebar?.classList.remove("is-open");
+    mobileNavBackdrop.classList.remove("is-visible");
+    document.body.classList.remove("mobile-menu-open");
   });
 
   const savedTheme = localStorage.getItem("theme");
