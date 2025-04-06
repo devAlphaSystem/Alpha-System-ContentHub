@@ -90,14 +90,15 @@ Configuration is managed through a `.env` file in the project root.
 
       - **Name:** `entries_main`
       - **Fields:**
-        - `title` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
-        - `type` (Type: `Select`, Required: Yes, Values: `changelog, documentation`, Max Select: 1)
-        - `domain` (Type: `Text`, Required: Yes, Max Length: e.g., 100)
-        - `content` (Type: `Editor` or `Text`, Required: Yes, Max Length: e.g., 500000 or more - **Important:** Adjust based on your needs!)
+        - `title` & `staged_title` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
+        - `type` & `staged_type` (Type: `Select`, Required: Yes, Values: `changelog, documentation`, Max Select: 1)
+        - `domain` & `staged_domain` (Type: `Text`, Required: Yes, Max Length: e.g., 100)
+        - `content` & `staged_content` (Type: `Editor` or `Text`, Required: Yes, Max Length: e.g., 500000 or more - **Important:** Adjust based on your needs!)
         - `views` (Type: `Number`, Required: No, Default Value: `0`, Min: `0`)
         - `owner` (Type: `Relation`, Collection: `users`, Max Select: 1)
         - `status` (Type: `Select`, Required: Yes, Values: `draft, published`, Max Select: 1)
-        - `tags` (Type: `Text`, Required: No, Max Length: e.g., 250)
+        - `tags` & `staged_tags` (Type: `Text`, Required: No, Max Length: e.g., 250)
+        - `has_staged_changes` (Type: `Bool`, Required: Yes)
       - **API Rules:**
         - List: `owner.id = @request.auth.id`
         - View: `status = "published" || owner.id = @request.auth.id` _(Publicly viewable)_
@@ -123,6 +124,21 @@ Configuration is managed through a `.env` file in the project root.
         - Create: `owner.id = @request.auth.id`
         - Update: `owner.id = @request.auth.id`
         - Delete: `owner.id = @request.auth.id`
+
+    - **`entries_previews` Collection (Create New):**
+
+      - **Name:** `entries_previews`
+      - **Fields:**
+        - `entry` (Type: `Relation`, Collection: `entries_main`, Max Select: 1)
+        - `token` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
+        - `expires_at` (Type: `DateTime`, Required: Yes)
+        - `password_hash` (Type: `Text`, Required: Yes, Max Length: e.g., 200)
+      - **API Rules:**
+        - List: `Superusers Only`
+        - View: `Empty` _(Publicly viewable)_
+        - Create: `Superusers Only`
+        - Update: `Superusers Only`
+        - Delete: `Superusers Only`
 
     - **`templates` Collection (Create New):**
 

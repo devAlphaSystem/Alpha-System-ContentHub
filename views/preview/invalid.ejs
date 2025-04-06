@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= locals.pageTitle || 'Invalid Link' %></title>
+    
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    
+    <link rel="stylesheet" href="/css/style.css">
+
+    <style>
+      body.invalid-link-body {
+        background-color: var(--page-bg);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .invalid-link-card {
+        background-color: var(--content-bg);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        padding: 30px 40px;
+        max-width: 450px;
+        width: 100%;
+        box-shadow: var(--shadow-sm);
+        text-align: center;
+      }
+
+      .invalid-link-card .icon {
+        font-size: 3rem;
+        color: var(--warning-color);
+        margin-bottom: 20px;
+      }
+
+      body.dark-mode .invalid-link-card .icon {
+        color: var(--dark-warning-color);
+      }
+
+      .invalid-link-card h1 {
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+        color: var(--text-primary);
+      }
+
+      .invalid-link-card p {
+        color: var(--text-secondary);
+        margin-bottom: 0;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+
+  <body class="invalid-link-body admin-body">
+    <div class="invalid-link-card">
+      <div class="icon"><i class="fas fa-link-slash"></i></div>
+      <h1><%= locals.pageTitle || 'Invalid Link' %></h1>
+      <p><%= locals.message || 'This link may be incorrect, expired, or the content is no longer available.' %></p>
+    </div>
+  </body>
+
+</html>

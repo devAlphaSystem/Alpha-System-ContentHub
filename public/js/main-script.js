@@ -54,20 +54,20 @@ document.addEventListener("DOMContentLoaded", () => {
   /**
    * Shows the confirmation modal.
    * @param {object} options Configuration options for the modal.
-   * @param {HTMLFormElement} [options.form] The form to submit on confirmation.
+   * @param {HTMLFormElement} [options.form] The form to submit on confirmation (for standard submits).
    * @param {string} [options.title] Modal title.
    * @param {string} [options.message] Modal message (HTML allowed).
-   * @param {string} [options.action='delete'] Type of action ('delete', 'bulk', etc.).
+   * @param {string} [options.action='delete'] Type of action ('delete', 'archive', 'publish-staged', 'bulk', etc.).
    * @param {string} [options.confirmText='Confirm'] Text for the confirm button.
    * @param {string} [options.cancelText='Cancel'] Text for the cancel button.
-   * @param {function} [options.onConfirm] Callback function on confirm.
+   * @param {function} [options.onConfirm] Callback function on confirm (for API calls).
    * @param {function} [options.onCancel] Callback function on cancel.
    * @param {object} [options.details] Extra details (e.g., for bulk actions).
    */
   function showConfirmModal(options) {
     const { form, title, message, action = "delete", confirmText = "Confirm", cancelText = "Cancel", onConfirm, onCancel, details } = options;
 
-    formToSubmit = form || null;
+    formToSubmit = onConfirm ? null : form || null;
 
     if (modalConfirmBtn) {
       modalConfirmBtn.removeAttribute("data-is-bulk");
@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
       modalConfirmBtn.removeAttribute("data-bulk-ids");
     }
 
-    const isBulk = action === "bulk" || action === "bulk-delete";
+    const isBulk = action.startsWith("bulk");
     if (isBulk && details) {
       if (modalConfirmBtn) {
         modalConfirmBtn.dataset.isBulk = "true";
@@ -89,11 +89,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (modalConfirmBtn) {
       const isDeleteStyle = action === "delete" || action === "bulk-delete";
-      modalConfirmBtn.className = `btn ${isDeleteStyle ? "btn-danger" : "btn-primary"}`;
-      modalConfirmBtn.textContent = confirmText;
+      const isPublishStyle = action === "publish-staged" || action === "bulk-publish-staged";
+      let btnClass = "btn ";
+      let btnIcon = "";
+
       if (isDeleteStyle) {
-        modalConfirmBtn.innerHTML = `<i class="fas fa-trash-alt"></i> ${escapeHtml(confirmText)}`;
+        btnClass += "btn-danger";
+        btnIcon = '<i class="fas fa-trash-alt"></i> ';
+      } else if (isPublishStyle) {
+        btnClass += "btn-success";
+        btnIcon = '<i class="fas fa-upload"></i> ';
+      } else {
+        btnClass += "btn-primary";
       }
+
+      modalConfirmBtn.className = btnClass;
+      modalConfirmBtn.innerHTML = `${btnIcon}${escapeHtml(confirmText)}`;
     }
 
     if (modalCancelBtn) modalCancelBtn.textContent = cancelText;
@@ -175,19 +186,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const viewUrl = entry.viewUrl || `/view/${escapeHtml(entry.id)}`;
     const updatedTimestamp = new Date(entry.updated).getTime();
+    const editTitle = `Edit ${entry.has_staged_changes ? "Staged " : ""}Entry`;
+
+    const stagedBadge = entry.has_staged_changes ? `<span class="badge status-badge status-staged" title="Unpublished changes exist">Staged</span>` : "";
+
+    const publishStagedButton = entry.has_staged_changes
+      ? `
+        <button type="button" class="btn btn-icon btn-publish-staged js-publish-staged-btn" data-url="/api/entries/${escapeHtml(entry.id)}/publish-staged" data-entry-title="${escapeHtml(entry.title)}" title="Publish Staged Changes">
+          <i class="fas fa-upload"></i>
+        </button>
+      `
+      : "";
 
     return `
       <tr data-entry-id="${escapeHtml(entry.id)}" data-updated-timestamp="${updatedTimestamp}" data-views-value="${entry.views || 0}">
         <td class="checkbox-column"><input type="checkbox" class="entry-checkbox" value="${escapeHtml(entry.id)}"></td>
         <td data-label="Title">${escapeHtml(entry.title)}</td>
-        <td data-label="Status"><span class="badge status-badge status-${escapeHtml(entry.status.toLowerCase())}">${escapeHtml(entry.status)}</span></td>
+        <td data-label="Status">
+          <span class="badge status-badge status-${escapeHtml(entry.status.toLowerCase())}">${escapeHtml(entry.status)}</span>
+          ${stagedBadge}
+        </td>
         <td data-label="Type"><span class="badge type-badge type-${escapeHtml(entry.type)}">${escapeHtml(entry.type)}</span></td>
         <td data-label="Domain">${escapeHtml(entry.domain)}</td>
         <td data-label="Views">${entry.views || 0}</td>
         <td data-label="Updated">${formattedUpdated}</td>
         <td data-label="Actions" class="actions-cell">
+          ${publishStagedButton}
           <a href="${viewUrl}" target="_blank" class="btn btn-icon btn-view" title="View Public Page"><i class="fas fa-eye"></i></a>
-          <a href="/edit/${escapeHtml(entry.id)}" class="btn btn-icon btn-edit" title="Edit Entry"><i class="fas fa-pencil-alt"></i></a>
+          <a href="/edit/${escapeHtml(entry.id)}" class="btn btn-icon btn-edit" title="${editTitle}"><i class="fas fa-pencil-alt"></i></a>
           <form action="/archive/${escapeHtml(entry.id)}" method="POST" class="archive-form" title="Archive Entry"><button type="submit" class="btn btn-icon btn-archive"><i class="fas fa-archive"></i></button></form>
           <form action="/delete/${escapeHtml(entry.id)}" method="POST" class="delete-form" title="Delete Entry"><button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button></form>
         </td>
@@ -247,7 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (emptyStateCard) emptyStateCard.style.display = "";
     }
 
-    attachDeleteListeners();
+    attachActionListeners();
     updateBulkActionUI();
   }
 
@@ -267,7 +293,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (selectAllCheckbox) selectAllCheckbox.disabled = true;
 
     const sortParam = `${currentSortDir === "desc" ? "-" : ""}${currentSortKey}`;
-    const url = `/api/entries?page=${currentPage}&perPage=${itemsPerPage}&sort=${sortParam}`;
+    const url = `/api/entries?page=${currentPage}&perPage=${itemsPerPage}&sort=${sortParam}&fields=*,has_staged_changes`;
 
     try {
       const response = await fetch(url);
@@ -319,7 +345,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const showPublished = currentFilterState.published;
 
     for (const row of rows) {
-      const statusElement = row.querySelector("td[data-label='Status'] span");
+      const statusElement = row.querySelector("td[data-label='Status'] span.status-badge:not(.status-staged)");
       const rowStatus = statusElement ? statusElement.textContent.toLowerCase().trim() : null;
 
       let shouldShow = false;
@@ -349,59 +375,112 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Handles the submission event for delete forms.
+   * Handles the submission event for standard action forms (delete, archive).
    * @param {Event} event The form submission event.
    */
-  function handleDeleteSubmit(event) {
+  function handleStandardFormSubmit(event) {
+    if (!event.target.classList.contains("delete-form") && !event.target.classList.contains("archive-form")) {
+      return;
+    }
+
     event.preventDefault();
     const form = event.target;
+    const title = form.closest("tr")?.querySelector("td[data-label='Title']")?.textContent || "this entry";
+    let options = {};
+
     if (form.classList.contains("delete-form")) {
-      const title = form.closest("tr")?.querySelector("td[data-label='Title']")?.textContent || "this entry";
-      const message = `Are you sure you want to delete "<strong>${escapeHtml(title)}</strong>"?<br>This action cannot be undone.`;
-      showConfirmModal({
+      options = {
         form: form,
         title: "Confirm Deletion",
-        message: message,
+        message: `Are you sure you want to delete "<strong>${escapeHtml(title)}</strong>"?<br>This action cannot be undone.`,
         action: "delete",
         confirmText: "Delete",
-      });
+      };
+    } else if (form.classList.contains("archive-form")) {
+      options = {
+        form: form,
+        title: "Confirm Archive",
+        message: `Are you sure you want to archive "<strong>${escapeHtml(title)}</strong>"?`,
+        action: "archive",
+        confirmText: "Archive",
+      };
+    }
+
+    if (options.title) {
+      showConfirmModal(options);
     }
   }
 
   /**
-   * Handles the submission event for archive forms.
-   * @param {Event} event The form submission event.
+   * Handles clicks on buttons intended for JS/API actions (like Publish Staged).
+   * @param {Event} event The click event.
    */
-  function handleArchiveSubmit(event) {
-    event.preventDefault();
-    const form = event.target;
-    const title = form.closest("tr")?.querySelector("td[data-label='Title']")?.textContent || "this entry";
-    const message = `Are you sure you want to archive "<strong>${escapeHtml(title)}</strong>"?`;
+  function handleApiButtonClick(event) {
+    const button = event.target.closest(".js-publish-staged-btn");
+    if (!button) {
+      return;
+    }
+
+    const apiUrl = button.dataset.url;
+    const title = button.dataset.entryTitle || "this entry";
+
+    if (!apiUrl) {
+      console.error("Could not find API URL on publish staged button.");
+      return;
+    }
+
     showConfirmModal({
-      form: form,
-      title: "Confirm Archive",
-      message: message,
-      action: "archive",
-      confirmText: "Archive",
+      title: "Confirm Publish",
+      message: `Are you sure you want to publish the staged changes for "<strong>${escapeHtml(title)}</strong>"?<br>This will overwrite the current live content.`,
+      action: "publish-staged",
+      confirmText: "Publish Changes",
+      onConfirm: () => handlePublishStagedConfirm(apiUrl),
     });
   }
 
   /**
-   * Attaches submit event listeners to all delete forms.
+   * Handles the API call for publishing staged changes for a single entry.
+   * @param {string} apiUrl The API endpoint URL.
    */
-  function attachDeleteListeners() {
-    const deleteEntryForms = document.querySelectorAll("form.delete-form");
-    const archiveEntryForms = document.querySelectorAll("form.archive-form");
+  async function handlePublishStagedConfirm(apiUrl) {
+    if (isLoading) return;
+    isLoading = true;
 
-    for (const form of deleteEntryForms) {
-      form.removeEventListener("submit", handleDeleteSubmit);
-      form.addEventListener("submit", handleDeleteSubmit);
-    }
+    try {
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      const result = await response.json();
 
-    for (const form of archiveEntryForms) {
-      form.removeEventListener("submit", handleArchiveSubmit);
-      form.addEventListener("submit", handleArchiveSubmit);
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP error ${response.status}`);
+      }
+
+      showAlertModal(result.message || "Staged changes published.", "Success");
+
+      setTimeout(async () => {
+        await fetchEntries();
+      }, 100);
+    } catch (error) {
+      console.error("Failed to publish staged changes:", error);
+      showAlertModal(`Error publishing changes: ${error.message}`, "Publish Error");
+    } finally {
+      isLoading = false;
     }
+  }
+
+  /**
+   * Attaches event listeners for table actions using event delegation.
+   */
+  function attachActionListeners() {
+    entriesTableBody?.removeEventListener("submit", handleStandardFormSubmit);
+    entriesTableBody?.removeEventListener("click", handleApiButtonClick);
+
+    entriesTableBody?.addEventListener("submit", handleStandardFormSubmit);
+    entriesTableBody?.addEventListener("click", handleApiButtonClick);
   }
 
   /**
@@ -448,8 +527,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /**
    * Handles the confirmation of a bulk action via the modal.
-   * @param {string} action The action to perform (e.g., 'publish', 'delete').
-   * @param {Array<string>} ids Array of entry IDs to perform the action on.
+   * @param {string} action The action to perform.
+   * @param {Array<string>} ids Array of entry IDs.
    */
   async function handleBulkActionConfirm(action, ids) {
     if (!bulkActionsButton || isLoading) return;
@@ -475,8 +554,9 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         if (response.status === 207) {
           showAlertModal(result.message || "Action completed with some errors.", "Partial Success");
+        } else {
+          showAlertModal(result.message || `Bulk action '${action}' completed successfully.`, "Success");
         }
-
         setTimeout(async () => {
           await fetchEntries();
         }, 100);
@@ -502,6 +582,7 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const header of sortableHeaders) {
       const newHeader = header.cloneNode(true);
       header.parentNode.replaceChild(newHeader, header);
+
       newHeader.addEventListener("click", () => {
         if (isLoading) return;
 
@@ -687,13 +768,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (action && selectedIds.length > 0) {
         bulkActionsMenu.classList.remove("show");
-        const isDelete = action === "delete";
+        const isDelete = action === "delete" || action === "permanent-delete";
+        const isPublishStaged = action === "publish-staged";
+        let message = `Are you sure you want to perform the action '<strong>${escapeHtml(action)}</strong>' on <strong>${selectedIds.length}</strong> item(s)?`;
+        if (isDelete) message += "<br>This action cannot be undone.";
+        if (isPublishStaged) message += "<br>This will overwrite live content.";
+
         showConfirmModal({
           details: { action, ids: selectedIds },
           title: "Confirm Bulk Action",
-          message: `Are you sure you want to perform the action '<strong>${escapeHtml(action)}</strong>' on <strong>${selectedIds.length}</strong> item(s)? ${isDelete ? "<br>This action cannot be undone." : ""}`,
-          action: isDelete ? "bulk-delete" : "bulk",
-          confirmText: isDelete ? "Delete" : "Confirm",
+          message: message,
+          action: `bulk-${action}`,
+          confirmText: isDelete ? "Delete" : isPublishStaged ? "Publish" : "Confirm",
         });
       }
     }
@@ -732,9 +818,7 @@ document.addEventListener("DOMContentLoaded", () => {
   for (const link of sidebarLinks) {
     link.classList.remove("active");
     const navId = link.dataset.navId;
-    if ((currentPath === "/" || currentPath.startsWith("/edit/")) && navId === "dashboard") {
-      link.classList.add("active");
-    } else if (currentPath === "/new" && navId === "create") {
+    if ((currentPath === "/" || currentPath.startsWith("/edit/") || currentPath === "/new") && navId === "dashboard") {
       link.classList.add("active");
     } else if (currentPath.startsWith("/templates") && navId === "templates") {
       link.classList.add("active");
@@ -749,7 +833,7 @@ document.addEventListener("DOMContentLoaded", () => {
     sidebar?.classList.toggle("is-open");
   });
 
-  attachDeleteListeners();
+  attachActionListeners();
   attachEntryCheckboxListeners();
   attachSortListeners();
 
@@ -768,6 +852,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (e) {
       console.warn("Could not parse initial pagination state from EJS.");
+      currentPage = 1;
+      totalPages = 1;
+      totalItems = 0;
     }
   }
 
@@ -775,7 +862,31 @@ document.addEventListener("DOMContentLoaded", () => {
   updatePaginationControls();
   updateBulkActionUI();
 
-  if ((entriesTableBody && entriesTableBody.children.length === 0 && !emptyStateCard?.style.display) || emptyStateCard?.style.display === "none") {
-    fetchEntries();
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasActionOrError = urlParams.has("action") || urlParams.has("error");
+
+  if (!hasActionOrError) {
+    if ((entriesTableBody && entriesTableBody.children.length === 0 && !emptyStateCard?.style.display) || totalPages > 1 || (totalItems === 0 && !emptyStateCard?.style.display)) {
+      fetchEntries();
+    }
+  } else {
+    const actionMessage = urlParams.get("action");
+    const errorMessage = urlParams.get("error");
+    if (actionMessage) {
+      let messageText = "Action completed successfully.";
+      if (actionMessage === "deleted") messageText = "Entry deleted successfully.";
+      else if (actionMessage === "archived") messageText = "Entry archived successfully.";
+      else if (actionMessage === "unarchived") messageText = "Entry unarchived successfully.";
+      else if (actionMessage === "published_staged") messageText = "Staged changes published successfully.";
+      showAlertModal(messageText, "Success");
+    } else if (errorMessage) {
+      let messageText = "An error occurred.";
+      if (errorMessage === "delete_failed") messageText = "Failed to delete the entry.";
+      else if (errorMessage === "archive_failed") messageText = "Failed to archive the entry.";
+      else if (errorMessage === "unarchive_failed") messageText = "Failed to unarchive the entry.";
+      else if (errorMessage === "publish_staged_failed") messageText = "Failed to publish staged changes.";
+      showAlertModal(messageText, "Error");
+    }
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
 });
