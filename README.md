@@ -91,15 +91,16 @@ Configuration is managed through a `.env` file in the project root.
       - **Name:** `entries_main`
       - **Fields:**
         - `title` & `staged_title` (Type: `Text`, Max Length: e.g., 200)
-        - `type` & `staged_type` (Type: `Select`, Values: `changelog, documentation`, Max Select: 1)
+        - `type` & `staged_type` (Type: `Select`, Values: `changelog, documentation`, As: `Single`)
         - `domain` & `staged_domain` (Type: `Text`, Max Length: e.g., 100)
-        - `content` & `staged_content` (Type: `Editor` or `Text`, Max Length: e.g., 500000 or more - **Important:** Adjust based on your needs!)
+        - `content` & `staged_content` (Type: `Editor` or `Text`, Max Length: e.g., 50000 or more - **Important:** Adjust based on your needs!)
         - `views` (Type: `Number`, Default Value: `0`, Min: `0`)
-        - `owner` (Type: `Relation`, Collection: `users`, Max Select: 1)
-        - `status` (Type: `Select`, Values: `draft, published`, Max Select: 1)
+        - `owner` (Type: `Relation`, Collection: `users`, As: `Single`)
+        - `status` (Type: `Select`, Values: `draft, published`, As: `Single`)
         - `tags` & `staged_tags` (Type: `Text`, Max Length: e.g., 250)
         - `has_staged_changes` (Type: `Bool`)
         - `collection` (Type: `Text`)
+        - `files` (Type: `File`, As: `Multiple`)
       - **API Rules:**
         - List: `owner.id = @request.auth.id`
         - View: `status = "published" || owner.id = @request.auth.id` _(Publicly viewable)_
@@ -112,14 +113,15 @@ Configuration is managed through a `.env` file in the project root.
       - **Name:** `entries_archived`
       - **Fields:**
         - `title` (Type: `Text`, Max Length: e.g., 200)
-        - `type` (Type: `Select`, Values: `changelog, documentation`, Max Select: 1)
+        - `type` (Type: `Select`, Values: `changelog, documentation`, As: `Single`)
         - `domain` (Type: `Text`, Max Length: e.g., 100)
-        - `content` (Type: `Editor` or `Text`, Max Length: e.g., 500000 or more - **Important:** Must follow `entries_main` value!)
+        - `content` (Type: `Editor` or `Text`, Max Length: e.g., 50000 or more - **Important:** Must follow `entries_main` value!)
         - `views` (Type: `Number`, Default Value: `0`, Min: `0`)
-        - `owner` (Type: `Relation`, Collection: `users`, Max Select: 1)
-        - `status` (Type: `Select`, Values: `draft, published`, Max Select: 1)
+        - `owner` (Type: `Relation`, Collection: `users`, As: `Single`)
+        - `status` (Type: `Select`, Values: `draft, published`, As: `Single`)
         - `tags` (Type: `Text`, Max Length: e.g., 250)
         - `collection` (Type: `Text`)
+        - `files` (Type: `File`, As: `Multiple`)
       - **API Rules:**
         - List: `owner.id = @request.auth.id`
         - View: `status = "published" || owner.id = @request.auth.id` _(Publicly viewable)_
@@ -131,7 +133,7 @@ Configuration is managed through a `.env` file in the project root.
 
       - **Name:** `entries_previews`
       - **Fields:**
-        - `entry` (Type: `Relation`, Collection: `entries_main`, Max Select: 1)
+        - `entry` (Type: `Relation`, Collection: `entries_main`, As: `Single`)
         - `token` (Type: `Text`, Max Length: e.g., 200)
         - `expires_at` (Type: `DateTime`)
         - `password_hash` (Type: `Text`, Max Length: e.g., 200)
@@ -147,8 +149,8 @@ Configuration is managed through a `.env` file in the project root.
       - **Name:** `templates`
       - **Fields:**
         - `name` (Type: `Text`, Max Length: e.g., 200)
-        - `content` (Type: `Text`, Max Length: e.g., 10000)
-        - `owner` (Type: `Relation`, Collection: `users`, Max Select: 1)
+        - `content` (Type: `Text`, Max Length: e.g., 50000)
+        - `owner` (Type: `Relation`, Collection: `users`, As: `Single`)
       - **API Rules:**
         - List: `owner.id = @request.auth.id`
         - View: `owner.id = @request.auth.id`
@@ -160,7 +162,7 @@ Configuration is managed through a `.env` file in the project root.
 
       - **Name:** `audit_logs`
       - **Fields:**
-        - `user` (Type: `Relation`, Collection: `users`, Max Select: 1)
+        - `user` (Type: `Relation`, Collection: `users`, As: `Single`)
         - `action` (Type: `Text`, Max Length: e.g., 200)
         - `target_collection` (Type: `Text`, Max Length: e.g., 200)
         - `target_record` (Type: `Text`, Max Length: e.g., 200)

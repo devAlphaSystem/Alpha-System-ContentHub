@@ -77,9 +77,10 @@ router.get("/new", requireLogin, async (req, res) => {
       pageTitle: "Create New Entry",
     });
   } catch (error) {
+    console.error("Error loading new entry page:", error);
     res.render("new", {
       entry: null,
-      errors: { general: "Could not load templates." },
+      errors: { general: "Could not load page data or templates." },
       templates: [],
       pageTitle: "Create New Entry",
     });

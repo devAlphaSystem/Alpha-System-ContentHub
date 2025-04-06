@@ -1,11 +1,68 @@
 document.addEventListener("DOMContentLoaded", () => {
+  function renderNavButtons() {
+    const contentArea = document.getElementById("markdown-content-area");
+    if (!contentArea) return;
+
+    const navBlocks = contentArea.querySelectorAll("pre code.language-nav-buttons");
+
+    for (const codeElement of navBlocks) {
+      const preElement = codeElement.closest("pre");
+      if (!preElement) return;
+
+      const lines = codeElement.textContent.trim().split("\n");
+      const buttonsData = { prev: null, next: null };
+      const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/;
+
+      for (let line of lines) {
+        line = line.trim();
+        if (line.startsWith("prev:")) {
+          const match = line.substring(5).trim().match(linkRegex);
+          if (match) {
+            buttonsData.prev = { text: match[1], url: match[2] };
+          }
+        } else if (line.startsWith("next:")) {
+          const match = line.substring(5).trim().match(linkRegex);
+          if (match) {
+            buttonsData.next = { text: match[1], url: match[2] };
+          }
+        }
+      }
+
+      if (buttonsData.prev || buttonsData.next) {
+        const container = document.createElement("div");
+        container.className = "nav-buttons-container";
+
+        if (buttonsData.prev) {
+          const prevLink = document.createElement("a");
+          prevLink.href = buttonsData.prev.url;
+          prevLink.className = "nav-button prev";
+          prevLink.innerHTML = `<i class="fas fa-arrow-left"></i> ${buttonsData.prev.text}`;
+          container.appendChild(prevLink);
+        }
+
+        if (buttonsData.next) {
+          const nextLink = document.createElement("a");
+          nextLink.href = buttonsData.next.url;
+          nextLink.className = "nav-button next";
+          nextLink.innerHTML = `${buttonsData.next.text} <i class="fas fa-arrow-right"></i>`;
+          container.appendChild(nextLink);
+        }
+
+        preElement.parentNode.replaceChild(container, preElement);
+      } else {
+        preElement.style.display = "none";
+      }
+    }
+  }
+
   hljs.highlightAll();
+  renderNavButtons();
 
   const codeBlocks = document.querySelectorAll(".markdown-body pre");
 
   for (const preElement of codeBlocks) {
     const codeElement = preElement.querySelector("code");
-    if (!codeElement) {
+    if (!codeElement || codeElement.classList.contains("language-nav-buttons")) {
       continue;
     }
 
