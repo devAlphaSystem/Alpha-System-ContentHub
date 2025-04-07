@@ -1,7 +1,7 @@
 import express from "express";
 import { marked } from "marked";
 import { pbAdmin, previewPasswordLimiter } from "../config.js";
-import { getPublicEntryById, getDraftEntryForPreview, sanitizeHtml, hashPreviewPassword, logEntryView, logAuditEvent } from "../utils.js";
+import { getPublicEntryById, getDraftEntryForPreview, sanitizeHtml, hashPreviewPassword, logEntryView, logAuditEvent, calculateReadingTime } from "../utils.js";
 
 const router = express.Router();
 
@@ -13,9 +13,11 @@ router.get("/view/:id", async (req, res, next) => {
     logEntryView(req, entryId);
     const unsafeHtml = marked.parse(entry.content || "");
     const cleanHtml = sanitizeHtml(unsafeHtml);
+    const readingTime = calculateReadingTime(entry.content);
     res.render("view", {
       entry: entry,
       contentHtml: cleanHtml,
+      readingTime: readingTime,
       pageTitle: `${entry.title} - ${entry.type === "changelog" ? "Changelog" : "Documentation"}`,
     });
   } catch (error) {
@@ -54,9 +56,11 @@ router.get("/preview/:token", async (req, res, next) => {
 
     const unsafeHtml = marked.parse(entry.content || "");
     const cleanHtml = sanitizeHtml(unsafeHtml);
+    const readingTime = calculateReadingTime(entry.content);
     res.render("preview/view", {
       entry: entry,
       contentHtml: cleanHtml,
+      readingTime: readingTime,
       pageTitle: `[PREVIEW] ${entry.title}`,
       isPreview: true,
     });

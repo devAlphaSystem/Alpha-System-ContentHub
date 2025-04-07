@@ -2257,6 +2257,7 @@ body.dark-mode .nav-button:hover {
 .nav-buttons-container > .nav-button.prev:only-child {
   justify-content: center;
 }
+
 .nav-buttons-container > .nav-button.next:only-child {
   justify-content: center;
   margin-left: auto;
