@@ -29,6 +29,7 @@ export const PORT = process.env.PORT || 3000;
 export const ITEMS_PER_PAGE = 10;
 export const PREVIEW_TOKEN_EXPIRY_HOURS = 6;
 export const VIEW_TIMEFRAME_HOURS = 24;
+export const AVERAGE_WPM = 225;
 
 export const __filename = fileURLToPath(import.meta.url);
 export const __dirname = path.dirname(__filename);

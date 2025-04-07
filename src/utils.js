@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import DOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
-import { pb, pbAdmin, viewDb, IP_HASH_SALT, VIEW_TIMEFRAME_HOURS } from "./config.js";
+import { pb, pbAdmin, viewDb, IP_HASH_SALT, VIEW_TIMEFRAME_HOURS, AVERAGE_WPM } from "./config.js";
 
 const window = new JSDOM("").window;
 const purify = DOMPurify(window);
@@ -247,4 +247,18 @@ export async function logAuditEvent(req, action, targetCollection, targetRecord,
       console.error("Audit Log Error Details:", error.data.data);
     }
   }
+}
+
+export function calculateReadingTime(text, wpm = AVERAGE_WPM) {
+  if (!text || typeof text !== "string" || text.trim().length === 0) {
+    return 0;
+  }
+
+  const words = text.trim().split(/\s+/).length;
+  if (words === 0) {
+    return 0;
+  }
+
+  const minutes = words / wpm;
+  return Math.max(1, Math.ceil(minutes));
 }

@@ -14,6 +14,10 @@ A simple NodeJS application for creating and managing changelogs and documentati
 - **⚙️ Configurable:** Uses environment variables for easy setup.
 - **⬆️ Version Check:** Checks against a specified GitHub repository for available updates (optional).
 
+## Preview
+
+You can see a public page example [here](https://docs.alphasystem.dev/view/contenthubmarkd).
+
 ## Tech Stack
 
 - **Backend:** NodeJS, Express
