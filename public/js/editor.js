@@ -177,7 +177,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  if (contentTextArea && entryId) {
+  if (contentTextArea) {
     try {
       const customToolbar = [
         "bold",
@@ -208,31 +208,36 @@ document.addEventListener("DOMContentLoaded", () => {
         },
       ];
 
-      easyMDEInstance = new EasyMDE({
+      const easyMDEConfig = {
         element: contentTextArea,
         spellChecker: false,
         status: ["lines", "words"],
         toolbar: customToolbar,
         renderingConfig: { codeSyntaxHighlighting: true },
-        uploadImage: true,
-        imageUploadEndpoint: `/api/entries/${entryId}/upload-image`,
-        imagePathAbsolute: true,
-        imageAccept: "image/png, image/jpeg, image/gif, image/webp",
-        imageMaxSize: 1024 * 1024 * 10,
-        imageCSRFToken: false,
-        imageTexts: {
+        uploadImage: false,
+        errorCallback: (errorMessage) => {
+          console.error("EasyMDE Error:", errorMessage);
+          window.showAlertModal(`Editor error: ${errorMessage}`, "Editor Error");
+        },
+      };
+
+      if (entryId) {
+        console.log("Initializing EasyMDE with image upload for entry:", entryId);
+        easyMDEConfig.uploadImage = true;
+        easyMDEConfig.imageUploadEndpoint = `/api/entries/${entryId}/upload-image`;
+        easyMDEConfig.imagePathAbsolute = true;
+        easyMDEConfig.imageAccept = "image/png, image/jpeg, image/gif, image/webp";
+        easyMDEConfig.imageMaxSize = 1024 * 1024 * 10;
+        easyMDEConfig.imageCSRFToken = false;
+        easyMDEConfig.imageTexts = {
           sbInit: "Attach files by dragging & dropping or selecting them.",
           sbOnDragEnter: "Drop image to upload it.",
           sbOnDrop: "Uploading image...",
           sbProgress: "Uploading (##) %...",
           sbOnUploaded: "Uploaded!",
           sizeUnits: " B, KB, MB",
-        },
-        errorCallback: (errorMessage) => {
-          console.error("EasyMDE Error:", errorMessage);
-          window.showAlertModal(`Editor error: ${errorMessage}`, "Editor Error");
-        },
-        imageUploadFunction: (file, onSuccess, onError) => {
+        };
+        easyMDEConfig.imageUploadFunction = (file, onSuccess, onError) => {
           const formData = new FormData();
           formData.append("image", file);
 
@@ -242,7 +247,9 @@ document.addEventListener("DOMContentLoaded", () => {
           })
             .then(async (response) => {
               if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: `HTTP error ${response.status}` }));
+                const errorData = await response.json().catch(() => ({
+                  error: `HTTP error ${response.status}`,
+                }));
                 throw new Error(errorData.error || `HTTP error ${response.status}`);
               }
               return response.json();
@@ -258,12 +265,15 @@ document.addEventListener("DOMContentLoaded", () => {
               console.error("Image Upload Failed:", error);
               onError(error.message || "Image upload failed. Check console for details.");
             });
-        },
-      });
+        };
+      } else {
+        console.log("Initializing EasyMDE without image upload (no entryId found).");
+      }
+
+      easyMDEInstance = new EasyMDE(easyMDEConfig);
 
       const charCountElement = document.getElementById("content-char-count");
       const characterLimit = 50000;
-
       const updateCharCount = () => {
         if (!easyMDEInstance || !charCountElement) return;
         const currentLength = easyMDEInstance.value().length;
@@ -278,15 +288,128 @@ document.addEventListener("DOMContentLoaded", () => {
           if (easyMDEContainer) easyMDEContainer.classList.remove("invalid");
         }
       };
-
       updateCharCount();
       easyMDEInstance.codemirror.on("change", updateCharCount);
+
+      const checkGrammarButton = document.getElementById("check-grammar-btn");
+      const grammarStatusElement = document.getElementById("grammar-status");
+      let currentGrammarMarks = [];
+
+      function clearGrammarHighlights(cm) {
+        if (currentGrammarMarks && cm) {
+          for (let i = 0; i < currentGrammarMarks.length; i++) {
+            currentGrammarMarks[i].clear();
+          }
+          currentGrammarMarks = [];
+        }
+        if (grammarStatusElement) grammarStatusElement.textContent = "";
+      }
+
+      async function performGrammarCheck() {
+        if (!easyMDEInstance) {
+          console.warn("EasyMDE instance not available for grammar check.");
+          return;
+        }
+
+        const cm = easyMDEInstance.codemirror;
+        const textContent = easyMDEInstance.value();
+
+        if (!textContent.trim()) {
+          if (grammarStatusElement) grammarStatusElement.textContent = "Nothing to check.";
+          return;
+        }
+
+        clearGrammarHighlights(cm);
+        if (grammarStatusElement) grammarStatusElement.textContent = "Checking...";
+        checkGrammarButton.disabled = true;
+        checkGrammarButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Checking...`;
+
+        const apiUrl = "https://api.languagetool.org/v2/check";
+        const params = new URLSearchParams({
+          text: textContent,
+          language: "en-US",
+        });
+
+        try {
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              Accept: "application/json",
+            },
+            body: params.toString(),
+          });
+
+          if (!response.ok) {
+            throw new Error(`LanguageTool API error! Status: ${response.status}`);
+          }
+
+          const result = await response.json();
+
+          if (result.matches && result.matches.length > 0) {
+            for (let i = 0; i < result.matches.length; i++) {
+              const match = result.matches[i];
+              const fromPos = cm.posFromIndex(match.offset);
+              const toPos = cm.posFromIndex(match.offset + match.length);
+
+              const mark = cm.markText(fromPos, toPos, {
+                className: "grammar-error",
+                title: `${match.message} (Rule: ${match.rule.id})`,
+              });
+              currentGrammarMarks.push(mark);
+            }
+            if (grammarStatusElement) {
+              grammarStatusElement.textContent = `${result.matches.length} potential issue(s) found.`;
+              grammarStatusElement.style.color = "var(--warning-color)";
+            }
+          } else {
+            if (grammarStatusElement) {
+              grammarStatusElement.textContent = "No issues found.";
+              grammarStatusElement.style.color = "var(--success-color)";
+            }
+          }
+        } catch (error) {
+          console.error("Error checking grammar:", error);
+          if (grammarStatusElement) {
+            grammarStatusElement.textContent = "Error checking grammar.";
+            grammarStatusElement.style.color = "var(--danger-color)";
+          }
+          window.showAlertModal(`Could not check grammar: ${error.message}`, "Grammar Check Error");
+        } finally {
+          checkGrammarButton.disabled = false;
+          checkGrammarButton.innerHTML = `<i class="fas fa-spell-check"></i> Check Grammar & Style`;
+        }
+      }
+
+      checkGrammarButton?.addEventListener("click", performGrammarCheck);
+
+      easyMDEInstance.codemirror.on("change", (cm, changeObj) => {
+        let clearNeeded = false;
+        const changeStart = cm.indexFromPos(changeObj.from);
+        const changeEnd = cm.indexFromPos(changeObj.to);
+
+        for (let i = 0; i < currentGrammarMarks.length; i++) {
+          const mark = currentGrammarMarks[i];
+          const markedRange = mark.find();
+          if (markedRange) {
+            const markStart = cm.indexFromPos(markedRange.from);
+            const markEnd = cm.indexFromPos(markedRange.to);
+            if (Math.max(changeStart, markStart) < Math.min(changeEnd + changeObj.text.join("").length, markEnd)) {
+              clearNeeded = true;
+              break;
+            }
+          }
+        }
+
+        if (clearNeeded) {
+          clearGrammarHighlights(cm);
+          if (grammarStatusElement) grammarStatusElement.textContent = "Highlights cleared due to edit.";
+        }
+      });
     } catch (error) {
       console.error("Failed to initialize EasyMDE for content:", error);
       window.showAlertModal("Failed to load the text editor.", "Editor Error");
     }
-  } else if (contentTextArea) {
-    console.warn("EasyMDE not fully initialized for content: Missing entryId.");
   }
 
   if (templateContentTextArea) {

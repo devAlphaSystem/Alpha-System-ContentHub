@@ -88,8 +88,39 @@ router.get("/new", requireLogin, async (req, res) => {
 });
 
 router.post("/new", requireLogin, async (req, res) => {
-  const { title, type, domain, content, status, tags, collection } = req.body;
+  const { title, type, domain, content, status, tags, collection, url } = req.body;
   const userId = req.session.user.id;
+  const pbErrors = {};
+
+  const trimmedUrl = url ? url.trim() : "";
+
+  if (trimmedUrl && trimmedUrl.length !== 15) pbErrors.url = { message: "URL (ID) must be exactly 15 characters long if provided." };
+  if (!title || title.trim() === "") pbErrors.title = { message: "Title is required." };
+  if (!type) pbErrors.type = { message: "Type is required." };
+  if (!domain || domain.trim() === "") pbErrors.domain = { message: "Domain is required." };
+  if (!content || content.trim() === "") pbErrors.content = { message: "Content is required." };
+
+  if (Object.keys(pbErrors).length > 0) {
+    try {
+      const templates = await getUserTemplates(userId);
+      const submittedData = { title, type, domain, content, status: status || "draft", tags: tags || "", collection: collection || "", url: url || "" };
+      return res.status(400).render("new", {
+        entry: submittedData,
+        errors: pbErrors,
+        templates: templates,
+        pageTitle: "Create New Entry",
+      });
+    } catch (templateError) {
+      console.error("Error fetching templates after entry creation validation failure:", templateError);
+      const submittedData = { title, type, domain, content, status: status || "draft", tags: tags || "", collection: collection || "", url: url || "" };
+      return res.status(400).render("new", {
+        entry: submittedData,
+        errors: { ...pbErrors, general: "Could not load templates." },
+        templates: [],
+        pageTitle: "Create New Entry",
+      });
+    }
+  }
 
   const data = {
     title,
@@ -110,30 +141,45 @@ router.post("/new", requireLogin, async (req, res) => {
     staged_collection: null,
   };
 
+  const recordIdToUse = trimmedUrl.length === 15 ? trimmedUrl : undefined;
+  if (recordIdToUse) {
+    data.id = recordIdToUse;
+  }
+
   try {
     const newRecord = await pb.collection("entries_main").create(data);
+
     logAuditEvent(req, "ENTRY_CREATE", "entries_main", newRecord.id, { title: newRecord.title, status: newRecord.status });
     res.redirect("/");
   } catch (error) {
-    console.error("Failed to create entry:", error);
-    logAuditEvent(req, "ENTRY_CREATE_FAILURE", "entries_main", null, { error: error?.message, data });
-    const pbErrors = error?.data?.data || {
-      general: "Failed to create entry. Please check the form.",
-    };
+    console.error("Failed to create entry in PocketBase:", error);
+    logAuditEvent(req, "ENTRY_CREATE_FAILURE", "entries_main", null, { error: error?.message, data, providedId: url });
+
+    const creationErrors = error?.data?.data || error?.originalError?.data?.data || {};
+    const errorResponseMessage = error?.data?.message || error?.originalError?.data?.message || "";
+
+    if ((error.status === 400 || error.status === 409) && (errorResponseMessage.includes("already exists") || creationErrors.id?.message)) {
+      creationErrors.url = { message: "This URL (ID) is already in use. Please choose another." };
+      if (creationErrors.id) creationErrors.id = undefined;
+    } else if (!creationErrors.general && Object.keys(creationErrors).length === 0) {
+      creationErrors.general = { message: errorResponseMessage || "Failed to create entry. Please check the form or try again." };
+    }
 
     try {
       const templates = await getUserTemplates(userId);
+      const submittedData = { title, type, domain, content, status: status || "draft", tags: tags || "", collection: collection || "", url: url || "" };
       res.status(400).render("new", {
-        entry: data,
-        errors: pbErrors,
+        entry: submittedData,
+        errors: creationErrors,
         templates: templates,
         pageTitle: "Create New Entry",
       });
     } catch (templateError) {
       console.error("Error fetching templates after entry creation failure:", templateError);
+      const submittedData = { title, type, domain, content, status: status || "draft", tags: tags || "", collection: collection || "", url: url || "" };
       res.status(400).render("new", {
-        entry: data,
-        errors: { ...pbErrors, general: "Could not load templates." },
+        entry: submittedData,
+        errors: { ...creationErrors, general: "Could not load templates." },
         templates: [],
         pageTitle: "Create New Entry",
       });

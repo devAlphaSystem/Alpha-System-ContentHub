@@ -43,7 +43,7 @@ pbAdmin.autoCancellation(false);
 
 (async () => {
   try {
-    await pbAdmin.admins.authWithPassword(POCKETBASE_ADMIN_EMAIL, POCKETBASE_ADMIN_PASSWORD);
+    await pbAdmin.collection("_superusers").authWithPassword(POCKETBASE_ADMIN_EMAIL, POCKETBASE_ADMIN_PASSWORD);
     console.log("PocketBase Admin client authenticated successfully.");
   } catch (adminAuthError) {
     console.error("FATAL ERROR: PocketBase Admin authentication failed:", adminAuthError);
@@ -87,7 +87,7 @@ export const configuredHelmet = helmet({
       styleSrc: ["'self'", "https://*", "'unsafe-inline'"],
       fontSrc: ["'self'", "https://*", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", POCKETBASE_URL, "https://*"],
-      connectSrc: ["'self'", POCKETBASE_URL],
+      connectSrc: ["'self'", POCKETBASE_URL, "https://api.languagetool.org"],
       formAction: ["'self'"],
     },
   },

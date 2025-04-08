@@ -26,17 +26,28 @@
 <div class="card form-card">
   <form action="/new" method="POST" class="entry-form" novalidate autocomplete="off">
 
-    <div class="form-group form-group-full template-selector-group">
-      <label for="template-select">Use Template (Optional)</label>
-      <select id="template-select" class="form-control">
-        <option value="">-- Select a template --</option>
-        <% if (locals.templates && templates.length > 0) { %>
-          <% templates.forEach(template => { %>
-            <option value="<%= template.id %>"><%= template.name %></option>
-          <% }) %>
-        <% } %>
-      </select>
-      <small class="form-text">Selecting a template will replace the current content below.</small>
+    <div class="form-grid first-row-group" style="grid-template-columns: repeat(4, 1fr);">
+      <div class="form-group ">
+        <label for="template-select">Use Template (Optional)</label>
+        <select id="template-select" class="form-control">
+          <option value="">-- Select a template --</option>
+          <% if (locals.templates && templates.length > 0) { %>
+            <% templates.forEach(template => { %>
+              <option value="<%= template.id %>"><%= template.name %></option>
+            <% }) %>
+          <% } %>
+        </select>
+        <small class="form-text">Selecting a template will replace the current content below.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="url">URL (Optional ID)</label>
+        <div class="input-group input-group-prefix">
+          <span class="input-group-text prefix-text" id="url-prefix">https://docs.alphasystem.dev/view/</span>
+          <input type="text" id="url" name="url" class="form-control prefixed-input" value="<%= locals.entry ? entry.url : '' %>" minlength="15" maxlength="15" aria-describedby="url-prefix url-help" placeholder="Enter 15 chars..." autocomplete="off" spellcheck="false">
+        </div>
+        <small class="form-text">If provided, must be exactly 15 characters long and unique.</small>
+      </div>
     </div>
 
     <div class="form-grid">
@@ -85,6 +96,13 @@
         <div class="form-text-wrapper">
           <small class="form-text">Use Markdown syntax. Toolbar provides formatting help.</small>
           <small id="content-char-count" class="form-text char-counter"></small>
+        </div>
+
+        <div style="margin-top: 10px; float: right;">
+          <button type="button" id="check-grammar-btn" class="btn btn-secondary btn-sm">
+            <i class="fas fa-spell-check"></i> Check Grammar & Style
+          </button>
+          <span id="grammar-status" style="margin-left: 10px; font-size: 0.8rem; color: var(--text-muted);"></span>
         </div>
       </div>
     </div>
