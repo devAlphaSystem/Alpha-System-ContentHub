@@ -55,12 +55,6 @@
             <span class="entry-type <%= entry.type %>">
               <%= entry.type==='changelog' ? 'Changelog' : 'Documentation' %>
             </span>
-            
-            <span class="separator">/</span>
-
-            <span class="entry-domain">
-              <%= entry.domain %>
-            </span>
           </div>
 
           <h1 class="entry-title">
@@ -82,9 +76,7 @@
               </span>
             <% } %>
 
-            <p class="publish-date">
-              Updated: <%= new Date(entry.updated).toLocaleDateString('en-US', { year: 'numeric' , month: 'long' , day: 'numeric' }) %>
-            </p>
+            <p class="publish-date">Updated: <%= new Date(entry.updated).toLocaleDateString('en-US', { year: 'numeric' , month: 'long' , day: 'numeric' }) %></p>
           </div>
         </header>
 

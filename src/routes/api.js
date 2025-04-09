@@ -94,13 +94,11 @@ router.post("/entries/:id/publish-staged", requireLogin, async (req, res) => {
     const updateData = {
       title: record.staged_title,
       type: record.staged_type,
-      domain: record.staged_domain,
       content: record.staged_content,
       tags: record.staged_tags,
       has_staged_changes: false,
       staged_title: null,
       staged_type: null,
-      staged_domain: null,
       staged_content: null,
       staged_tags: null,
       staged_collection: null,
@@ -243,7 +241,6 @@ router.post("/entries/bulk-action", requireLogin, async (req, res) => {
             statusUpdateData.has_staged_changes = false;
             statusUpdateData.staged_title = null;
             statusUpdateData.staged_type = null;
-            statusUpdateData.staged_domain = null;
             statusUpdateData.staged_content = null;
             statusUpdateData.staged_tags = null;
             statusUpdateData.staged_collection = null;
@@ -261,13 +258,11 @@ router.post("/entries/bulk-action", requireLogin, async (req, res) => {
           const publishUpdateData = {
             title: record.staged_title,
             type: record.staged_type,
-            domain: record.staged_domain,
             content: record.staged_content,
             tags: record.staged_tags,
             has_staged_changes: false,
             staged_title: null,
             staged_type: null,
-            staged_domain: null,
             staged_content: null,
             staged_tags: null,
             staged_collection: null,
@@ -286,7 +281,6 @@ router.post("/entries/bulk-action", requireLogin, async (req, res) => {
           archiveData.has_staged_changes = false;
           archiveData.staged_title = null;
           archiveData.staged_type = null;
-          archiveData.staged_domain = null;
           archiveData.staged_content = null;
           archiveData.staged_tags = null;
           archiveData.staged_collection = null;
@@ -307,7 +301,6 @@ router.post("/entries/bulk-action", requireLogin, async (req, res) => {
           mainData.has_staged_changes = false;
           mainData.staged_title = null;
           mainData.staged_type = null;
-          mainData.staged_domain = null;
           mainData.staged_content = null;
           mainData.staged_tags = null;
           mainData.staged_collection = null;

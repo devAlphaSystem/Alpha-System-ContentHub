@@ -12,15 +12,9 @@
 <div class="content-header">
   <h1> <%= locals.pageTitle %> </h1>
   <div class="header-actions">
-    <button id="export-csv-btn" class="btn btn-info" title="Export All Logs as CSV">
-      <i class="fas fa-file-csv"></i> <span>Export CSV</span>
-    </button>
-    <button id="clear-all-logs-btn" class="btn btn-danger" title="Delete All Audit Logs">
-      <i class="fas fa-trash-alt"></i> <span>Clear All Logs</span>
-    </button>
-    <button id="refresh-logs-btn" class="btn btn-secondary" title="Refresh Logs">
-      <i class="fas fa-sync-alt"></i> <span>Refresh</span>
-    </button>
+    <button id="export-csv-btn" class="btn btn-info" title="Export All Logs as CSV"> <i class="fas fa-file-csv"></i> <span>Export CSV</span> </button>
+    <button id="clear-all-logs-btn" class="btn btn-danger" title="Delete All Audit Logs"> <i class="fas fa-trash-alt"></i> <span>Clear All Logs</span> </button>
+    <button id="refresh-logs-btn" class="btn btn-secondary" title="Refresh Logs"> <i class="fas fa-sync-alt"></i> <span>Refresh</span> </button>
   </div>
 </div>
 
@@ -54,7 +48,7 @@
               <% if (log.expand && log.expand.user) { %>
                 <%= log.expand.user.email %>
               <% } else if (log.user) { %>
-                <%= log.user %> <%# Show User ID if expand failed %>
+                <%= log.user %>
               <% } else { %>
                 <span class="text-muted">System/Unknown</span>
               <% } %>
@@ -91,15 +85,11 @@
   </div>
 
   <div class="pagination-controls card-footer">
-    <button id="prev-page-btn" class="btn btn-secondary" <% if (pagination.page <= 1) { %>disabled<% } %>>
-      <i class="fas fa-chevron-left"></i> Previous
-    </button>
+    <button id="prev-page-btn" class="btn btn-secondary" <% if (pagination.page <= 1) { %>disabled<% } %>> <i class="fas fa-chevron-left"></i> Previous </button>
     <span id="page-info" class="page-info-text">
       Page <%= pagination.page %> of <%= pagination.totalPages %> (<%= pagination.totalItems %> logs)
     </span>
-    <button id="next-page-btn" class="btn btn-secondary" <% if (pagination.page >= pagination.totalPages) { %>disabled<% } %>>
-      Next <i class="fas fa-chevron-right"></i>
-    </button>
+    <button id="next-page-btn" class="btn btn-secondary" <% if (pagination.page >= pagination.totalPages) { %>disabled<% } %>> Next <i class="fas fa-chevron-right"></i> </button>
   </div>
 </div>
 

@@ -273,7 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
       easyMDEInstance = new EasyMDE(easyMDEConfig);
 
       const charCountElement = document.getElementById("content-char-count");
-      const characterLimit = 50000;
+      const characterLimit = 150000;
       const updateCharCount = () => {
         if (!easyMDEInstance || !charCountElement) return;
         const currentLength = easyMDEInstance.value().length;

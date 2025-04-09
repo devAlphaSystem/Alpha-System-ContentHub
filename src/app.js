@@ -1,11 +1,18 @@
 import express from "express";
 import path from "node:path";
 import session from "express-session";
+import fs from "node:fs";
 import { configuredHelmet, sessionStore, BASE_DIR, SESSION_SECRET, NODE_ENV } from "./config.js";
 import { setLocals, handle404, handleErrors } from "./middleware.js";
 import mainRouter from "./routes/index.js";
 
+const packageJsonPath = "./package.json";
+const packageJsonContent = fs.readFileSync(packageJsonPath, "utf8");
+const packageJson = JSON.parse(packageJsonContent);
+
 const app = express();
+
+app.locals.appVersion = packageJson.version;
 
 app.set("view engine", "ejs");
 app.set("views", path.join(BASE_DIR, "views"));

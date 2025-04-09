@@ -25,11 +25,7 @@
   <body class="admin-body">
     <div class="page-wrapper">
       <div class="main-content-wrapper" style="margin-left: 0; width: 100%;">
-        <header class="top-bar">
-          <button class="mobile-nav-toggle" aria-label="Toggle Navigation">
-            <i class="fas fa-bars"></i>
-          </button>
-        </header>
+        <header class="top-bar"></header>
 
         <main class="page-content">
           <div class="error-page-container">
@@ -39,9 +35,7 @@
               </div>
               <h1 class="error-code">500</h1>
               <h2 class="error-message">Oops! Something went wrong</h2>
-              <p class="error-description">
-                We seem to be having some technical difficulties. Please try again later, or contact support if the problem persists.
-              </p>
+              <p class="error-description">We seem to be having some technical difficulties. Please try again later, or contact support if the problem persists.</p>
               <% if (process.env.NODE_ENV !=='production' && locals.error) { %>
                 <pre class="error-details"><%= error.stack %></pre>
               <% } %>

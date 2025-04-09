@@ -96,8 +96,7 @@ Configuration is managed through a `.env` file in the project root.
       - **Fields:**
         - `title` & `staged_title` (Type: `Text`, Max Length: e.g., 200)
         - `type` & `staged_type` (Type: `Select`, Values: `changelog, documentation`, As: `Single`)
-        - `domain` & `staged_domain` (Type: `Text`, Max Length: e.g., 100)
-        - `content` & `staged_content` (Type: `Editor` or `Text`, Max Length: e.g., 50000 or more - **Important:** Adjust based on your needs!)
+        - `content` & `staged_content` (Type: `Editor` or `Text`, Max Length: e.g., 150000 or more - **Important:** Adjust based on your needs!)
         - `views` (Type: `Number`, Default Value: `0`, Min: `0`)
         - `owner` (Type: `Relation`, Collection: `users`, As: `Single`)
         - `status` (Type: `Select`, Values: `draft, published`, As: `Single`)
@@ -118,8 +117,7 @@ Configuration is managed through a `.env` file in the project root.
       - **Fields:**
         - `title` (Type: `Text`, Max Length: e.g., 200)
         - `type` (Type: `Select`, Values: `changelog, documentation`, As: `Single`)
-        - `domain` (Type: `Text`, Max Length: e.g., 100)
-        - `content` (Type: `Editor` or `Text`, Max Length: e.g., 50000 or more - **Important:** Must follow `entries_main` value!)
+        - `content` (Type: `Editor` or `Text`, Max Length: e.g., 150000 or more - **Important:** Must follow `entries_main` value!)
         - `views` (Type: `Number`, Default Value: `0`, Min: `0`)
         - `owner` (Type: `Relation`, Collection: `users`, As: `Single`)
         - `status` (Type: `Select`, Values: `draft, published`, As: `Single`)
@@ -153,7 +151,7 @@ Configuration is managed through a `.env` file in the project root.
       - **Name:** `templates`
       - **Fields:**
         - `name` (Type: `Text`, Max Length: e.g., 200)
-        - `content` (Type: `Text`, Max Length: e.g., 50000)
+        - `content` (Type: `Text`, Max Length: e.g., 150000)
         - `owner` (Type: `Relation`, Collection: `users`, As: `Single`)
       - **API Rules:**
         - List: `owner.id = @request.auth.id`
