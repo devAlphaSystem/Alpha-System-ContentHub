@@ -17,7 +17,6 @@
           <th data-label="Title">Title</th>
           <th data-label="Status">Status</th>
           <th data-label="Type">Type</th>
-          <th data-label="Domain">Domain</th>
           <th data-label="Archived">Archived Date</th>
           <th data-label="Actions">Actions</th>
         </tr>
@@ -29,18 +28,13 @@
             <td data-label="Title"><%= entry.title %></td>
             <td data-label="Status"><span class="badge status-badge status-<%= entry.status.toLowerCase() %>"> <%= entry.status %> </span></td>
             <td data-label="Type"><span class="badge type-badge type-<%= entry.type %>"> <%= entry.type %> </span></td>
-            <td data-label="Domain"><%= entry.domain %></td>
             <td data-label="Archived"> <%= new Date(entry.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
             <td class="actions-cell">
               <form action="/unarchive/<%= entry.id %>" method="POST" class="unarchive-form" title="Unarchive">
-                <button type="submit" class="btn btn-icon btn-unarchive">
-                  <i class="fas fa-box-open"></i>
-                </button>
+                <button type="submit" class="btn btn-icon btn-unarchive"> <i class="fas fa-box-open"></i> </button>
               </form>
               <form action="/delete-archived/<%= entry.id %>" method="POST" class="delete-form" title="Delete Permanently">
-                <button type="submit" class="btn btn-icon btn-delete">
-                  <i class="fas fa-trash-alt"></i>
-                </button>
+                <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
               </form>
             </td>
           </tr>

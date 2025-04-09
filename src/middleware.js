@@ -34,6 +34,16 @@ export function setLocals(req, res, next) {
   res.locals.pocketbaseUrl = POCKETBASE_URL;
   res.locals.theme = req.session.theme || "light";
 
+  const protocol = req.protocol;
+  const host = req.get("host");
+
+  if (host) {
+    res.locals.baseUrl = `${protocol}://${host}`;
+  } else {
+    console.warn("Host header not found in request. Falling back.");
+    res.locals.baseUrl = `http://localhost:${PORT}`;
+  }
+
   if (!req.session.validPreviews) {
     req.session.validPreviews = {};
   }

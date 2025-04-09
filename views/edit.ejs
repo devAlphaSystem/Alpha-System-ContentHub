@@ -51,18 +51,12 @@
           <option value="published" <%=entry.status==='published' ? 'selected' : '' %>>Published</option>
         </select>
         <% if (locals.originalStatus === 'published') { %>
-            <small class="form-text">Changing status to 'Draft' will discard any staged changes.</small>
+          <small class="form-text">Changing status to 'Draft' will discard any staged changes.</small>
         <% } %>
       </div>
 
       <div class="form-group">
-        <label for="domain">Domain <span class="required">*</span></label>
-        <input type="text" id="domain" name="domain" required class="form-control" placeholder="e.g., myapp.com or api.myapp.com" value="<%= entry.domain %>">
-      </div>
-
-      <div class="form-group">
         <label for="collection">Collection</label>
-        <%# Use entry.collection directly. We are not staging this field. %>
         <input type="text" id="collection" name="collection" class="form-control" placeholder="e.g., Project Alpha" value="<%= entry.collection %>">
         <small class="form-text">Assign this entry to a collection (optional).</small>
       </div>
@@ -71,6 +65,15 @@
         <label for="tags">Tags</label>
         <input type="text" id="tags" name="tags" class="form-control" placeholder="Comma-separated, e.g., api, frontend, v2" value="<%= entry.tags %>">
         <small class="form-text">Separate multiple tags with commas.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="url">URL (Optional ID)</label>
+        <div class="input-group input-group-prefix">
+          <span class="input-group-text prefix-text" id="url-prefix">https://yourdomain.com/view/</span>
+          <input type="text" id="url" name="url" class="form-control prefixed-input" value="<%= locals.entry.id ? entry.id : '' %>" aria-describedby="url-prefix url-help" disabled>
+        </div>
+        <small class="form-text">If provided, must be exactly 15 characters long and unique.</small>
       </div>
 
       <div class="form-group form-group-full">
@@ -82,9 +85,7 @@
         </div>
 
         <div style="margin-top: 10px; float: right;">
-          <button type="button" id="check-grammar-btn" class="btn btn-secondary btn-sm">
-            <i class="fas fa-spell-check"></i> Check Grammar & Style
-          </button>
+          <button type="button" id="check-grammar-btn" class="btn btn-secondary btn-sm"> <i class="fas fa-spell-check"></i> Check Grammar & Style </button>
           <span id="grammar-status" style="margin-left: 10px; font-size: 0.8rem; color: var(--text-muted);"></span>
         </div>
       </div>

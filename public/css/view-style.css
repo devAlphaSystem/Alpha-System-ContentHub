@@ -466,10 +466,6 @@ body:not(.dark-mode) .theme-toggle-btn .fa-moon {
   color: var(--type-docs-text);
 }
 
-.entry-domain {
-  color: var(--text-muted);
-}
-
 .entry-title {
   font-size: 1.75rem;
   font-weight: 700;

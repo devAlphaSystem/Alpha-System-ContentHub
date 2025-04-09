@@ -1,5 +1,4 @@
 import express from "express";
-import crypto from "node:crypto";
 import { pb, pbAdmin, apiLimiter, ITEMS_PER_PAGE, PREVIEW_TOKEN_EXPIRY_HOURS } from "../config.js";
 import { requireLogin } from "../middleware.js";
 import { getUserTemplates, getEntryForOwner, getArchivedEntryForOwner, clearEntryViewLogs, hashPreviewPassword, logAuditEvent } from "../utils.js";
@@ -88,7 +87,7 @@ router.get("/new", requireLogin, async (req, res) => {
 });
 
 router.post("/new", requireLogin, async (req, res) => {
-  const { title, type, domain, content, status, tags, collection, url } = req.body;
+  const { title, type, content, status, tags, collection, url } = req.body;
   const userId = req.session.user.id;
   const pbErrors = {};
 
@@ -97,13 +96,12 @@ router.post("/new", requireLogin, async (req, res) => {
   if (trimmedUrl && trimmedUrl.length !== 15) pbErrors.url = { message: "URL (ID) must be exactly 15 characters long if provided." };
   if (!title || title.trim() === "") pbErrors.title = { message: "Title is required." };
   if (!type) pbErrors.type = { message: "Type is required." };
-  if (!domain || domain.trim() === "") pbErrors.domain = { message: "Domain is required." };
   if (!content || content.trim() === "") pbErrors.content = { message: "Content is required." };
 
   if (Object.keys(pbErrors).length > 0) {
     try {
       const templates = await getUserTemplates(userId);
-      const submittedData = { title, type, domain, content, status: status || "draft", tags: tags || "", collection: collection || "", url: url || "" };
+      const submittedData = { title, type, content, status: status || "draft", tags: tags || "", collection: collection || "", url: url || "" };
       return res.status(400).render("new", {
         entry: submittedData,
         errors: pbErrors,
@@ -112,7 +110,7 @@ router.post("/new", requireLogin, async (req, res) => {
       });
     } catch (templateError) {
       console.error("Error fetching templates after entry creation validation failure:", templateError);
-      const submittedData = { title, type, domain, content, status: status || "draft", tags: tags || "", collection: collection || "", url: url || "" };
+      const submittedData = { title, type, content, status: status || "draft", tags: tags || "", collection: collection || "", url: url || "" };
       return res.status(400).render("new", {
         entry: submittedData,
         errors: { ...pbErrors, general: "Could not load templates." },
@@ -125,7 +123,6 @@ router.post("/new", requireLogin, async (req, res) => {
   const data = {
     title,
     type,
-    domain,
     content,
     status: status || "draft",
     tags: tags || "",
@@ -135,7 +132,6 @@ router.post("/new", requireLogin, async (req, res) => {
     has_staged_changes: false,
     staged_title: null,
     staged_type: null,
-    staged_domain: null,
     staged_content: null,
     staged_tags: null,
     staged_collection: null,
@@ -167,7 +163,7 @@ router.post("/new", requireLogin, async (req, res) => {
 
     try {
       const templates = await getUserTemplates(userId);
-      const submittedData = { title, type, domain, content, status: status || "draft", tags: tags || "", collection: collection || "", url: url || "" };
+      const submittedData = { title, type, content, status: status || "draft", tags: tags || "", collection: collection || "", url: url || "" };
       res.status(400).render("new", {
         entry: submittedData,
         errors: creationErrors,
@@ -176,7 +172,7 @@ router.post("/new", requireLogin, async (req, res) => {
       });
     } catch (templateError) {
       console.error("Error fetching templates after entry creation failure:", templateError);
-      const submittedData = { title, type, domain, content, status: status || "draft", tags: tags || "", collection: collection || "", url: url || "" };
+      const submittedData = { title, type, content, status: status || "draft", tags: tags || "", collection: collection || "", url: url || "" };
       res.status(400).render("new", {
         entry: submittedData,
         errors: { ...creationErrors, general: "Could not load templates." },
@@ -201,7 +197,6 @@ router.get("/edit/:id", requireLogin, async (req, res, next) => {
       isEditingStaged = true;
       entryDataForForm.title = record.staged_title ?? record.title;
       entryDataForForm.type = record.staged_type ?? record.type;
-      entryDataForForm.domain = record.staged_domain ?? record.domain;
       entryDataForForm.content = record.staged_content ?? record.content;
       entryDataForForm.tags = record.staged_tags ?? record.tags;
       entryDataForForm.collection = record.collection;
@@ -227,7 +222,7 @@ router.get("/edit/:id", requireLogin, async (req, res, next) => {
 router.post("/edit/:id", requireLogin, async (req, res, next) => {
   const entryId = req.params.id;
   const userId = req.session.user.id;
-  const { title, type, domain, content, status, tags, collection } = req.body;
+  const { title, type, content, status, tags, collection } = req.body;
   const submittedStatus = status || "draft";
 
   let originalRecord;
@@ -250,7 +245,6 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
       updateData = {
         staged_title: title,
         staged_type: type,
-        staged_domain: domain,
         staged_content: content,
         staged_tags: tags || "",
         has_staged_changes: true,
@@ -260,7 +254,6 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
       updateData = {
         title,
         type,
-        domain,
         content,
         tags: tags || "",
         collection: collection || "",
@@ -268,7 +261,6 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
         has_staged_changes: false,
         staged_title: null,
         staged_type: null,
-        staged_domain: null,
         staged_content: null,
         staged_tags: null,
         staged_collection: null,
@@ -303,7 +295,6 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
         ...recordForRender,
         title,
         type,
-        domain,
         content,
         status: submittedStatus,
         tags,
@@ -315,7 +306,6 @@ router.post("/edit/:id", requireLogin, async (req, res, next) => {
         isEditingStaged = true;
         entryDataForForm.title = recordForRender.staged_title ?? recordForRender.title;
         entryDataForForm.type = recordForRender.staged_type ?? recordForRender.type;
-        entryDataForForm.domain = recordForRender.staged_domain ?? recordForRender.domain;
         entryDataForForm.content = recordForRender.staged_content ?? recordForRender.content;
         entryDataForForm.tags = recordForRender.staged_tags ?? recordForRender.tags;
         entryDataForForm.collection = collection ?? recordForRender.collection;
@@ -384,7 +374,6 @@ router.post("/archive/:id", requireLogin, async (req, res, next) => {
     archiveData.has_staged_changes = false;
     archiveData.staged_title = null;
     archiveData.staged_type = null;
-    archiveData.staged_domain = null;
     archiveData.staged_content = null;
     archiveData.staged_tags = null;
     archiveData.staged_collection = null;
@@ -477,7 +466,6 @@ router.post("/unarchive/:id", requireLogin, async (req, res, next) => {
     mainData.has_staged_changes = false;
     mainData.staged_title = null;
     mainData.staged_type = null;
-    mainData.staged_domain = null;
     mainData.staged_content = null;
     mainData.staged_tags = null;
     mainData.staged_collection = null;

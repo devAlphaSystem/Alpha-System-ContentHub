@@ -1,7 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const statusFilterBtn = document.getElementById("status-filter-btn");
-  const filterDraftOption = document.getElementById("filter-draft");
-  const filterPublishedOption = document.getElementById("filter-published");
   const entriesTableBody = document.getElementById("entries-table-body");
   const selectAllCheckbox = document.getElementById("select-all-checkbox");
   const refreshButton = document.getElementById("refresh-entries-btn");
@@ -19,8 +16,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const tableElement = document.querySelector(".data-table");
 
   const collectionFilterSelect = document.getElementById("collection-filter-select");
+  const searchInput = document.getElementById("search-input");
 
-  const currentFilterState = { draft: true, published: true };
   let currentPage = 1;
   let totalPages = 1;
   let totalItems = 0;
@@ -29,12 +26,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentSortDir = "desc";
   let isLoading = false;
   let currentCollectionFilter = "";
-
-  function updateFilterButtonUI() {
-    if (!filterDraftOption || !filterPublishedOption) return;
-    filterDraftOption.classList.toggle("active", currentFilterState.draft);
-    filterPublishedOption.classList.toggle("active", currentFilterState.published);
-  }
 
   function renderTableRow(entry) {
     const formattedUpdated =
@@ -71,7 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
         </td>
         <td data-label="Collection">${collectionDisplay}</td>
         <td data-label="Type"><span class="badge type-badge type-${escapeHtml(entry.type)}">${escapeHtml(entry.type)}</span></td>
-        <td data-label="Domain">${escapeHtml(entry.domain)}</td>
         <td data-label="Views">${entry.views || 0}</td>
         <td data-label="Updated">${formattedUpdated}</td>
         <td data-label="Actions" class="actions-cell">
@@ -122,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (noMatchRow) noMatchRow.remove();
     } else if (totalItems > 0) {
       const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 9;
-      entriesTableBody.innerHTML = `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">No entries match the current criteria.</td></tr>`;
+      entriesTableBody.innerHTML = `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">No entries found on this page.</td></tr>`;
       if (dataCard) dataCard.classList.remove("hidden");
       if (emptyStateCard) emptyStateCard.style.display = "none";
     } else {
@@ -131,7 +121,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     attachActionListeners();
-    updateBulkActionUI();
   }
 
   async function fetchEntries() {
@@ -146,6 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (nextPageBtn) nextPageBtn.disabled = true;
     if (selectAllCheckbox) selectAllCheckbox.disabled = true;
     if (collectionFilterSelect) collectionFilterSelect.disabled = true;
+    if (searchInput) searchInput.disabled = true;
 
     const sortParam = `${currentSortDir === "desc" ? "-" : ""}${currentSortKey}`;
     let url = `/api/entries?page=${currentPage}&perPage=${itemsPerPage}&sort=${sortParam}&fields=*,has_staged_changes`;
@@ -165,8 +155,8 @@ document.addEventListener("DOMContentLoaded", () => {
       totalItems = data.totalItems;
 
       renderTable(data.items);
+      applyTableFilters();
       updatePaginationControls();
-      applyTableFilter();
     } catch (error) {
       console.error("Failed to fetch entries:", error);
       window.showAlertModal("Error loading entries. Please try refreshing the page.", "Loading Error");
@@ -186,29 +176,33 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshButton.disabled = false;
         refreshButton.innerHTML = `<i class="fas fa-sync-alt"></i> <span>Refresh</span>`;
       }
-      if (selectAllCheckbox) selectAllCheckbox.disabled = false;
+      if (selectAllCheckbox) selectAllCheckbox.disabled = totalItems === 0;
       if (collectionFilterSelect) collectionFilterSelect.disabled = false;
+      if (searchInput) searchInput.disabled = false;
       updatePaginationControls();
     }
   }
 
-  function applyTableFilter() {
+  function applyTableFilters() {
     if (!entriesTableBody) return;
 
     const rows = entriesTableBody.querySelectorAll("tr[data-entry-id]");
     let visibleCount = 0;
-    const showDraft = currentFilterState.draft;
-    const showPublished = currentFilterState.published;
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : "";
 
     for (const row of rows) {
-      const statusElement = row.querySelector("td[data-label='Status'] span.status-badge:not(.status-staged)");
-      const rowStatus = statusElement ? statusElement.textContent.toLowerCase().trim() : null;
+      let shouldShow = true;
 
-      let shouldShow = false;
-      if (rowStatus === "draft" && showDraft) {
-        shouldShow = true;
-      } else if (rowStatus === "published" && showPublished) {
-        shouldShow = true;
+      if (searchTerm !== "") {
+        const title = row.querySelector("td[data-label='Title']")?.textContent.toLowerCase() || "";
+        const collection = row.querySelector("td[data-label='Collection']")?.textContent.toLowerCase() || "";
+        const type = row.querySelector("td[data-label='Type'] span.type-badge")?.textContent.toLowerCase() || "";
+
+        const matchesSearch = title.includes(searchTerm) || collection.includes(searchTerm) || type.includes(searchTerm);
+
+        if (!matchesSearch) {
+          shouldShow = false;
+        }
       }
 
       row.style.display = shouldShow ? "" : "none";
@@ -223,8 +217,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (rows.length > 0 && visibleCount === 0) {
       const colSpan = tableElement?.querySelector("thead tr")?.childElementCount || 9;
       if (!entriesTableBody.querySelector(".no-match-row")) {
-        entriesTableBody.insertAdjacentHTML("beforeend", `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">No entries match the current filter.</td></tr>`);
+        entriesTableBody.insertAdjacentHTML("beforeend", `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">No entries match the current criteria.</td></tr>`);
       }
+    } else if (rows.length === 0 && totalItems === 0 && !isLoading) {
+      if (dataCard) dataCard.classList.add("hidden");
+      if (emptyStateCard) emptyStateCard.style.display = "";
     }
 
     updateBulkActionUI();
@@ -506,31 +503,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  statusFilterBtn?.addEventListener("click", () => {
-    if (isLoading) return;
-    const wasAll = currentFilterState.draft && currentFilterState.published;
-    const wasDraft = currentFilterState.draft && !currentFilterState.published;
-
-    if (wasAll) {
-      currentFilterState.draft = true;
-      currentFilterState.published = false;
-    } else if (wasDraft) {
-      currentFilterState.draft = false;
-      currentFilterState.published = true;
-    } else {
-      currentFilterState.draft = true;
-      currentFilterState.published = true;
-    }
-
-    updateFilterButtonUI();
-    applyTableFilter();
-  });
-
   collectionFilterSelect?.addEventListener("change", () => {
     if (isLoading) return;
     currentCollectionFilter = collectionFilterSelect.value;
     currentPage = 1;
     fetchEntries();
+  });
+
+  searchInput?.addEventListener("input", () => {
+    applyTableFilters();
   });
 
   const initialSortHeader = document.querySelector(`.data-table th[data-sort-key="${currentSortKey}"]`);
@@ -566,20 +547,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  updateFilterButtonUI();
   updatePaginationControls();
   updateBulkActionUI();
 
   const urlParams = new URLSearchParams(window.location.search);
-  const hasActionOrError = urlParams.has("action") || urlParams.has("error");
+  const actionMessage = urlParams.get("action");
+  const errorMessage = urlParams.get("error");
 
-  if (!hasActionOrError) {
-    if ((entriesTableBody && entriesTableBody.children.length === 0 && !emptyStateCard?.style.display) || totalPages > 1 || (totalItems === 0 && !emptyStateCard?.style.display)) {
-      fetchEntries();
-    }
-  } else {
-    const actionMessage = urlParams.get("action");
-    const errorMessage = urlParams.get("error");
+  if (actionMessage || errorMessage) {
     if (actionMessage) {
       let messageText = "Action completed successfully.";
       if (actionMessage === "deleted") messageText = "Entry deleted successfully.";
@@ -596,6 +571,14 @@ document.addEventListener("DOMContentLoaded", () => {
       window.showAlertModal(messageText, "Error");
     }
     window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  const needsInitialFetch = (entriesTableBody && entriesTableBody.children.length === 0 && (!emptyStateCard || emptyStateCard.style.display === "none")) || totalPages > 1;
+
+  if (needsInitialFetch && !actionMessage && !errorMessage) {
+    fetchEntries();
+  } else if (entriesTableBody && entriesTableBody.children.length > 0) {
+    applyTableFilters();
   }
 
   if (collectionFilterSelect) {
