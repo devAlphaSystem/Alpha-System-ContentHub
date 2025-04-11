@@ -70,7 +70,7 @@
       <div class="form-group">
         <label for="url">URL (Optional ID)</label>
         <div class="input-group input-group-prefix">
-          <span class="input-group-text prefix-text" id="url-prefix">https://yourdomain.com/view/</span>
+          <span class="input-group-text prefix-text" id="url-prefix"><%= locals.baseUrl %>/view/</span>
           <input type="text" id="url" name="url" class="form-control prefixed-input" value="<%= locals.entry.id ? entry.id : '' %>" aria-describedby="url-prefix url-help" disabled>
         </div>
         <small class="form-text">If provided, must be exactly 15 characters long and unique.</small>
