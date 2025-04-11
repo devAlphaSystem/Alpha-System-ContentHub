@@ -8,6 +8,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const passwordCheckbox = document.getElementById("set-preview-password-check");
   const passwordInput = document.getElementById("preview-password-input");
 
+  const urlPrefixSpan = document.getElementById("url-prefix");
+  const urlInput = document.getElementById("url");
+
   let easyMDEInstance = null;
   let templateEasyMDEInstance = null;
 
@@ -176,6 +179,27 @@ document.addEventListener("DOMContentLoaded", () => {
       sharePreviewButton.innerHTML = `<i class="fas fa-share-alt"></i> Share Preview`;
     }
   });
+
+  if (urlPrefixSpan && urlInput) {
+    urlPrefixSpan.style.cursor = "pointer";
+    urlPrefixSpan.title = "Click to copy full URL";
+
+    urlPrefixSpan.addEventListener("click", () => {
+      const baseUrlPart = urlPrefixSpan.textContent;
+      const entryIdPart = urlInput.value;
+      if (entryIdPart) {
+        const fullUrl = baseUrlPart + entryIdPart;
+        copyToClipboard(fullUrl, urlPrefixSpan);
+      } else {
+        console.warn("No entry ID found in the URL input to copy.");
+        const originalHtml = urlPrefixSpan.innerHTML;
+        urlPrefixSpan.innerHTML = "No ID!";
+        setTimeout(() => {
+          urlPrefixSpan.innerHTML = originalHtml;
+        }, 1500);
+      }
+    });
+  }
 
   if (contentTextArea) {
     try {
