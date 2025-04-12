@@ -5,35 +5,46 @@
 <div class="content-header">
   <h1> <%= locals.pageTitle %> </h1>
   <div class="header-actions">
+     <button id="refresh-archived-btn" class="btn btn-secondary" title="Refresh Table"> <i class="fas fa-sync-alt"></i> <span>Refresh</span> </button>
     <a href="/" class="btn btn-secondary">Back to Active</a>
   </div>
 </div>
 
-<div class="card data-card <% if (entries.length === 0) { %>hidden<% } %>">
+<% if (locals.action === 'unarchived') { %>
+  <div class="alert alert-info"> <i class="fas fa-check-circle alert-icon"></i> <span>Entry unarchived successfully.</span> </div>
+<% } else if (locals.action === 'deleted') { %>
+   <div class="alert alert-info"> <i class="fas fa-check-circle alert-icon"></i> <span>Archived entry permanently deleted.</span> </div>
+<% } %>
+
+<% if (locals.error) { %>
+  <div class="alert alert-danger"> <i class="fas fa-exclamation-triangle alert-icon"></i> <span><%= error %></span> </div>
+<% } %>
+
+<div class="card data-card <% if (entries.length === 0 && !locals.error) { %>hidden<% } %>">
   <div class="table-responsive">
     <table class="data-table">
       <thead>
         <tr>
-          <th data-label="Title">Title</th>
-          <th data-label="Status">Status</th>
-          <th data-label="Type">Type</th>
-          <th data-label="Archived">Archived Date</th>
-          <th data-label="Actions">Actions</th>
+          <th data-sort-key="title" style="cursor: pointer;">Title <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="status" style="cursor: pointer;">Status <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="type" style="cursor: pointer;">Type <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="updated" style="cursor: pointer;">Archived Date <span class="sort-icon"><i class="fas fa-sort-down"></i></span></th>
+          <th class="actions-column">Actions</th>
         </tr>
       </thead>
 
-      <tbody>
+      <tbody id="archived-table-body">
         <% for (const entry of entries) { %>
-          <tr data-entry-id="<%= entry.id %>">
+          <tr data-entry-id="<%= entry.id %>" data-updated-timestamp="<%= new Date(entry.updated).getTime() %>">
             <td data-label="Title"><%= entry.title %></td>
             <td data-label="Status"><span class="badge status-badge status-<%= entry.status.toLowerCase() %>"> <%= entry.status %> </span></td>
             <td data-label="Type"><span class="badge type-badge type-<%= entry.type %>"> <%= entry.type %> </span></td>
-            <td data-label="Archived"> <%= new Date(entry.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
-            <td class="actions-cell">
+            <td data-label="Archived"> <%= entry.formattedUpdated %> </td>
+            <td data-label="Actions" class="actions-cell">
               <form action="/unarchive/<%= entry.id %>" method="POST" class="unarchive-form" title="Unarchive">
                 <button type="submit" class="btn btn-icon btn-unarchive"> <i class="fas fa-box-open"></i> </button>
               </form>
-              <form action="/delete-archived/<%= entry.id %>" method="POST" class="delete-form" title="Delete Permanently">
+              <form action="/delete-archived/<%= entry.id %>" method="POST" class="delete-archived-form" title="Delete Permanently">
                 <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
               </form>
             </td>
@@ -42,15 +53,21 @@
       </tbody>
     </table>
   </div>
+
+  <div class="pagination-controls card-footer">
+    <button id="prev-page-btn" class="btn btn-secondary" disabled> <i class="fas fa-chevron-left"></i> Previous </button>
+    <span id="page-info" class="page-info-text"> Page <%= pagination.page %> of <%= pagination.totalPages %> (<%= pagination.totalItems %> items) </span>
+    <button id="next-page-btn" class="btn btn-secondary" <% if (pagination.page>= pagination.totalPages) { %>disabled<% } %>> Next <i class="fas fa-chevron-right"></i> </button>
+  </div>
 </div>
 
 <% if (entries.length === 0 && !locals.error) { %>
   <div class="card empty-state-card">
     <i class="fas fa-folder-open empty-state-icon"></i>
-    <h2>No entries yet</h2>
-    <p>Get started by creating your first changelog or documentation entry.</p>
-    <a href="/new" class="btn btn-primary">Create First Entry</a>
+    <h2>No archived entries</h2>
+    <p>Entries you archive from the dashboard will appear here.</p>
+    <a href="/" class="btn btn-secondary">Back to Dashboard</a>
   </div>
 <% } %>
 
-<%- include('partials/footer') %>
+<%- include('partials/footer', { scriptPath: '/js/archived.js' }) %>

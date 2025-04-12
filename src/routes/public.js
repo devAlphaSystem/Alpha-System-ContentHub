@@ -11,13 +11,29 @@ router.get("/view/:id", async (req, res, next) => {
     const entry = await getPublicEntryById(entryId);
     if (!entry) return next();
     logEntryView(req, entryId);
-    const unsafeHtml = marked.parse(entry.content || "");
-    const cleanHtml = sanitizeHtml(unsafeHtml);
+
+    const unsafeMainHtml = marked.parse(entry.content || "");
+    const cleanMainHtml = sanitizeHtml(unsafeMainHtml);
     const readingTime = calculateReadingTime(entry.content);
+
+    let customHeaderHtml = null;
+    if (entry.expand?.custom_header?.content) {
+      const unsafeHeaderHtml = marked.parse(entry.expand.custom_header.content);
+      customHeaderHtml = sanitizeHtml(unsafeHeaderHtml);
+    }
+
+    let customFooterHtml = null;
+    if (entry.expand?.custom_footer?.content) {
+      const unsafeFooterHtml = marked.parse(entry.expand.custom_footer.content);
+      customFooterHtml = sanitizeHtml(unsafeFooterHtml);
+    }
+
     res.render("view", {
       entry: entry,
-      contentHtml: cleanHtml,
+      contentHtml: cleanMainHtml,
       readingTime: readingTime,
+      customHeaderHtml: customHeaderHtml,
+      customFooterHtml: customFooterHtml,
       pageTitle: `${entry.title} - ${entry.type === "changelog" ? "Changelog" : "Documentation"}`,
     });
   } catch (error) {
@@ -54,13 +70,31 @@ router.get("/preview/:token", async (req, res, next) => {
       });
     }
 
-    const unsafeHtml = marked.parse(entry.content || "");
-    const cleanHtml = sanitizeHtml(unsafeHtml);
+    const unsafeMainHtml = marked.parse(entry.content || "");
+    const cleanMainHtml = sanitizeHtml(unsafeMainHtml);
     const readingTime = calculateReadingTime(entry.content);
+
+    const headerRecordToUse = entry.expand?.staged_custom_header || entry.expand?.custom_header;
+    const footerRecordToUse = entry.expand?.staged_custom_footer || entry.expand?.custom_footer;
+
+    let customHeaderHtml = null;
+    if (headerRecordToUse?.content) {
+      const unsafeHeaderHtml = marked.parse(headerRecordToUse.content);
+      customHeaderHtml = sanitizeHtml(unsafeHeaderHtml);
+    }
+
+    let customFooterHtml = null;
+    if (footerRecordToUse?.content) {
+      const unsafeFooterHtml = marked.parse(footerRecordToUse.content);
+      customFooterHtml = sanitizeHtml(unsafeFooterHtml);
+    }
+
     res.render("preview/view", {
       entry: entry,
-      contentHtml: cleanHtml,
+      contentHtml: cleanMainHtml,
       readingTime: readingTime,
+      customHeaderHtml: customHeaderHtml,
+      customFooterHtml: customFooterHtml,
       pageTitle: `[PREVIEW] ${entry.title}`,
       isPreview: true,
     });
@@ -89,22 +123,24 @@ router.post("/preview/:token", previewPasswordLimiter, async (req, res, next) =>
     previewRecord = await pbAdmin.collection("entries_previews").getFirstListItem(`token = '${token}' && expires_at > @now`);
 
     if (!previewRecord.password_hash) {
-      logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, { token: token, reason: "No password hash set" });
+      logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, { token: token, reason: "No password hash set on token" });
       return res.status(400).redirect(`/preview/${token}/password?error=Invalid request`);
     }
 
     const submittedHash = hashPreviewPassword(password);
     if (submittedHash === previewRecord.password_hash) {
-      if (!req.session.validPreviews) req.session.validPreviews = {};
+      if (!req.session.validPreviews) {
+        req.session.validPreviews = {};
+      }
       req.session.validPreviews[token] = true;
       logAuditEvent(req, "PREVIEW_PASSWORD_SUCCESS", "entries_previews", previewRecord.id, { token: token, entryId: previewRecord.entry });
       return res.redirect(`/preview/${token}`);
     }
-    logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord.id, { token: token, reason: "Incorrect password" });
+    logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord.id, { token: token, reason: "Incorrect password submitted" });
     return res.redirect(`/preview/${token}/password?error=Incorrect password`);
   } catch (error) {
     if (error.status === 404) {
-      logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, { token: token, reason: "Invalid/expired link" });
+      logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, { token: token, reason: "Invalid/expired link during password check" });
       return res.redirect(`/preview/${token}/password?error=Invalid or expired link`);
     }
     logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, { token: token, error: error?.message });

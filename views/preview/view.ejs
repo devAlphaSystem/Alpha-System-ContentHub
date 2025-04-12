@@ -84,31 +84,47 @@
       </aside>
 
       <div class="main-content" style="padding-top: 25px;">
-        <header class="content-header">
-          <div class="header-meta">
-            <span class="entry-type <%= entry.type %>">
-              <%= entry.type==='changelog' ? 'Changelog' : 'Documentation' %>
-            </span>
+        <% if (locals.customHeaderHtml) { %>
+          <div class="custom-header-content">
+            <%- customHeaderHtml %>
           </div>
-          <h1 class="entry-title"><%= entry.title %></h1>
-          
-          <% if (entry.tags && entry.tags.trim()) { %>
-            <div class="entry-tags">
-              <% entry.tags.split(',').map(tag => tag.trim()).filter(tag => tag).forEach(tag => { %>
-                <span class="tag-badge"><%= tag %></span>
-              <% }) %>
+        <% } else { %>
+          <header class="content-header">
+            <div class="header-meta">
+              <span class="entry-type <%= entry.type %>">
+                <%= entry.type==='changelog' ? 'Changelog' : 'Documentation' %>
+              </span>
+              <% if (locals.readingTime && readingTime > 0) { %>
+                <span class="reading-time"> <i class="far fa-clock"></i> <%= readingTime %> min read </span>
+              <% } %>
             </div>
-          <% } %>
+            
+            <h1 class="entry-title"><%= entry.title %></h1>
 
-          <p class="publish-date">Updated: <%= new Date(entry.updated).toLocaleDateString('en-US', { year: 'numeric' , month: 'long' , day: 'numeric' }) %></p>
-        </header>
+            <% if (entry.tags && entry.tags.trim()) { %>
+              <div class="entry-tags">
+                <% entry.tags.split(',').map(tag => tag.trim()).filter(tag => tag).forEach(tag => { %>
+                  <span class="tag-badge"><%= tag %></span>
+                <% }) %>
+              </div>
+            <% } %>
+
+            <p class="publish-date">Updated: <%= new Date(entry.updated).toLocaleDateString('en-US', { year: 'numeric' , month: 'long' , day: 'numeric' }) %></p>
+          </header>
+        <% } %>
 
         <article id="markdown-content-area" class="markdown-body">
           <%- contentHtml %>
         </article>
+
+        <% if (locals.customFooterHtml) { %>
+          <div class="custom-footer-content">
+            <%- customFooterHtml %>
+          </div>
+        <% } %>
       </div>
     </div>
-    
+
     <!-- Highlight JS -->
     <script src="/js/vendors/highlight.min.js"></script>
 

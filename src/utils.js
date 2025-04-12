@@ -49,7 +49,7 @@ export function sanitizeHtml(unsafeHtml) {
 
 export async function getPublicEntryById(id) {
   try {
-    const record = await pbAdmin.collection("entries_main").getFirstListItem(`id = '${id}' && status = 'published'`);
+    const record = await pbAdmin.collection("entries_main").getFirstListItem(`id = '${id}' && status = 'published'`, { expand: "custom_header,custom_footer" });
     return record;
   } catch (error) {
     if (error.status !== 404) {
@@ -61,7 +61,7 @@ export async function getPublicEntryById(id) {
 
 export async function getDraftEntryForPreview(id) {
   try {
-    const record = await pbAdmin.collection("entries_main").getOne(id);
+    const record = await pbAdmin.collection("entries_main").getOne(id, { expand: "custom_header,custom_footer" });
     return record;
   } catch (error) {
     if (error.status !== 404) {
@@ -152,6 +152,66 @@ export async function getArchivedEntryForOwner(entryId, userId) {
     return record;
   } catch (error) {
     console.error(`Failed to fetch archived entry ${entryId} for owner ${userId}:`, error);
+    throw error;
+  }
+}
+
+export async function getUserHeaders(userId) {
+  try {
+    const headers = await pb.collection("headers").getFullList({
+      filter: `owner = '${userId}'`,
+      sort: "name",
+      fields: "id,name",
+      $autoCancel: false,
+    });
+    return headers;
+  } catch (error) {
+    console.error(`Error fetching headers for user ${userId}:`, error);
+    return [];
+  }
+}
+
+export async function getUserFooters(userId) {
+  try {
+    const footers = await pb.collection("footers").getFullList({
+      filter: `owner = '${userId}'`,
+      sort: "name",
+      fields: "id,name",
+      $autoCancel: false,
+    });
+    return footers;
+  } catch (error) {
+    console.error(`Error fetching footers for user ${userId}:`, error);
+    return [];
+  }
+}
+
+export async function getHeaderForEdit(headerId, userId) {
+  try {
+    const header = await pb.collection("headers").getOne(headerId);
+    if (header.owner !== userId) {
+      const err = new Error("Forbidden");
+      err.status = 403;
+      throw err;
+    }
+    return header;
+  } catch (error) {
+    console.error(`Failed to fetch header ${headerId} for edit:`, error);
+    throw error;
+  }
+}
+
+export async function getFooterForEdit(footerId, userId) {
+  try {
+    const footer = await pb.collection("footers").getOne(footerId);
+    if (footer.owner !== userId) {
+      const err = new Error("Forbidden");
+      err.status = 403;
+      throw err;
+    }
+    return footer;
+  } catch (error) {
+    console.error(`Failed to fetch footer ${footerId} for edit:`, error);
     throw error;
   }
 }

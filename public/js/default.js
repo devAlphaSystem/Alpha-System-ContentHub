@@ -224,6 +224,12 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (navId === "templates" && currentPath.startsWith("/templates")) {
       link.classList.add("active");
       activeLinkFound = true;
+    } else if (navId === "headers" && currentPath.startsWith("/headers")) {
+      link.classList.add("active");
+      activeLinkFound = true;
+    } else if (navId === "footers" && currentPath.startsWith("/footers")) {
+      link.classList.add("active");
+      activeLinkFound = true;
     } else if (navId === "archived" && currentPath === "/archived") {
       link.classList.add("active");
       activeLinkFound = true;

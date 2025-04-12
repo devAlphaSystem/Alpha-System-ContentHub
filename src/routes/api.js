@@ -29,27 +29,35 @@ router.use(apiLimiter);
 router.get("/entries", requireLogin, async (req, res) => {
   try {
     const userId = req.session.user.id;
-    const baseFilter = `owner = '${userId}'`;
+    const baseFilterParts = [`owner = '${userId}'`];
     const page = Number.parseInt(req.query.page) || 1;
     const perPage = Number.parseInt(req.query.perPage) || ITEMS_PER_PAGE;
     const sort = req.query.sort || "-updated";
     const statusFilter = req.query.status;
     const collectionFilter = req.query.collection;
-
-    let combinedFilter = baseFilter;
+    const searchTerm = req.query.search;
 
     if (statusFilter && ["published", "draft"].includes(statusFilter)) {
-      combinedFilter += ` && status = '${statusFilter}'`;
+      baseFilterParts.push(`status = '${statusFilter}'`);
     }
 
     if (collectionFilter && collectionFilter.trim() !== "") {
       const escapedCollection = collectionFilter.replace(/'/g, "''");
-      combinedFilter += ` && collection = '${escapedCollection}'`;
+      baseFilterParts.push(`collection = '${escapedCollection}'`);
     }
+
+    if (searchTerm && searchTerm.trim() !== "") {
+      const escapedSearch = searchTerm.trim().replace(/'/g, "''");
+      const searchFilter = `(title ~ '${escapedSearch}' || collection ~ '${escapedSearch}' || type ~ '${escapedSearch}' || tags ~ '${escapedSearch}')`;
+      baseFilterParts.push(searchFilter);
+    }
+
+    const combinedFilter = baseFilterParts.join(" && ");
 
     const resultList = await pb.collection("entries_main").getList(page, perPage, {
       sort: sort,
       filter: combinedFilter,
+      fields: "id,title,status,type,collection,views,updated,owner,has_staged_changes,custom_header,custom_footer,tags",
     });
 
     const entriesWithDetails = resultList.items.map((entry) => ({
@@ -70,6 +78,10 @@ router.get("/entries", requireLogin, async (req, res) => {
     });
   } catch (error) {
     console.error("API Error fetching user entries:", error);
+    if (error?.data?.message?.includes("filter")) {
+      console.error("PocketBase filter error details:", error.data);
+      return res.status(400).json({ error: "Invalid search or filter criteria." });
+    }
     res.status(500).json({ error: "Failed to fetch entries" });
   }
 });
@@ -96,12 +108,16 @@ router.post("/entries/:id/publish-staged", requireLogin, async (req, res) => {
       type: record.staged_type,
       content: record.staged_content,
       tags: record.staged_tags,
+      custom_header: record.staged_custom_header || null,
+      custom_footer: record.staged_custom_footer || null,
       has_staged_changes: false,
       staged_title: null,
       staged_type: null,
       staged_content: null,
       staged_tags: null,
       staged_collection: null,
+      staged_custom_header: null,
+      staged_custom_footer: null,
     };
 
     await pbAdmin.collection("entries_main").update(entryId, updateData);
@@ -244,6 +260,8 @@ router.post("/entries/bulk-action", requireLogin, async (req, res) => {
             statusUpdateData.staged_content = null;
             statusUpdateData.staged_tags = null;
             statusUpdateData.staged_collection = null;
+            statusUpdateData.staged_custom_header = null;
+            statusUpdateData.staged_custom_footer = null;
           }
           await client.collection(sourceCollectionName).update(id, statusUpdateData);
           break;
@@ -260,12 +278,16 @@ router.post("/entries/bulk-action", requireLogin, async (req, res) => {
             type: record.staged_type,
             content: record.staged_content,
             tags: record.staged_tags,
+            custom_header: record.staged_custom_header || null,
+            custom_footer: record.staged_custom_footer || null,
             has_staged_changes: false,
             staged_title: null,
             staged_type: null,
             staged_content: null,
             staged_tags: null,
             staged_collection: null,
+            staged_custom_header: null,
+            staged_custom_footer: null,
           };
           await client.collection(sourceCollectionName).update(id, publishUpdateData);
           break;
@@ -274,16 +296,24 @@ router.post("/entries/bulk-action", requireLogin, async (req, res) => {
           if (sourceCollectionName !== "entries_main" || !targetCollectionName) {
             throw new Error("Invalid state for archive action.");
           }
-          const archiveData = { ...record, original_id: record.id };
+          const archiveData = {
+            ...record,
+            original_id: record.id,
+            custom_header: record.custom_header || null,
+            custom_footer: record.custom_footer || null,
+          };
           archiveData.id = undefined;
           archiveData.collectionId = undefined;
           archiveData.collectionName = undefined;
+          archiveData.files = undefined;
           archiveData.has_staged_changes = false;
           archiveData.staged_title = null;
           archiveData.staged_type = null;
           archiveData.staged_content = null;
           archiveData.staged_tags = null;
           archiveData.staged_collection = null;
+          archiveData.staged_custom_header = null;
+          archiveData.staged_custom_footer = null;
           const archivedRecord = await client.collection(targetCollectionName).create(archiveData);
           await client.collection(sourceCollectionName).delete(id);
           logDetails.archivedId = archivedRecord.id;
@@ -293,7 +323,11 @@ router.post("/entries/bulk-action", requireLogin, async (req, res) => {
           if (sourceCollectionName !== "entries_archived" || !targetCollectionName) {
             throw new Error("Invalid state for unarchive action.");
           }
-          const mainData = { ...record };
+          const mainData = {
+            ...record,
+            custom_header: record.custom_header || null,
+            custom_footer: record.custom_footer || null,
+          };
           mainData.id = undefined;
           mainData.original_id = undefined;
           mainData.collectionId = undefined;
@@ -304,6 +338,8 @@ router.post("/entries/bulk-action", requireLogin, async (req, res) => {
           mainData.staged_content = null;
           mainData.staged_tags = null;
           mainData.staged_collection = null;
+          mainData.staged_custom_header = null;
+          mainData.staged_custom_footer = null;
           const newMainRecord = await client.collection(targetCollectionName).create(mainData);
           await client.collection(sourceCollectionName).delete(id);
           logDetails.newId = newMainRecord.id;
@@ -502,6 +538,105 @@ router.post("/entries/:id/upload-image", requireLogin, upload.single("image"), a
     }
     const errorMessage = error.message || "Failed to upload image.";
     res.status(500).json({ error: errorMessage });
+  }
+});
+
+router.get("/archived-entries", requireLogin, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const filter = `owner = '${userId}'`;
+    const page = Number.parseInt(req.query.page) || 1;
+    const perPage = Number.parseInt(req.query.perPage) || ITEMS_PER_PAGE;
+    const sort = req.query.sort || "-updated";
+
+    const resultList = await pbAdmin.collection("entries_archived").getList(page, perPage, {
+      sort: sort,
+      filter: filter,
+      fields: "id,title,status,type,updated,original_id",
+    });
+
+    const entriesWithDetails = resultList.items.map((entry) => ({
+      ...entry,
+      formattedUpdated: new Date(entry.updated).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    }));
+
+    res.json({
+      ...resultList,
+      items: entriesWithDetails,
+    });
+  } catch (error) {
+    console.error("API Error fetching archived entries:", error);
+    res.status(500).json({ error: "Failed to fetch archived entries" });
+  }
+});
+
+router.get("/headers", requireLogin, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const filter = `owner = '${userId}'`;
+    const page = Number.parseInt(req.query.page) || 1;
+    const perPage = Number.parseInt(req.query.perPage) || ITEMS_PER_PAGE;
+    const sort = req.query.sort || "-updated";
+
+    const resultList = await pb.collection("headers").getList(page, perPage, {
+      sort: sort,
+      filter: filter,
+      fields: "id,name,updated",
+    });
+
+    const headersWithDetails = resultList.items.map((header) => ({
+      ...header,
+      formattedUpdated: new Date(header.updated).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    }));
+
+    res.json({
+      ...resultList,
+      items: headersWithDetails,
+    });
+  } catch (error) {
+    console.error("API Error fetching user headers:", error);
+    res.status(500).json({ error: "Failed to fetch headers" });
+  }
+});
+
+router.get("/footers", requireLogin, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const filter = `owner = '${userId}'`;
+    const page = Number.parseInt(req.query.page) || 1;
+    const perPage = Number.parseInt(req.query.perPage) || ITEMS_PER_PAGE;
+    const sort = req.query.sort || "-updated";
+
+    const resultList = await pb.collection("footers").getList(page, perPage, {
+      sort: sort,
+      filter: filter,
+      fields: "id,name,updated",
+    });
+
+    const footersWithDetails = resultList.items.map((footer) => ({
+      ...footer,
+      formattedUpdated: new Date(footer.updated).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    }));
+
+    res.json({
+      ...resultList,
+      items: footersWithDetails,
+    });
+  } catch (error) {
+    console.error("API Error fetching user footers:", error);
+    res.status(500).json({ error: "Failed to fetch footers" });
   }
 });
 

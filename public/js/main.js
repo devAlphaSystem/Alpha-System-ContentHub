@@ -6,7 +6,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const bulkSelectedCount = document.getElementById("bulk-selected-count");
   const bulkActionsButton = document.getElementById("bulk-actions-button");
   const bulkActionsMenu = document.getElementById("bulk-actions-menu");
-
   const paginationControls = document.querySelector(".pagination-controls");
   const prevPageBtn = document.getElementById("prev-page-btn");
   const nextPageBtn = document.getElementById("next-page-btn");
@@ -14,7 +13,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const dataCard = document.querySelector(".data-card");
   const emptyStateCard = document.querySelector(".empty-state-card");
   const tableElement = document.querySelector(".data-table");
-
   const collectionFilterSelect = document.getElementById("collection-filter-select");
   const searchInput = document.getElementById("search-input");
 
@@ -22,10 +20,21 @@ document.addEventListener("DOMContentLoaded", () => {
   let totalPages = 1;
   let totalItems = 0;
   const itemsPerPage = 10;
-  let currentSortKey = "updated";
-  let currentSortDir = "desc";
+  let currentSortKey = "title";
+  let currentSortDir = "asc";
   let isLoading = false;
   let currentCollectionFilter = "";
+  let currentSearchTerm = "";
+  let searchDebounceTimer;
+
+  function debounce(func, delay) {
+    return function (...args) {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        func.apply(this, args);
+      }, delay);
+    };
+  }
 
   function renderTableRow(entry) {
     const formattedUpdated =
@@ -110,22 +119,31 @@ document.addEventListener("DOMContentLoaded", () => {
       if (emptyStateCard) emptyStateCard.style.display = "none";
       const noMatchRow = entriesTableBody.querySelector(".no-match-row");
       if (noMatchRow) noMatchRow.remove();
-    } else if (totalItems > 0) {
-      const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 9;
-      entriesTableBody.innerHTML = `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">No entries found on this page.</td></tr>`;
-      if (dataCard) dataCard.classList.remove("hidden");
-      if (emptyStateCard) emptyStateCard.style.display = "none";
     } else {
-      if (dataCard) dataCard.classList.add("hidden");
-      if (emptyStateCard) emptyStateCard.style.display = "";
+      const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 9;
+      const message = currentSearchTerm ? "No entries match your search." : currentCollectionFilter ? "No entries found in this collection." : "No entries found.";
+      entriesTableBody.innerHTML = `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">${message}</td></tr>`;
+
+      if (totalItems === 0) {
+        if (dataCard) dataCard.classList.add("hidden");
+        if (emptyStateCard) emptyStateCard.style.display = "";
+      } else {
+        if (dataCard) dataCard.classList.remove("hidden");
+        if (emptyStateCard) emptyStateCard.style.display = "none";
+      }
     }
 
     attachActionListeners();
+    updateBulkActionUI();
   }
 
-  async function fetchEntries() {
+  async function fetchEntries(isNewSearch = false) {
     if (isLoading) return;
     isLoading = true;
+
+    if (isNewSearch) {
+      currentPage = 1;
+    }
 
     if (refreshButton) {
       refreshButton.disabled = true;
@@ -138,15 +156,30 @@ document.addEventListener("DOMContentLoaded", () => {
     if (searchInput) searchInput.disabled = true;
 
     const sortParam = `${currentSortDir === "desc" ? "-" : ""}${currentSortKey}`;
-    let url = `/api/entries?page=${currentPage}&perPage=${itemsPerPage}&sort=${sortParam}&fields=*,has_staged_changes`;
+    const params = new URLSearchParams({
+      page: currentPage.toString(),
+      perPage: itemsPerPage.toString(),
+      sort: sortParam,
+    });
+
     if (currentCollectionFilter && currentCollectionFilter !== "") {
-      url += `&collection=${encodeURIComponent(currentCollectionFilter)}`;
+      params.append("collection", currentCollectionFilter);
     }
+    if (currentSearchTerm && currentSearchTerm.trim() !== "") {
+      params.append("search", currentSearchTerm.trim());
+    }
+
+    const url = `/api/entries?${params.toString()}`;
 
     try {
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMsg = `HTTP error! status: ${response.status}`;
+        try {
+          const errData = await response.json();
+          errorMsg = errData.error || errorMsg;
+        } catch (_) {}
+        throw new Error(errorMsg);
       }
       const data = await response.json();
 
@@ -155,11 +188,10 @@ document.addEventListener("DOMContentLoaded", () => {
       totalItems = data.totalItems;
 
       renderTable(data.items);
-      applyTableFilters();
       updatePaginationControls();
     } catch (error) {
       console.error("Failed to fetch entries:", error);
-      window.showAlertModal("Error loading entries. Please try refreshing the page.", "Loading Error");
+      window.showAlertModal(`Error loading entries: ${error.message}`, "Loading Error");
       if (entriesTableBody && tableElement) {
         const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 9;
         entriesTableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading entries.</td></tr>`;
@@ -181,50 +213,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (searchInput) searchInput.disabled = false;
       updatePaginationControls();
     }
-  }
-
-  function applyTableFilters() {
-    if (!entriesTableBody) return;
-
-    const rows = entriesTableBody.querySelectorAll("tr[data-entry-id]");
-    let visibleCount = 0;
-    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : "";
-
-    for (const row of rows) {
-      let shouldShow = true;
-
-      if (searchTerm !== "") {
-        const title = row.querySelector("td[data-label='Title']")?.textContent.toLowerCase() || "";
-        const collection = row.querySelector("td[data-label='Collection']")?.textContent.toLowerCase() || "";
-        const type = row.querySelector("td[data-label='Type'] span.type-badge")?.textContent.toLowerCase() || "";
-
-        const matchesSearch = title.includes(searchTerm) || collection.includes(searchTerm) || type.includes(searchTerm);
-
-        if (!matchesSearch) {
-          shouldShow = false;
-        }
-      }
-
-      row.style.display = shouldShow ? "" : "none";
-      if (shouldShow) {
-        visibleCount++;
-      }
-    }
-
-    const noMatchRow = entriesTableBody.querySelector(".no-match-row");
-    if (noMatchRow) noMatchRow.remove();
-
-    if (rows.length > 0 && visibleCount === 0) {
-      const colSpan = tableElement?.querySelector("thead tr")?.childElementCount || 9;
-      if (!entriesTableBody.querySelector(".no-match-row")) {
-        entriesTableBody.insertAdjacentHTML("beforeend", `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">No entries match the current criteria.</td></tr>`);
-      }
-    } else if (rows.length === 0 && totalItems === 0 && !isLoading) {
-      if (dataCard) dataCard.classList.add("hidden");
-      if (emptyStateCard) emptyStateCard.style.display = "";
-    }
-
-    updateBulkActionUI();
   }
 
   function handleStandardFormSubmit(event) {
@@ -302,8 +290,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       window.showAlertModal(result.message || "Staged changes published.", "Success");
 
-      setTimeout(async () => {
-        await fetchEntries();
+      setTimeout(() => {
+        fetchEntries();
       }, 100);
     } catch (error) {
       console.error("Failed to publish staged changes:", error);
@@ -311,14 +299,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally {
       isLoading = false;
     }
-  }
-
-  function attachActionListeners() {
-    entriesTableBody?.removeEventListener("submit", handleStandardFormSubmit);
-    entriesTableBody?.removeEventListener("click", handleApiButtonClick);
-
-    entriesTableBody?.addEventListener("submit", handleStandardFormSubmit);
-    entriesTableBody?.addEventListener("click", handleApiButtonClick);
   }
 
   function updateBulkActionUI() {
@@ -339,6 +319,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const totalVisible = visibleCheckboxes.length;
       selectAllCheckbox.checked = totalVisible > 0 && count === totalVisible;
       selectAllCheckbox.indeterminate = count > 0 && count < totalVisible;
+      selectAllCheckbox.disabled = totalVisible === 0;
     }
   }
 
@@ -346,11 +327,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (event.target.classList.contains("entry-checkbox")) {
       updateBulkActionUI();
     }
-  }
-
-  function attachEntryCheckboxListeners() {
-    entriesTableBody?.removeEventListener("change", handleCheckboxChange);
-    entriesTableBody?.addEventListener("change", handleCheckboxChange);
   }
 
   async function handleBulkActionConfirm(action, ids) {
@@ -380,8 +356,8 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           window.showAlertModal(result.message || `Bulk action '${action}' completed successfully.`, "Success");
         }
-        setTimeout(async () => {
-          await fetchEntries();
+        setTimeout(() => {
+          fetchEntries();
         }, 100);
       }
     } catch (error) {
@@ -393,8 +369,28 @@ document.addEventListener("DOMContentLoaded", () => {
         bulkActionsButton.disabled = false;
         bulkActionsButton.innerHTML = originalButtonText;
       }
+      if (selectAllCheckbox) selectAllCheckbox.checked = false;
+      entriesTableBody?.querySelectorAll(".entry-checkbox:checked").forEach((cb) => (cb.checked = false));
       updateBulkActionUI();
     }
+  }
+
+  const debouncedSearch = debounce(() => {
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    if (searchTerm !== currentSearchTerm) {
+      currentSearchTerm = searchTerm;
+      fetchEntries(true);
+    }
+  }, 400);
+
+  function attachActionListeners() {
+    entriesTableBody?.removeEventListener("submit", handleStandardFormSubmit);
+    entriesTableBody?.removeEventListener("click", handleApiButtonClick);
+    entriesTableBody?.removeEventListener("change", handleCheckboxChange);
+
+    entriesTableBody?.addEventListener("submit", handleStandardFormSubmit);
+    entriesTableBody?.addEventListener("click", handleApiButtonClick);
+    entriesTableBody?.addEventListener("change", handleCheckboxChange);
   }
 
   function attachSortListeners() {
@@ -412,7 +408,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (sortKey === currentSortKey) {
           newSortDir = currentSortDir === "asc" ? "desc" : "asc";
         } else {
-          newSortDir = "asc";
+          newSortDir = sortKey === "updated" || sortKey === "views" ? "desc" : "asc";
         }
 
         currentSortKey = sortKey;
@@ -478,21 +474,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (event.target.classList.contains("dropdown-item")) {
       const action = event.target.dataset.action;
       const selectedCheckboxes = entriesTableBody.querySelectorAll(".entry-checkbox:checked");
-      const selectedIds = [];
-      for (const cb of selectedCheckboxes) {
-        selectedIds.push(cb.value);
-      }
+      const selectedIds = Array.from(selectedCheckboxes).map((cb) => cb.value);
 
       if (action && selectedIds.length > 0) {
         bulkActionsMenu.classList.remove("show");
+
         const isDelete = action === "delete" || action === "permanent-delete";
         const isPublishStaged = action === "publish-staged";
         let message = `Are you sure you want to perform the action '<strong>${escapeHtml(action)}</strong>' on <strong>${selectedIds.length}</strong> item(s)?`;
         if (isDelete) message += "<br>This action cannot be undone.";
-        if (isPublishStaged) message += "<br>This will overwrite live content.";
+        if (isPublishStaged) message += "<br>This will overwrite live content for published items with staged changes.";
 
         window.showConfirmModal({
-          details: { action, ids: selectedIds },
           title: "Confirm Bulk Action",
           message: message,
           action: `bulk-${action}`,
@@ -506,83 +499,86 @@ document.addEventListener("DOMContentLoaded", () => {
   collectionFilterSelect?.addEventListener("change", () => {
     if (isLoading) return;
     currentCollectionFilter = collectionFilterSelect.value;
-    currentPage = 1;
-    fetchEntries();
+    fetchEntries(true);
   });
 
-  searchInput?.addEventListener("input", () => {
-    applyTableFilters();
-  });
+  searchInput?.addEventListener("input", debouncedSearch);
 
-  const initialSortHeader = document.querySelector(`.data-table th[data-sort-key="${currentSortKey}"]`);
-  if (initialSortHeader) {
-    const icon = initialSortHeader.querySelector(".sort-icon i");
-    if (icon) {
-      icon.className = currentSortDir === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
-    }
-  }
-
-  attachActionListeners();
-  attachEntryCheckboxListeners();
-  attachSortListeners();
-
-  const initialPaginationData = document.querySelector(".pagination-controls");
-  if (initialPaginationData) {
-    try {
-      const pageInfoText = document.getElementById("page-info")?.textContent || "";
-      const pageMatch = pageInfoText.match(/Page (\d+) of (\d+)/);
-      const itemsMatch = pageInfoText.match(/\((\d+) items\)/);
-      if (pageMatch) {
-        currentPage = Number.parseInt(pageMatch[1], 10);
-        totalPages = Number.parseInt(pageMatch[2], 10);
+  function initializeDashboard() {
+    const initialSortHeader = document.querySelector(`.data-table th[data-sort-key="${currentSortKey}"]`);
+    if (initialSortHeader) {
+      const icon = initialSortHeader.querySelector(".sort-icon i");
+      if (icon) {
+        icon.className = currentSortDir === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
       }
-      if (itemsMatch) {
-        totalItems = Number.parseInt(itemsMatch[1], 10);
+    }
+    document.querySelectorAll(`.data-table th[data-sort-key]:not([data-sort-key="${currentSortKey}"]) .sort-icon i`).forEach((icon) => {
+      icon.className = "fas fa-sort";
+    });
+
+    attachActionListeners();
+    attachSortListeners();
+
+    const initialPaginationData = document.querySelector(".pagination-controls");
+    if (initialPaginationData) {
+      try {
+        const pageInfoText = document.getElementById("page-info")?.textContent || "";
+        const pageMatch = pageInfoText.match(/Page (\d+) of (\d+)/);
+        const itemsMatch = pageInfoText.match(/\((\d+) items\)/);
+        if (pageMatch) {
+          currentPage = Number.parseInt(pageMatch[1], 10);
+          totalPages = Number.parseInt(pageMatch[2], 10);
+        }
+        if (itemsMatch) {
+          totalItems = Number.parseInt(itemsMatch[1], 10);
+        }
+      } catch (e) {
+        console.warn("Could not parse initial pagination state from EJS.");
+        currentPage = 1;
+        totalPages = 1;
+        totalItems = 0;
       }
-    } catch (e) {
-      console.warn("Could not parse initial pagination state from EJS.");
-      currentPage = 1;
-      totalPages = 1;
-      totalItems = 0;
+    }
+
+    updatePaginationControls();
+    updateBulkActionUI();
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const actionMessage = urlParams.get("action");
+    const errorMessage = urlParams.get("error");
+
+    if (actionMessage || errorMessage) {
+      if (actionMessage) {
+        let messageText = "Action completed successfully.";
+        if (actionMessage === "deleted") messageText = "Entry deleted successfully.";
+        else if (actionMessage === "archived") messageText = "Entry archived successfully.";
+        window.showAlertModal(messageText, "Success");
+      } else if (errorMessage) {
+        let messageText = "An error occurred.";
+        if (errorMessage === "delete_failed") messageText = "Failed to delete the entry.";
+        else if (errorMessage === "archive_failed") messageText = "Failed to archive the entry.";
+        window.showAlertModal(messageText, "Error");
+      }
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    const needsInitialFetch = (entriesTableBody && entriesTableBody.children.length === 0 && (!emptyStateCard || emptyStateCard.style.display === "none")) || totalPages > 1;
+
+    if (needsInitialFetch && !actionMessage && !errorMessage) {
+      fetchEntries();
+    } else if (entriesTableBody && entriesTableBody.children.length > 0) {
+      attachActionListeners();
+    }
+
+    if (collectionFilterSelect) {
+      collectionFilterSelect.value = "";
+      currentCollectionFilter = "";
+    }
+    if (searchInput) {
+      searchInput.value = "";
+      currentSearchTerm = "";
     }
   }
 
-  updatePaginationControls();
-  updateBulkActionUI();
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const actionMessage = urlParams.get("action");
-  const errorMessage = urlParams.get("error");
-
-  if (actionMessage || errorMessage) {
-    if (actionMessage) {
-      let messageText = "Action completed successfully.";
-      if (actionMessage === "deleted") messageText = "Entry deleted successfully.";
-      else if (actionMessage === "archived") messageText = "Entry archived successfully.";
-      else if (actionMessage === "unarchived") messageText = "Entry unarchived successfully.";
-      else if (actionMessage === "published_staged") messageText = "Staged changes published successfully.";
-      window.showAlertModal(messageText, "Success");
-    } else if (errorMessage) {
-      let messageText = "An error occurred.";
-      if (errorMessage === "delete_failed") messageText = "Failed to delete the entry.";
-      else if (errorMessage === "archive_failed") messageText = "Failed to archive the entry.";
-      else if (errorMessage === "unarchive_failed") messageText = "Failed to unarchive the entry.";
-      else if (errorMessage === "publish_staged_failed") messageText = "Failed to publish staged changes.";
-      window.showAlertModal(messageText, "Error");
-    }
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-
-  const needsInitialFetch = (entriesTableBody && entriesTableBody.children.length === 0 && (!emptyStateCard || emptyStateCard.style.display === "none")) || totalPages > 1;
-
-  if (needsInitialFetch && !actionMessage && !errorMessage) {
-    fetchEntries();
-  } else if (entriesTableBody && entriesTableBody.children.length > 0) {
-    applyTableFilters();
-  }
-
-  if (collectionFilterSelect) {
-    collectionFilterSelect.value = "";
-    currentCollectionFilter = "";
-  }
+  initializeDashboard();
 });

@@ -7,7 +7,7 @@
     <title>
       <%= entry.title %> - <%= entry.type==='changelog' ? 'Changelog' : 'Documentation' %>
     </title>
-    
+
     <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
 
     <!-- Fonts -->
@@ -50,42 +50,48 @@
       </aside>
 
       <div class="main-content">
+        <% if (locals.customHeaderHtml) { %>
+          <div class="custom-header-content">
+            <%- customHeaderHtml %>
+          </div>
+        <% } %>
+
         <header class="content-header">
           <div class="header-meta">
             <span class="entry-type <%= entry.type %>">
               <%= entry.type==='changelog' ? 'Changelog' : 'Documentation' %>
             </span>
-          </div>
-
-          <h1 class="entry-title">
-            <%= entry.title %>
-          </h1>
-          
-          <div class="sub-header">
-            <% if (entry.tags && entry.tags.trim()) { %>
-              <div class="entry-tags">
-                <% entry.tags.split(',').map(tag => tag.trim()).filter(tag => tag).forEach(tag => { %>
-                  <span class="tag-badge"><%= tag %></span>
-                <% }) %>
-              </div>
-            <% } %>
-
+            
             <% if (locals.readingTime && readingTime > 0) { %>
-              <span class="reading-time">
-                <i class="fas fa-clock"></i> <%= readingTime %> min read
-              </span>
+              <span class="reading-time"> <i class="far fa-clock"></i> <%= readingTime %> min read </span>
             <% } %>
-
-            <p class="publish-date">Updated: <%= new Date(entry.updated).toLocaleDateString('en-US', { year: 'numeric' , month: 'long' , day: 'numeric' }) %></p>
           </div>
+
+          <h1 class="entry-title"><%= entry.title %></h1>
+
+          <% if (entry.tags && entry.tags.trim()) { %>
+            <div class="entry-tags">
+              <% entry.tags.split(',').map(tag => tag.trim()).filter(tag => tag).forEach(tag => { %>
+                <span class="tag-badge"><%= tag %></span>
+              <% }) %>
+            </div>
+          <% } %>
+
+          <p class="publish-date">Published: <%= new Date(entry.updated).toLocaleDateString('en-US', { year: 'numeric' , month: 'long' , day: 'numeric' }) %></p>
         </header>
 
         <article id="markdown-content-area" class="markdown-body">
           <%- contentHtml %>
         </article>
-      </div>
+
+        <% if (locals.customFooterHtml) { %>
+          <div class="custom-footer-content">
+            <%- customFooterHtml %>
+          </div>
+        <% } %>
+      </div> 
     </div>
-    
+
     <!-- Highlight JS -->
     <script src="/js/vendors/highlight.min.js"></script>
 

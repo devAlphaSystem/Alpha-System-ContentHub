@@ -1005,6 +1005,10 @@ textarea.form-control {
   border-color: var(--danger-light-border);
 }
 
+.alert-danger .alert-icon {
+  color: var(--danger-color);
+}
+
 .alert-info {
   color: var(--info-color);
   background-color: var(--info-light-bg);
@@ -1013,6 +1017,16 @@ textarea.form-control {
 
 .alert-info .alert-icon {
   color: var(--info-color);
+}
+
+.alert-success {
+  color: var(--success-color);
+  background-color: var(--type-docs-bg);
+  border-color: var(--success-color);
+}
+
+.alert-success .alert-icon {
+  color: var(--success-color);
 }
 
 .error-summary ul {
@@ -1912,6 +1926,16 @@ body.dark-mode .alert-info {
 
 body.dark-mode .alert-info .alert-icon {
   color: var(--dark-info-color);
+}
+
+body.dark-mode .alert-success {
+  color: var(--dark-success-color);
+  background-color: var(--dark-type-docs-bg);
+  border-color: var(--dark-success-color);
+}
+
+body.dark-mode .alert-success .alert-icon {
+  color: var(--dark-success-color);
 }
 
 body.dark-mode .nav-buttons-container {
