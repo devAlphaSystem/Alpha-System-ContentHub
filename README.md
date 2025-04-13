@@ -1,4 +1,4 @@
-# Content Hub 📝✨
+![](https://db.alphasystem.dev/api/files/pbc_3165375535/contenthubmarkd/contenthub_logo_bmf7hxuvle.png)
 
 A simple NodeJS application for creating and managing changelogs and documentation using Markdown, powered by PocketBase.
 
@@ -53,16 +53,16 @@ Before you begin, ensure you have the following installed:
 
 1.  **Clone the repository:**
 
-```bash
-  git clone https://github.com/devAlphaSystem/Alpha-System-ContentHub.git
-  cd Alpha-System-ContentHub
-```
+    ```bash
+      git clone https://github.com/devAlphaSystem/Alpha-System-ContentHub.git
+      cd Alpha-System-ContentHub
+    ```
 
 2.  **Install dependencies:**
 
-```bash
-  npm install
-```
+    ```bash
+      npm install
+    ```
 
 ## Configuration
 
@@ -70,186 +70,81 @@ Configuration is managed through a `.env` file in the project root.
 
 1.  **Create `.env` and fill in the values:**
 
-```dotenv
-  # --- Core Settings ---
-  # PocketBase instance URL
-  POCKETBASE_URL=http://127.0.0.1:8090
-  # Credentials for an ADMIN user in PocketBase (used for background tasks)
-  POCKETBASE_ADMIN_EMAIL=your_admin_email@example.com
-  POCKETBASE_ADMIN_PASSWORD=your_admin_password
+    ```dotenv
+      # PocketBase instance URL
+      POCKETBASE_URL=http://127.0.0.1:8090
 
-  # Set to "production" for production environments, otherwise "development"
-  NODE_ENV=development
+      # Credentials for an ADMIN/SUPERUSER account in PocketBase (used for setup script)
+      POCKETBASE_ADMIN_EMAIL=your_admin_email@example.com
+      POCKETBASE_ADMIN_PASSWORD=your_admin_password
 
-  # Port for the NodeJS application to run on
-  PORT=3000
+      # Set to "production" for production environments, otherwise "development"
+      NODE_ENV=development
 
-  # --- Security ---
-  # Generate strong, random strings for these secrets!
-  # Use a password manager or online generator.
-  SESSION_SECRET=your-very-strong-random-secret-key-here
-  IP_HASH_SALT=another-very-strong-random-secret-for-hashing-ips
-```
+      # Port for the NodeJS application to run on
+      PORT=3000
 
-2.  **Configure PocketBase Collections:**
+      # Generate strong, random strings for these secrets!
+      SESSION_SECRET=your-very-strong-random-secret-key-here
+      IP_HASH_SALT=another-very-strong-random-secret-for-hashing-ips
+    ```
 
-    You need to set up specific collections and fields in your PocketBase Admin UI (usually at `http://YOUR_POCKETBASE_URL/_/`).
+2.  **Configure PocketBase Collections (Automated Setup):**
 
-    - **`users` Collection (Default):**
+    This project includes a script to automatically set up the required PocketBase collections using an exported schema definition.
 
-      - Go to Settings > Auth Providers > Email/Password.
-      - Ensure **"Allow email/password authentication?"** is **ENABLED**.
-      - Create at least one user via the UI so you can log into Content Hub.
+    **Prerequisites for Automated Setup:**
 
-    - **`entries_main` Collection:**
+    - Your PocketBase instance must be running at the `POCKETBASE_URL` specified in your `.env` file.
+    - The `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD` in your `.env` file must correspond to a valid **Admin/Superuser** account in your PocketBase instance.
+    - The `pb_schema.json` file (containing the collection definitions exported from a working instance) must be present in the project root directory.
+    - Node.js dependencies must be installed (`npm install`).
 
-      - **Name:** `entries_main`
-      - **Fields:**
-        - `title` (Type: `Text`, Required, Nonempty, Max Length: e.g., 200)
-        - `type` (Type: `Select`, Required, Values: `changelog, documentation`, Max Select: `1`)
-        - `content` (Type: `Rich editor`, Required, Nonempty)
-        - `status` (Type: `Select`, Required, Values: `draft, published`, Max Select: `1`)
-        - `tags` (Type: `Text`, Max Length: e.g., 250)
-        - `collection` (Type: `Text`, Max Length: e.g., 100)
-        - `views` (Type: `Number`, Default Value: `0`, Min: `0`)
-        - `owner` (Type: `Relation`, Required, Collection: `users`, Max Select: `1`, Cascade Delete: `False`)
-        - `files` (Type: `File`, Max Select: `Multiple`)
-        - `has_staged_changes` (Type: `Bool`, Default Value: `false`)
-        - `staged_title` (Type: `Text`, Max Length: e.g., 200)
-        - `staged_type` (Type: `Select`, Values: `changelog, documentation`, Max Select: `1`)
-        - `staged_content` (Type: `Rich editor`)
-        - `staged_tags` (Type: `Text`, Max Length: e.g., 250)
-        - `custom_header` (Type: `Relation`, Collection: `headers`, Max Select: `1`, Cascade Delete: `False`)
-        - `custom_footer` (Type: `Relation`, Collection: `footers`, Max Select: `1`, Cascade Delete: `False`)
-        - `staged_custom_header` (Type: `Relation`, Collection: `headers`, Max Select: `1`, Cascade Delete: `False`)
-        - `staged_custom_footer` (Type: `Relation`, Collection: `footers`, Max Select: `1`, Cascade Delete: `False`)
-      - **API Rules:** (Adjust as needed, especially Update rule for header/footer ownership)
-        - List: `owner.id = @request.auth.id`
-        - View: `status = "published" || owner.id = @request.auth.id`
-        - Create: `owner.id = @request.auth.id`
-        - Update: `owner.id = @request.auth.id`
-        - Delete: `owner.id = @request.auth.id`
+    **Running the Setup Script:**
 
-    - **`entries_archived` Collection:**
+    - Open your terminal in the project root directory (`Alpha-System-ContentHub`).
+    - Run the command:
+      ```bash
+        node build_pb.js
+      ```
+    - The script will connect to your PocketBase instance, authenticate as the admin user, and attempt to import the collections defined in `pb_schema.json`. It will skip collections that already exist.
+    - Review the script's output for any errors. If errors related to existing collections occur during development, you might need to manually delete the partially created collections from the PocketBase Admin UI (`http://YOUR_POCKETBASE_URL/_/`) and re-run the script.
 
-      - **Name:** `entries_archived`
-      - **Fields:** (Mirror `entries_main` non-staged fields, plus `original_id`)
-        - `title` (Type: `Text`)
-        - `type` (Type: `Select`, Values: `changelog, documentation`)
-        - `content` (Type: `Rich editor`)
-        - `status` (Type: `Select`, Values: `draft, published`)
-        - `tags` (Type: `Text`)
-        - `collection` (Type: `Text`)
-        - `views` (Type: `Number`)
-        - `owner` (Type: `Relation`, Collection: `users`)
-        - `original_id` (Type: `Text`)
-        - `custom_header` (Type: `Relation`, Collection: `headers`, Max Select: `1`)
-        - `custom_footer` (Type: `Relation`, Collection: `footers`, Max Select: `1`)
-        - `files` (Type: `File`, Max Select: `Multiple`) _(Note: Files might not be fully handled on archive/unarchive)_
-      - **API Rules:** (Typically Admin/System only, but can mirror `entries_main` if needed)
-        - List: `owner.id = @request.auth.id`
-        - View: `status = "published" || owner.id = @request.auth.id`
-        - Create: `owner.id = @request.auth.id`
-        - Update: `owner.id = @request.auth.id`
-        - Delete: `owner.id = @request.auth.id`
+    > If the automated script doesn't work, you'll have to setup collections [manually](MANUAL_CONFIG.md).
 
-    - **`entries_previews` Collection:**
+3.  **Configure `users` Collection (Manual Step):**
 
-      - **Name:** `entries_previews`
-      - **Fields:**
-        - `entry` (Type: `Relation`, Required, Collection: `entries_main`, Max Select: `1`, Cascade Delete: `False`)
-        - `token` (Type: `Text`, Required, Nonempty, Unique)
-        - `expires_at` (Type: `DateTime`, Required)
-        - `password_hash` (Type: `Text`)
-      - **API Rules:** (Restrict to Admin/System)
-        - List: `@request.auth.id != ""` (Or restrict to admin role)
-        - View: `` _(Publicly viewable)_
-        - Create: `@request.auth.id != ""` (Or restrict to admin role)
-        - Update: `@request.auth.id != ""` (Or restrict to admin role)
-        - Delete: `@request.auth.id != ""` (Or restrict to admin role)
+    You still need to configure the default `users` collection for application login:
 
-    - **`templates` Collection:**
-
-      - **Name:** `templates`
-      - **Fields:**
-        - `name` (Type: `Text`, Required, Nonempty)
-        - `content` (Type: `Rich editor`, Required)
-        - `owner` (Type: `Relation`, Required, Collection: `users`, Max Select: `1`, Cascade Delete: `False`)
-      - **API Rules:**
-        - List: `owner.id = @request.auth.id`
-        - View: `owner.id = @request.auth.id`
-        - Create: `owner.id = @request.auth.id`
-        - Update: `owner.id = @request.auth.id`
-        - Delete: `owner.id = @request.auth.id`
-
-    - **`headers` Collection (Create New):** **(New)**
-
-      - **Name:** `headers`
-      - **Fields:**
-        - `name` (Type: `Text`, Required, Nonempty)
-        - `content` (Type: `Rich editor`, Required) _(Ensure HTML is allowed in Editor settings)_
-        - `owner` (Type: `Relation`, Required, Collection: `users`, Max Select: `1`, Cascade Delete: `False`)
-      - **API Rules:**
-        - List: `owner.id = @request.auth.id`
-        - View: `owner.id = @request.auth.id`
-        - Create: `owner.id = @request.auth.id`
-        - Update: `owner.id = @request.auth.id`
-        - Delete: `owner.id = @request.auth.id`
-
-    - **`footers` Collection:**
-
-      - **Name:** `footers`
-      - **Fields:**
-        - `name` (Type: `Text`, Required, Nonempty)
-        - `content` (Type: `Rich editor`, Required) _(Ensure HTML is allowed in Editor settings)_
-        - `owner` (Type: `Relation`, Required, Collection: `users`, Max Select: `1`, Cascade Delete: `False`)
-      - **API Rules:**
-        - List: `owner.id = @request.auth.id`
-        - View: `owner.id = @request.auth.id`
-        - Create: `owner.id = @request.auth.id`
-        - Update: `owner.id = @request.auth.id`
-        - Delete: `owner.id = @request.auth.id`
-
-    - **`audit_logs` Collection:**
-
-      - **Name:** `audit_logs`
-      - **Fields:**
-        - `user` (Type: `Relation`, Collection: `users`, Max Select: `1`, Cascade Delete: `False`)
-        - `action` (Type: `Text`, Required)
-        - `target_collection` (Type: `Text`)
-        - `target_record` (Type: `Text`)
-        - `details` (Type: `Json`)
-        - `ip_address` (Type: `Text`)
-      - **API Rules:** (Restrict to Admin/System)
-        - List: `@request.auth.id != ""` (Or restrict to admin role)
-        - View: `@request.auth.id != ""` (Or restrict to admin role)
-        - Create: `@request.auth.id != ""` (Or restrict to admin role)
-        - Update: `@request.auth.id != ""` (Or restrict to admin role)
-        - Delete: `@request.auth.id != ""` (Or restrict to admin role)
+    - Navigate to your PocketBase Admin UI (e.g., `http://127.0.0.1:8090/_/`).
+    - Go to `users` collection > Options > Identity/Password.
+    - Ensure **"Identity/Password"** is **ENABLED**.
+    - You might want to disable **"Send email alert for new logins"** to avoid error logs.
+    - Create at least one **non-admin user** account via the UI. This user account will be used to log into the Content Hub application itself.
 
 ## Running the Application
 
-1.  **Ensure PocketBase is running.**
+1.  **Ensure PocketBase is running** and the collections have been configured (using `node build_pb.js` or migrations).
 2.  **Start the Node.js application:**
 
     - **Development Mode (with automatic restarts using `nodemon`):**
 
-    ```bash
-      npm run dev
-    ```
+      ```bash
+        npm run dev
+      ```
 
     - **Production Mode:**
 
-    ```bash
-      npm start
-    ```
+      ```bash
+        npm start
+      ```
 
 3.  **Access:**
-    Open your browser and navigate to `http://localhost:3000` (or the port specified in your `.env` file).
+    Open your browser and navigate to `http://localhost:3000` (or the port specified in your `.env` file). Log in using the **non-admin user** credentials you created in PocketBase.
 
 ## Usage
 
-1.  Navigate to the application URL and log in using your PocketBase user credentials.
+1.  Navigate to the application URL and log in using your PocketBase **user** credentials (not the admin ones).
 2.  **Dashboard (`/`):** View, filter, and sort active entries. Perform actions like Archive, Delete, or Publish Staged Changes. Initiate bulk actions.
 3.  **Create New (`/new`):** Create a new documentation or changelog entry. Use the Markdown editor, apply optional templates, and select optional custom headers/footers.
 4.  **Edit Entry (`/edit/:id`):** Modify an existing entry. If the entry is published, changes are staged by default. Select optional custom headers/footers. Generate preview links for drafts.
