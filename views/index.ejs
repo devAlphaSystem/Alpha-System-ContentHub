@@ -93,7 +93,7 @@
               <% if (entry.has_staged_changes) { %>
                 <button type="button" class="btn btn-icon btn-publish-staged js-publish-staged-btn" data-url="/api/entries/<%= entry.id %>/publish-staged" data-entry-title="<%= entry.title %>" title="Publish Staged Changes"> <i class="fas fa-upload"></i> </button>
               <% } %>
-              <a href="<%= entry.viewUrl %>" target="_blank" class="btn btn-icon btn-view" title="View Public Page"> <i class="fas fa-eye"></i> </a>
+              <a href="/view/<%= entry.id %>?from_admin=1" target="_blank" class="btn btn-icon btn-view" title="View Public Page"><i class="fas fa-eye"></i></a>
               <a href="/edit/<%= entry.id %>" class="btn btn-icon btn-edit" title="Edit <%= entry.has_staged_changes ? 'Staged ' : '' %>Entry"> <i class="fas fa-pencil-alt"></i> </a>
               <form action="/archive/<%= entry.id %>" method="POST" class="archive-form" title="Archive Entry">
                 <button type="submit" class="btn btn-icon btn-archive"> <i class="fas fa-archive"></i> </button>

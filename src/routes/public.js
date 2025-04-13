@@ -5,6 +5,24 @@ import { getPublicEntryById, getDraftEntryForPreview, sanitizeHtml, hashPreviewP
 
 const router = express.Router();
 
+const customRenderer = new marked.Renderer();
+const originalCodeRenderer = customRenderer.code;
+
+customRenderer.code = function (code, language, isEscaped) {
+  if (language === "mermaid") {
+    return `<pre class="language-mermaid">${code}</pre>`;
+  }
+  return originalCodeRenderer.call(this, code, language, isEscaped);
+};
+
+function parseMarkdownWithMermaid(markdownContent) {
+  if (!markdownContent) {
+    return "";
+  }
+  const unsafeHtml = marked.parse(markdownContent, { renderer: customRenderer });
+  return sanitizeHtml(unsafeHtml);
+}
+
 router.get("/view/:id", async (req, res, next) => {
   const entryId = req.params.id;
   try {
@@ -12,20 +30,17 @@ router.get("/view/:id", async (req, res, next) => {
     if (!entry) return next();
     logEntryView(req, entryId);
 
-    const unsafeMainHtml = marked.parse(entry.content || "");
-    const cleanMainHtml = sanitizeHtml(unsafeMainHtml);
+    const cleanMainHtml = parseMarkdownWithMermaid(entry.content);
     const readingTime = calculateReadingTime(entry.content);
 
     let customHeaderHtml = null;
     if (entry.expand?.custom_header?.content) {
-      const unsafeHeaderHtml = marked.parse(entry.expand.custom_header.content);
-      customHeaderHtml = sanitizeHtml(unsafeHeaderHtml);
+      customHeaderHtml = parseMarkdownWithMermaid(entry.expand.custom_header.content);
     }
 
     let customFooterHtml = null;
     if (entry.expand?.custom_footer?.content) {
-      const unsafeFooterHtml = marked.parse(entry.expand.custom_footer.content);
-      customFooterHtml = sanitizeHtml(unsafeFooterHtml);
+      customFooterHtml = parseMarkdownWithMermaid(entry.expand.custom_footer.content);
     }
 
     res.render("view", {
@@ -70,8 +85,7 @@ router.get("/preview/:token", async (req, res, next) => {
       });
     }
 
-    const unsafeMainHtml = marked.parse(entry.content || "");
-    const cleanMainHtml = sanitizeHtml(unsafeMainHtml);
+    const cleanMainHtml = parseMarkdownWithMermaid(entry.content);
     const readingTime = calculateReadingTime(entry.content);
 
     const headerRecordToUse = entry.expand?.staged_custom_header || entry.expand?.custom_header;
@@ -79,14 +93,12 @@ router.get("/preview/:token", async (req, res, next) => {
 
     let customHeaderHtml = null;
     if (headerRecordToUse?.content) {
-      const unsafeHeaderHtml = marked.parse(headerRecordToUse.content);
-      customHeaderHtml = sanitizeHtml(unsafeHeaderHtml);
+      customHeaderHtml = parseMarkdownWithMermaid(headerRecordToUse.content);
     }
 
     let customFooterHtml = null;
     if (footerRecordToUse?.content) {
-      const unsafeFooterHtml = marked.parse(footerRecordToUse.content);
-      customFooterHtml = sanitizeHtml(unsafeFooterHtml);
+      customFooterHtml = parseMarkdownWithMermaid(footerRecordToUse.content);
     }
 
     res.render("preview/view", {

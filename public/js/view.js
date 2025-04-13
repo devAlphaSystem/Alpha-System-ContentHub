@@ -189,5 +189,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.classList.toggle("dark-mode");
     const theme = document.body.classList.contains("dark-mode") ? "dark" : "light";
     localStorage.setItem("theme", theme);
+
+    if (typeof mermaid !== "undefined" && typeof initializeMermaid === "function") {
+      initializeMermaid(newTheme);
+    }
   });
 });

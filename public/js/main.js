@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
         year: "numeric",
       });
 
-    const viewUrl = entry.viewUrl || `/view/${escapeHtml(entry.id)}`;
+    const viewUrlWithParam = entry.viewUrl ? `${entry.viewUrl}?from_admin=1` : `/view/${escapeHtml(entry.id)}?from_admin=1`;
     const updatedTimestamp = new Date(entry.updated).getTime();
     const editTitle = `Edit ${entry.has_staged_changes ? "Staged " : ""}Entry`;
 
@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <td data-label="Updated">${formattedUpdated}</td>
         <td data-label="Actions" class="actions-cell">
           ${publishStagedButton}
-          <a href="${viewUrl}" target="_blank" class="btn btn-icon btn-view" title="View Public Page"><i class="fas fa-eye"></i></a>
+          <a href="${viewUrlWithParam}" target="_blank" class="btn btn-icon btn-view" title="View Public Page"><i class="fas fa-eye"></i></a>
           <a href="/edit/${escapeHtml(entry.id)}" class="btn btn-icon btn-edit" title="${editTitle}"><i class="fas fa-pencil-alt"></i></a>
           <form action="/archive/${escapeHtml(entry.id)}" method="POST" class="archive-form" title="Archive Entry"><button type="submit" class="btn btn-icon btn-archive"><i class="fas fa-archive"></i></button></form>
           <form action="/delete/${escapeHtml(entry.id)}" method="POST" class="delete-form" title="Delete Entry"><button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button></form>

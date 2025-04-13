@@ -2,8 +2,11 @@ import "dotenv/config";
 import http from "node:http";
 import { app } from "./src/app.js";
 import { PORT, POCKETBASE_URL, viewDb } from "./src/config.js";
+import { initializeCronJobs } from "./src/cron.js";
 
 const server = http.createServer(app);
+
+initializeCronJobs();
 
 server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);

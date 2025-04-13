@@ -46,10 +46,19 @@ document.addEventListener("DOMContentLoaded", () => {
       className: "fa fa-arrows-alt-h",
       title: "Insert Previous/Next Buttons Block",
     },
-    "|",
-    "preview",
-    "side-by-side",
-    "fullscreen",
+    {
+      name: "insertMermaid",
+      action: function insertMermaidBlock(editor) {
+        const cm = editor.codemirror;
+        const output = "```mermaid\ngraph TD;\n    A[Start] --> B{Decision};\n    B --> C[End];\n```";
+        cm.replaceSelection(output);
+        const cursorPos = cm.getCursor();
+        cm.setCursor(cursorPos.line - 2, 4);
+        cm.focus();
+      },
+      className: "fas fa-project-diagram",
+      title: "Insert Mermaid Diagram Block",
+    },
   ];
 
   function copyToClipboard(textToCopy, buttonElement) {

@@ -83,7 +83,7 @@ export const configuredHelmet = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+      scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "'unsafe-inline'"],
       styleSrc: ["'self'", "https://*", "'unsafe-inline'"],
       fontSrc: ["'self'", "https://*", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", POCKETBASE_URL, "https://*"],

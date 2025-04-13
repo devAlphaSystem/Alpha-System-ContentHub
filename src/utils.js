@@ -9,15 +9,35 @@ const purify = DOMPurify(window);
 const DEFAULT_TEMPLATES = [
   {
     name: "Basic Changelog Entry",
-    content: "### ✨ New Features\n\n*   Description of a new feature.\n\n### 🐛 Bug Fixes\n\n*   Description of a bug fix.\n\n###  verbeterungen Improvements\n\n*   Description of an improvement.",
+    content: "### ✨ New Features\n\n" + "*   Description of a new feature.\n\n" + "### 🐛 Bug Fixes\n\n" + "*   Description of a bug fix.\n\n" + "### 🚀 Improvements\n\n" + "*   Description of an improvement.",
   },
   {
     name: "API Documentation Section",
-    content: `## Endpoint: \`/api/v1/resource\`\n\n**Method:** \`GET\`\n\n**Description:** Retrieves a list of resources.\n\n**Parameters:**\n\n| Name     | Type   | Description                |\n| :------- | :----- | :------------------------- |\n| \`limit\`  | number | *Optional*. Max items per page. |\n| \`offset\` | number | *Optional*. Items to skip.    |\n\n**Response:**\n\n\`\`\`json\n{\n  "data": [\n    { "id": "...", "name": "..." }\n  ],\n  "pagination": { ... }\n}\n\`\`\``,
+    content: "## Endpoint: `/api/v1/resource`\n\n" + "**Method:** `GET`\n\n" + "**Description:** Retrieves a list of resources.\n\n" + "**Parameters:**\n\n" + "| Name     | Type   | Description                |\n" + "| :------- | :----- | :------------------------- |\n" + "| `limit`  | number | *Optional*. Max items per page. |\n" + "| `offset` | number | *Optional*. Items to skip.    |\n\n" + "**Response:**\n\n" + "```json\n" + "{\n" + '  "data": [\n' + '    { "id": "...", "name": "..." }\n' + "  ],\n" + '  "pagination": { ... }\n' + "}\n" + "```",
   },
   {
     name: "Simple Documentation Page",
-    content: "# Getting Started\n\nWelcome to the documentation!\n\n## Installation\n\nInstructions on how to install...\n\n## Configuration\n\nDetails about configuration options...",
+    content: "# Getting Started\n\n" + "Welcome to the documentation!\n\n" + "## Installation\n\n" + "Instructions on how to install...\n\n" + "## Configuration\n\n" + "Details about configuration options...",
+  },
+  {
+    name: "Mermaid: Flowchart Example",
+    content: "## Process Flow\n\n" + "Here is a visual representation of the process:\n\n" + "```mermaid\n" + "graph TD;\n" + "    A[Start] --> B{User Input?};\n" + "    B -- Yes --> C[Process Data];\n" + "    B -- No --> D[Show Error];\n" + "    C --> E[Display Results];\n" + "    D --> E;\n" + "    E --> F[End];\n" + "```\n\n" + "Further explanation of the steps...",
+  },
+  {
+    name: "Mermaid: Sequence Diagram Example",
+    content: "## Authentication Sequence\n\n" + "This diagram shows the login interaction:\n\n" + "```mermaid\n" + "sequenceDiagram\n" + "    participant User\n" + "    participant WebApp\n" + "    participant AuthAPI\n\n" + "    User->>WebApp: Enters Credentials\n" + "    WebApp->>AuthAPI: POST /login (email, password)\n" + "    AuthAPI-->>WebApp: { token: '...' }\n" + "    WebApp-->>User: Logged In Successfully\n" + "```\n\n" + "Notes on the authentication flow.",
+  },
+  {
+    name: "Mermaid: Class Diagram Example",
+    content: "## System Components\n\n" + "Basic class structure:\n\n" + "```mermaid\n" + "classDiagram\n" + "    class User {\n" + "        +userId: string\n" + "        +email: string\n" + "        +login()\n" + "    }\n" + "    class Entry {\n" + "        +entryId: string\n" + "        +title: string\n" + "        +content: string\n" + "        +owner: User\n" + "        +save()\n" + "    }\n" + "    class Template {\n" + "        +templateId: string\n" + "        +name: string\n" + "        +content: string\n" + "        +owner: User\n" + "    }\n" + '    User "1" -- "0..*" Entry : owns >\n' + '    User "1" -- "0..*" Template : owns >\n' + "```",
+  },
+  {
+    name: "Mermaid: State Diagram Example",
+    content: "## Entry Status States\n\n" + "Possible states for a content entry:\n\n" + "```mermaid\n" + "stateDiagram-v2\n" + "    [*] --> Draft\n" + "    Draft --> Published : Publish Action\n" + "    Published --> Draft : Unpublish Action\n" + "    Published --> Archived : Archive Action\n" + "    Draft --> Archived : Archive Action\n" + "    Archived --> Draft : Unarchive Action\n" + "    Archived --> [*] : Delete Permanently\n" + "    Draft --> [*] : Delete\n" + "    Published --> Published : Stage Changes\n" + "```",
+  },
+  {
+    name: "Mermaid: Pie Chart Example",
+    content: "## Content Type Distribution\n\n" + "Approximate breakdown of content types:\n\n" + "```mermaid\n" + "pie\n" + "    title Content Types\n" + '    "Documentation" : 65\n' + '    "Changelogs" : 25\n' + '    "Guides" : 10\n' + "```",
   },
 ];
 
@@ -217,6 +237,10 @@ export async function getFooterForEdit(footerId, userId) {
 }
 
 export function logEntryView(req, entryId) {
+  if (req && req.query.from_admin === "1") {
+    return;
+  }
+
   const ipAddress = getIP(req);
   const hashedIP = hashIP(ipAddress);
 

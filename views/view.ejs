@@ -89,8 +89,37 @@
             <%- customFooterHtml %>
           </div>
         <% } %>
-      </div> 
+      </div>
     </div>
+
+    <!-- Mermaid JS -->
+    <script src="/js/vendors/mermaid.js"></script>
+
+    <!-- Mermaid Initialization -->
+    <script>
+      function initializeMermaid(theme) {
+        try {
+          const mermaidTheme = theme === 'dark' ? 'dark' : 'neutral';
+          mermaid.initialize({
+            startOnLoad: false, 
+            theme: mermaidTheme,
+            themeVariables: {
+              darkMode: theme === 'dark',
+              background: theme === 'dark' ? '#1f2937' : '#ffffff',
+            }
+          });
+          mermaid.run({ querySelector: '.language-mermaid' });
+          console.log('Mermaid initialized with theme:', mermaidTheme);
+        } catch (e) {
+          console.error("Error initializing or running Mermaid:", e);
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+        initializeMermaid(currentTheme);
+      });
+    </script>
 
     <!-- Highlight JS -->
     <script src="/js/vendors/highlight.min.js"></script>
