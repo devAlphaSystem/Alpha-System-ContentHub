@@ -1,0 +1,80 @@
+<% locals.pageTitle='Changelog Headers - ' + project.name %>
+
+<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: project.id }) %>
+
+<div class="content-header">
+  <h1>Changelog Headers: <span class="text-muted"><%= project.name %></span></h1>
+  <div class="header-actions">
+    <button id="refresh-cl-headers-btn" class="btn btn-secondary" title="Refresh Table">
+      <i class="fas fa-sync-alt"></i> <span>Refresh</span>
+    </button>
+    <a href="/projects/<%= project.id %>/changelog_headers/new" class="btn btn-primary">
+      <i class="fas fa-plus"></i> Create New Changelog Header
+    </a>
+  </div>
+</div>
+
+<% if (locals.message) { %>
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle alert-icon"></i>
+    <span> <%= message %> </span>
+  </div>
+<% } %>
+
+<% if (locals.error && locals.error === 'Could not load changelog headers.') { %>
+  <div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle alert-icon"></i>
+    <span>Error loading changelog headers for this project. Please try refreshing the page or contact support.</span>
+  </div>
+<% } %>
+
+<div class="card data-card <% if (headers.length === 0 && !locals.error) { %>hidden<% } %>">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-sort-key="name" style="cursor: pointer;">Header Name <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort-down"></i></span></th>
+          <th class="actions-column">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="cl-headers-table-body">
+        <% for (const header of headers) { %>
+          <tr data-header-id="<%= header.id %>" data-updated-timestamp="<%= new Date(header.updated).getTime() %>">
+            <td data-label="Name"> <%= header.name %> </td>
+            <td data-label="Updated"> <%= header.formattedUpdated %> </td>
+            <td data-label="Actions" class="actions-cell">
+              <a href="/projects/<%= project.id %>/changelog_headers/edit/<%= header.id %>" class="btn btn-icon btn-edit" title="Edit Changelog Header"> <i class="fas fa-pencil-alt"></i> </a>
+              <form action="/projects/<%= project.id %>/changelog_headers/delete/<%= header.id %>" method="POST" class="delete-cl-header-form" title="Delete Changelog Header">
+                <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
+              </form>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination-controls card-footer">
+    <button id="prev-page-btn" class="btn btn-secondary" <% if (pagination.page <= 1) { %>disabled<% } %>>
+      <i class="fas fa-chevron-left"></i> Previous
+    </button>
+    <span id="page-info" class="page-info-text">
+      Page <%= pagination.page %> of <%= pagination.totalPages %> (<%= pagination.totalItems %> items)
+    </span>
+    <button id="next-page-btn" class="btn btn-secondary" <% if (pagination.page >= pagination.totalPages) { %>disabled<% } %>>
+      Next <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+</div>
+
+<% if (headers.length === 0 && !locals.error) { %>
+  <div class="card empty-state-card">
+    <i class="far fa-arrow-alt-circle-up empty-state-icon"></i>
+    <h2>No custom changelog headers yet for this project</h2>
+    <p>Create reusable headers to customize the top of your changelog entry view pages.</p>
+    <a href="/projects/<%= project.id %>/changelog_headers/new" class="btn btn-primary">Create First Changelog Header</a>
+  </div>
+<% } %>
+
+<%- include('../partials/footer', { scriptPath: '/js/changelog_headers.js' }) %>

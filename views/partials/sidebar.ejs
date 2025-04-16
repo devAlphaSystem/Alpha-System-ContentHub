@@ -1,45 +1,111 @@
 <aside class="sidebar">
-  <div class="sidebar-inner">
+  <div class="sidebar-inner collapsible-initializing">
     <div class="sidebar-header">
       <a href="/" class="sidebar-logo">
-        <i class="fas fa-book-open"></i>
-        <span>Content Hub</span>
+        <img id="sidebar-logo-img" src="<%= (locals.theme === 'dark' ? '/img/logo_white.png' : '/img/logo.png') %>" alt="Content Hub Logo">
       </a>
     </div>
 
     <nav class="sidebar-nav">
-      <a href="/" class="nav-link" data-nav-id="dashboard">
+      <a href="/" class="nav-link <% if (currentPath === '/') { %>active<% } %>" data-nav-id="dashboard">
         <i class="fas fa-tachometer-alt fa-fw"></i>
         <span>Dashboard</span>
       </a>
 
-      <a href="/archived" class="nav-link" data-nav-id="archived">
-        <i class="fas fa-archive fa-fw"></i>
-        <span>Archived</span>
+      <a href="/projects" class="nav-link <% if (currentPath.startsWith('/projects') && !locals.currentProjectId) { %>active<% } %>" data-nav-id="projects">
+        <i class="fas fa-folder fa-fw"></i>
+        <span>Projects</span>
       </a>
 
-      <a href="/templates" class="nav-link" data-nav-id="templates">
-        <i class="fas fa-file-alt fa-fw"></i>
-        <span>Templates</span>
-      </a>
+      <% if (locals.currentProjectId) { %>
+        <span class="project-name">
+          <%= locals.currentProjectName || 'Current Project' %>
+        </span>
 
-      <a href="/headers" class="nav-link" data-nav-id="headers">
-        <i class="far fa-arrow-alt-circle-up fa-fw"></i> 
-        <span>Headers</span>
-      </a>
+        <% const projectBasePath = `/projects/${locals.currentProjectId}` %>
 
-      <a href="/footers" class="nav-link" data-nav-id="footers">
-        <i class="far fa-arrow-alt-circle-down fa-fw"></i> 
-        <span>Footers</span>
-      </a>
+        <a href="<%= projectBasePath %>" class="nav-link <% if (currentPath === projectBasePath) { %>active<% } %>" data-nav-id="project-overview">
+          <i class="fas fa-chart-pie fa-fw"></i>
+          <span>Project Overview</span>
+        </a>
+        <a href="<%= projectBasePath %>/templates" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/templates')) { %>active<% } %>" data-nav-id="project-templates">
+          <i class="fas fa-puzzle-piece fa-fw"></i>
+          <span>Templates</span>
+        </a>
+        <a href="<%= projectBasePath %>/sidebar-order" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/sidebar-order')) { %>active<% } %>" data-nav-id="project-sidebar-order">
+          <i class="fas fa-sort-amount-down fa-fw"></i>
+          <span>Sidebar Order</span>
+        </a>
+
+        <button type="button" class="collapsible-header is-collapsed" data-target="doc-links" aria-expanded="false" aria-controls="doc-links">
+          <span>Documentation</span>
+          <i class="fas fa-chevron-down collapse-icon"></i>
+        </button>
+        <div id="doc-links" class="collapsible-content">
+          <a href="<%= projectBasePath %>/documentation" class="nav-link <% if (currentPath === projectBasePath + '/documentation' || (currentPath.startsWith(projectBasePath + '/edit/') && locals.entryType === 'documentation') || (currentPath.startsWith(projectBasePath + '/new') && locals.entryType === 'documentation')) { %>active<% } %>" data-nav-id="project-documentation">
+            <i class="fas fa-file-alt fa-fw"></i>
+            <span>Docs Entries</span>
+          </a>
+          <a href="<%= projectBasePath %>/documentation_headers" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/documentation_headers')) { %>active<% } %>" data-nav-id="project-doc-headers">
+            <i class="far fa-arrow-alt-circle-up fa-fw"></i>
+            <span>Doc Headers</span>
+          </a>
+          <a href="<%= projectBasePath %>/documentation_footers" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/documentation_footers')) { %>active<% } %>" data-nav-id="project-doc-footers">
+            <i class="far fa-arrow-alt-circle-down fa-fw"></i>
+            <span>Doc Footers</span>
+          </a>
+          <a href="<%= projectBasePath %>/archived_documentation" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/archived_documentation')) { %>active<% } %>" data-nav-id="project-archived-doc">
+            <i class="fas fa-archive fa-fw"></i>
+            <span>Archived Docs</span>
+          </a>
+        </div>
+
+        <button type="button" class="collapsible-header is-collapsed" data-target="cl-links" aria-expanded="false" aria-controls="cl-links">
+          <span>Changelog</span>
+          <i class="fas fa-chevron-down collapse-icon"></i>
+        </button>
+        <div id="cl-links" class="collapsible-content">
+          <a href="<%= projectBasePath %>/changelogs" class="nav-link <% if (currentPath === projectBasePath + '/changelogs' || (currentPath.startsWith(projectBasePath + '/edit/') && locals.entryType === 'changelog') || (currentPath.startsWith(projectBasePath + '/new') && locals.entryType === 'changelog')) { %>active<% } %>" data-nav-id="project-changelogs">
+            <i class="fas fa-history fa-fw"></i>
+            <span>Changelog Entries</span>
+          </a>
+          <a href="<%= projectBasePath %>/changelog_headers" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/changelog_headers')) { %>active<% } %>" data-nav-id="project-cl-headers">
+            <i class="far fa-arrow-alt-circle-up fa-fw"></i>
+            <span>Changelog Headers</span>
+          </a>
+          <a href="<%= projectBasePath %>/changelog_footers" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/changelog_footers')) { %>active<% } %>" data-nav-id="project-cl-footers">
+            <i class="far fa-arrow-alt-circle-down fa-fw"></i>
+            <span>Changelog Footers</span>
+          </a>
+          <a href="<%= projectBasePath %>/archived_changelogs" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/archived_changelogs')) { %>active<% } %>" data-nav-id="project-archived-cl">
+            <i class="fas fa-archive fa-fw"></i>
+            <span>Archived Changelogs</span>
+          </a>
+        </div>
+
+        <button type="button" class="collapsible-header is-collapsed" data-target="roadmap-links" aria-expanded="false" aria-controls="roadmap-links">
+          <span>Roadmap</span>
+          <i class="fas fa-chevron-down collapse-icon"></i>
+        </button>
+        <div id="roadmap-links" class="collapsible-content">
+          <a href="<%= projectBasePath %>/roadmaps" class="nav-link <% if (currentPath === projectBasePath + '/roadmaps' || (currentPath.startsWith(projectBasePath + '/edit/') && locals.entryType === 'roadmap') || (currentPath.startsWith(projectBasePath + '/new') && locals.entryType === 'roadmap')) { %>active<% } %>" data-nav-id="project-roadmaps">
+            <i class="fas fa-route fa-fw"></i>
+            <span>Roadmap Items</span>
+          </a>
+          <a href="<%= projectBasePath %>/archived_roadmaps" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/archived_roadmaps')) { %>active<% } %>" data-nav-id="project-archived-roadmap">
+            <i class="fas fa-archive fa-fw"></i>
+            <span>Archived Roadmap</span>
+          </a>
+        </div>
+      <% } %>
     </nav>
 
     <div class="sidebar-bottom-links">
-      <a href="/audit-log" class="nav-link" data-nav-id="audit-log">
+      <a href="/audit-log" class="nav-link <% if (currentPath === '/audit-log') { %>active<% } %>" data-nav-id="audit-log">
         <i class="fas fa-history fa-fw"></i>
-        <span>Audit Log</span>
+        <span>Global Log</span>
       </a>
-      
+
       <a href="/logout" class="nav-link logout-link">
         <i class="fas fa-sign-out-alt fa-fw"></i>
         <span>Logout</span>

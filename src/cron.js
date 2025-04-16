@@ -16,7 +16,10 @@ async function cleanupOrphanedPreviews() {
       fields: "id",
       $autoCancel: false,
     });
-    allEntries.forEach((entry) => validEntryIds.add(entry.id));
+
+    for (const entry of allEntries) {
+      validEntryIds.add(entry.id);
+    }
     console.log(`[CRON] Found ${validEntryIds.size} valid entry IDs.`);
 
     do {
@@ -37,12 +40,15 @@ async function cleanupOrphanedPreviews() {
 
         if (orphansInBatch.length > 0) {
           console.log(`[CRON] Found ${orphansInBatch.length} orphaned tokens (page ${page}/${totalPages}). Deleting batch...`);
-          const deletePromises = orphansInBatch.map((id) => pbAdmin.collection("entries_previews").delete(id));
+          const deletePromises = [];
+          for (const id of orphansInBatch) {
+            deletePromises.push(pbAdmin.collection("entries_previews").delete(id));
+          }
           await Promise.all(deletePromises);
           deletedOrphanCount += orphansInBatch.length;
           console.log("[CRON] Orphan batch deleted.");
         } else {
-          console.log(`[CRON] No orphaned tokens found on page ${page}.`); // Optional
+          console.log(`[CRON] No orphaned tokens found on page ${page}.`);
         }
       }
 
@@ -82,12 +88,15 @@ async function cleanupExpiredPreviews() {
 
       if (resultList.items.length > 0) {
         console.log(`[CRON] Found ${resultList.items.length} expired tokens (page ${page}/${totalPages}). Deleting batch...`);
-        const deletePromises = resultList.items.map((item) => pbAdmin.collection("entries_previews").delete(item.id));
+        const deletePromises = [];
+        for (const item of resultList.items) {
+          deletePromises.push(pbAdmin.collection("entries_previews").delete(item.id));
+        }
         await Promise.all(deletePromises);
         deletedExpiredCount += resultList.items.length;
         console.log("[CRON] Expired batch deleted.");
       } else {
-        console.log(`[CRON] No expired tokens found on page ${page}.`); // Optional
+        console.log(`[CRON] No expired tokens found on page ${page}.`);
       }
 
       page++;

@@ -1,4 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const dataCardElement = document.querySelector(".data-card[data-entry-type]");
+  const entryType = dataCardElement?.dataset.entryType;
+
   const entriesTableBody = document.getElementById("entries-table-body");
   const selectAllCheckbox = document.getElementById("select-all-checkbox");
   const refreshButton = document.getElementById("refresh-entries-btn");
@@ -10,11 +13,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const prevPageBtn = document.getElementById("prev-page-btn");
   const nextPageBtn = document.getElementById("next-page-btn");
   const pageInfo = document.getElementById("page-info");
-  const dataCard = document.querySelector(".data-card");
   const emptyStateCard = document.querySelector(".empty-state-card");
   const tableElement = document.querySelector(".data-table");
   const collectionFilterSelect = document.getElementById("collection-filter-select");
   const searchInput = document.getElementById("search-input");
+  const projectId = document.body.dataset.projectId;
 
   let currentPage = 1;
   let totalPages = 1;
@@ -47,13 +50,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const viewUrlWithParam = entry.viewUrl ? `${entry.viewUrl}?from_admin=1` : `/view/${escapeHtml(entry.id)}?from_admin=1`;
     const updatedTimestamp = new Date(entry.updated).getTime();
+    const editUrl = `/projects/${projectId}/edit/${escapeHtml(entry.id)}`;
+    const archiveUrl = `/projects/${projectId}/archive/${escapeHtml(entry.id)}`;
+    const deleteUrl = `/projects/${projectId}/delete/${escapeHtml(entry.id)}`;
+    const publishStagedApiUrl = `/api/projects/${projectId}/entries/${escapeHtml(entry.id)}/publish-staged`;
     const editTitle = `Edit ${entry.has_staged_changes ? "Staged " : ""}Entry`;
 
     const stagedBadge = entry.has_staged_changes ? `<span class="badge status-badge status-staged" title="Unpublished changes exist">Staged</span>` : "";
 
     const publishStagedButton = entry.has_staged_changes
       ? `
-        <button type="button" class="btn btn-icon btn-publish-staged js-publish-staged-btn" data-url="/api/entries/${escapeHtml(entry.id)}/publish-staged" data-entry-title="${escapeHtml(entry.title)}" title="Publish Staged Changes">
+        <button type="button" class="btn btn-icon btn-publish-staged js-publish-staged-btn" data-url="${publishStagedApiUrl}" data-entry-title="${escapeHtml(entry.title)}" title="Publish Staged Changes">
           <i class="fas fa-upload"></i>
         </button>
       `
@@ -70,15 +77,18 @@ document.addEventListener("DOMContentLoaded", () => {
           ${stagedBadge}
         </td>
         <td data-label="Collection">${collectionDisplay}</td>
-        <td data-label="Type"><span class="badge type-badge type-${escapeHtml(entry.type)}">${escapeHtml(entry.type)}</span></td>
         <td data-label="Views">${entry.views || 0}</td>
         <td data-label="Updated">${formattedUpdated}</td>
         <td data-label="Actions" class="actions-cell">
           ${publishStagedButton}
           <a href="${viewUrlWithParam}" target="_blank" class="btn btn-icon btn-view" title="View Public Page"><i class="fas fa-eye"></i></a>
-          <a href="/edit/${escapeHtml(entry.id)}" class="btn btn-icon btn-edit" title="${editTitle}"><i class="fas fa-pencil-alt"></i></a>
-          <form action="/archive/${escapeHtml(entry.id)}" method="POST" class="archive-form" title="Archive Entry"><button type="submit" class="btn btn-icon btn-archive"><i class="fas fa-archive"></i></button></form>
-          <form action="/delete/${escapeHtml(entry.id)}" method="POST" class="delete-form" title="Delete Entry"><button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button></form>
+          <a href="${editUrl}" class="btn btn-icon btn-edit" title="${editTitle}"><i class="fas fa-pencil-alt"></i></a>
+          <form action="${archiveUrl}" method="POST" class="archive-form" title="Archive Entry">
+            <button type="submit" class="btn btn-icon btn-archive"><i class="fas fa-archive"></i></button>
+          </form>
+          <form action="${deleteUrl}" method="POST" class="delete-form" title="Delete Entry">
+            <button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button>
+          </form>
         </td>
       </tr>
     `;
@@ -115,20 +125,20 @@ document.addEventListener("DOMContentLoaded", () => {
         tableHtml += renderTableRow(entry);
       }
       entriesTableBody.innerHTML = tableHtml;
-      if (dataCard) dataCard.classList.remove("hidden");
+      if (dataCardElement) dataCardElement.classList.remove("hidden");
       if (emptyStateCard) emptyStateCard.style.display = "none";
       const noMatchRow = entriesTableBody.querySelector(".no-match-row");
       if (noMatchRow) noMatchRow.remove();
     } else {
-      const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 9;
-      const message = currentSearchTerm ? "No entries match your search." : currentCollectionFilter ? "No entries found in this collection." : "No entries found.";
+      const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 7;
+      const message = currentSearchTerm ? `No ${entryType} entries match your search.` : currentCollectionFilter ? `No ${entryType} entries found in this collection.` : `No ${entryType} entries found.`;
       entriesTableBody.innerHTML = `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">${message}</td></tr>`;
 
       if (totalItems === 0) {
-        if (dataCard) dataCard.classList.add("hidden");
+        if (dataCardElement) dataCardElement.classList.add("hidden");
         if (emptyStateCard) emptyStateCard.style.display = "";
       } else {
-        if (dataCard) dataCard.classList.remove("hidden");
+        if (dataCardElement) dataCardElement.classList.remove("hidden");
         if (emptyStateCard) emptyStateCard.style.display = "none";
       }
     }
@@ -138,7 +148,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function fetchEntries(isNewSearch = false) {
-    if (isLoading) return;
+    if (isLoading || !projectId || !entryType || !["documentation", "changelog"].includes(entryType)) {
+      if (!projectId) console.warn("Project ID missing, cannot fetch entries.");
+      if (!entryType) console.warn("Entry Type missing or invalid, cannot fetch entries.");
+      return;
+    }
     isLoading = true;
 
     if (isNewSearch) {
@@ -160,6 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
       page: currentPage.toString(),
       perPage: itemsPerPage.toString(),
       sort: sortParam,
+      type: entryType,
     });
 
     if (currentCollectionFilter && currentCollectionFilter !== "") {
@@ -169,7 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
       params.append("search", currentSearchTerm.trim());
     }
 
-    const url = `/api/entries?${params.toString()}`;
+    const url = `/api/projects/${projectId}/entries?${params.toString()}`;
 
     try {
       const response = await fetch(url);
@@ -193,14 +208,14 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Failed to fetch entries:", error);
       window.showAlertModal(`Error loading entries: ${error.message}`, "Loading Error");
       if (entriesTableBody && tableElement) {
-        const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 9;
+        const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 7;
         entriesTableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading entries.</td></tr>`;
       }
       currentPage = 1;
       totalPages = 0;
       totalItems = 0;
       updatePaginationControls();
-      if (dataCard) dataCard.classList.add("hidden");
+      if (dataCardElement) dataCardElement.classList.add("hidden");
       if (emptyStateCard) emptyStateCard.style.display = "";
     } finally {
       isLoading = false;
@@ -330,14 +345,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function handleBulkActionConfirm(action, ids) {
-    if (!bulkActionsButton || isLoading) return;
+    if (!bulkActionsButton || isLoading || !projectId) return;
     isLoading = true;
     const originalButtonText = bulkActionsButton.innerHTML;
     bulkActionsButton.disabled = true;
     bulkActionsButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing...`;
 
     try {
-      const response = await fetch("/api/entries/bulk-action", {
+      const response = await fetch(`/api/projects/${projectId}/entries/bulk-action`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -370,7 +385,12 @@ document.addEventListener("DOMContentLoaded", () => {
         bulkActionsButton.innerHTML = originalButtonText;
       }
       if (selectAllCheckbox) selectAllCheckbox.checked = false;
-      entriesTableBody?.querySelectorAll(".entry-checkbox:checked").forEach((cb) => (cb.checked = false));
+      const checkboxes = entriesTableBody?.querySelectorAll(".entry-checkbox:checked");
+      if (checkboxes) {
+        for (const cb of checkboxes) {
+          cb.checked = false;
+        }
+      }
       updateBulkActionUI();
     }
   }
@@ -504,7 +524,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   searchInput?.addEventListener("input", debouncedSearch);
 
-  function initializeDashboard() {
+  function initializeProjectEntries() {
+    if (!projectId || !entryType) {
+      console.warn("Project ID or Entry Type not found. Cannot initialize project entries.");
+      if (dataCardElement) dataCardElement.classList.add("hidden");
+      if (emptyStateCard) {
+        emptyStateCard.innerHTML = `
+          <i class="fas fa-exclamation-triangle empty-state-icon"></i>
+          <h2>Context Missing</h2>
+          <p>Could not determine the current project or entry type.</p>
+        `;
+        emptyStateCard.style.display = "";
+      }
+      return;
+    }
+
     const initialSortHeader = document.querySelector(`.data-table th[data-sort-key="${currentSortKey}"]`);
     if (initialSortHeader) {
       const icon = initialSortHeader.querySelector(".sort-icon i");
@@ -512,9 +546,10 @@ document.addEventListener("DOMContentLoaded", () => {
         icon.className = currentSortDir === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
       }
     }
-    document.querySelectorAll(`.data-table th[data-sort-key]:not([data-sort-key="${currentSortKey}"]) .sort-icon i`).forEach((icon) => {
+    const otherHeaders = document.querySelectorAll(`.data-table th[data-sort-key]:not([data-sort-key="${currentSortKey}"]) .sort-icon i`);
+    for (const icon of otherHeaders) {
       icon.className = "fas fa-sort";
-    });
+    }
 
     attachActionListeners();
     attachSortListeners();
@@ -559,7 +594,8 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (errorMessage === "archive_failed") messageText = "Failed to archive the entry.";
         window.showAlertModal(messageText, "Error");
       }
-      window.history.replaceState({}, document.title, window.location.pathname);
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
     }
 
     const needsInitialFetch = (entriesTableBody && entriesTableBody.children.length === 0 && (!emptyStateCard || emptyStateCard.style.display === "none")) || totalPages > 1;
@@ -580,5 +616,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  initializeDashboard();
+  if (projectId && entryType) {
+    initializeProjectEntries();
+  } else {
+    console.error("Initialization skipped: Missing projectId or entryType.");
+  }
 });

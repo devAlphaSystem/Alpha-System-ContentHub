@@ -5,10 +5,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const footerContentTextArea = document.getElementById("footer-content");
   const templateSelect = document.getElementById("template-select");
   const sharePreviewButton = document.getElementById("share-preview-btn");
-  const entryId = contentTextArea?.dataset.entryId;
-
-  const passwordCheckbox = document.getElementById("set-preview-password-check");
-  const passwordInput = document.getElementById("preview-password-input");
+  const typeSelect = document.getElementById("type");
+  const roadmapStageGroup = document.getElementById("roadmap-stage-group");
+  const contentGroup = document.querySelector(".form-group-content");
 
   const urlPrefixSpan = document.getElementById("url-prefix");
   const urlInput = document.getElementById("url");
@@ -102,10 +101,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   templateSelect?.addEventListener("change", async (event) => {
     const templateId = event.target.value;
+    const currentProjectId = document.body.dataset.projectId;
 
     const applyTemplate = async () => {
+      if (!currentProjectId) {
+        console.error("Cannot apply template: Project ID is missing.");
+        window.showAlertModal("Cannot apply template: Project context is missing.", "Template Error");
+        return;
+      }
       try {
-        const response = await fetch(`/api/templates/${templateId}`);
+        const response = await fetch(`/api/projects/${currentProjectId}/templates/${templateId}`);
         if (!response.ok) {
           throw new Error(`Failed to fetch template: ${response.statusText}`);
         }
@@ -147,41 +152,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  passwordCheckbox?.addEventListener("change", () => {
-    if (passwordInput) {
-      passwordInput.style.display = passwordCheckbox.checked ? "inline-block" : "none";
-      if (!passwordCheckbox.checked) {
-        passwordInput.value = "";
-      }
-    }
-  });
+  async function generatePreviewLink(button, password = null) {
+    const currentEntryId = button.dataset.entryId;
+    const currentProjectId = button.dataset.projectId;
 
-  sharePreviewButton?.addEventListener("click", async () => {
-    if (!entryId) {
-      window.showAlertModal("Cannot generate preview link: Entry ID is missing.", "Error");
+    if (!currentEntryId || !currentProjectId) {
+      window.showAlertModal("Cannot generate preview link: Button is missing required IDs.", "Error");
+      console.error("Missing IDs on share button:", {
+        entry: currentEntryId,
+        project: currentProjectId,
+      });
       return;
     }
 
-    let passwordToSend = null;
-    if (passwordCheckbox?.checked) {
-      passwordToSend = passwordInput?.value;
-      if (!passwordToSend || passwordToSend.trim() === "") {
-        window.showAlertModal("Please enter a password or uncheck the 'Require Password' box.", "Password Missing");
-        passwordInput?.focus();
-        return;
-      }
-    }
-
-    sharePreviewButton.disabled = true;
-    sharePreviewButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Generating...`;
+    button.disabled = true;
+    button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Generating...`;
 
     const requestBody = {};
-    if (passwordToSend) {
-      requestBody.password = passwordToSend;
+    if (password) {
+      requestBody.password = password;
     }
 
     try {
-      const response = await fetch(`/api/entries/${entryId}/generate-preview`, {
+      const response = await fetch(`/api/projects/${currentProjectId}/entries/${currentEntryId}/generate-preview`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -223,9 +216,40 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Failed to generate preview link:", error);
       window.showAlertModal(`Could not generate preview link: ${error.message}`, "Error");
     } finally {
-      sharePreviewButton.disabled = false;
-      sharePreviewButton.innerHTML = `<i class="fas fa-share-alt"></i> Share Preview`;
+      button.disabled = false;
+      button.innerHTML = `<i class="fas fa-share-alt"></i> Share Preview`;
     }
+  }
+
+  sharePreviewButton?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+
+    window.showConfirmModal({
+      title: "Require Password?",
+      message: "Do you want to set a password for this preview link?",
+      confirmText: "Yes, Set Password",
+      neutralText: "No Password",
+      cancelText: "Cancel",
+      onConfirm: () => {
+        window.showPasswordPromptModal({
+          title: "Enter Preview Password",
+          message: "Please enter the password for the preview link:",
+          confirmText: "Generate Link",
+          onConfirm: (password) => {
+            generatePreviewLink(button, password);
+          },
+          onCancel: () => {
+            console.log("Password entry cancelled.");
+          },
+        });
+      },
+      onNeutral: () => {
+        generatePreviewLink(button, null);
+      },
+      onCancel: () => {
+        console.log("Preview generation cancelled.");
+      },
+    });
   });
 
   urlPrefixSpan?.addEventListener("click", () => {
@@ -259,9 +283,12 @@ document.addEventListener("DOMContentLoaded", () => {
         },
       };
 
-      if (entryId) {
+      const configEntryId = contentTextArea?.dataset.entryId;
+      const configProjectId = document.body.dataset.projectId;
+
+      if (configEntryId && configProjectId) {
         easyMDEConfig.uploadImage = true;
-        easyMDEConfig.imageUploadEndpoint = `/api/entries/${entryId}/upload-image`;
+        easyMDEConfig.imageUploadEndpoint = `/api/projects/${configProjectId}/entries/${configEntryId}/upload-image`;
         easyMDEConfig.imagePathAbsolute = true;
         easyMDEConfig.imageAccept = "image/png, image/jpeg, image/gif, image/webp";
         easyMDEConfig.imageMaxSize = 1024 * 1024 * 10;
@@ -278,7 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const formData = new FormData();
           formData.append("image", file);
 
-          fetch(`/api/entries/${entryId}/upload-image`, {
+          fetch(`/api/projects/${configProjectId}/entries/${configEntryId}/upload-image`, {
             method: "POST",
             body: formData,
           })
@@ -303,6 +330,8 @@ document.addEventListener("DOMContentLoaded", () => {
               onError(error.message || "Image upload failed. Check console for details.");
             });
         };
+      } else {
+        console.warn("Image upload disabled: Entry ID or Project ID missing at editor init.");
       }
 
       easyMDEInstance = new EasyMDE(easyMDEConfig);
@@ -331,12 +360,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
       function clearGrammarHighlights(cm) {
         if (currentGrammarMarks && cm) {
-          currentGrammarMarks.forEach((mark) => mark.clear());
+          for (const mark of currentGrammarMarks) {
+            mark.clear();
+          }
           currentGrammarMarks = [];
         }
         if (grammarStatusElement) {
           grammarStatusElement.textContent = "";
           grammarStatusElement.style.color = "";
+          grammarStatusElement.style.marginLeft = "0";
         }
       }
 
@@ -363,13 +395,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (!textToCheck.trim()) {
-          if (grammarStatusElement) grammarStatusElement.textContent = "Nothing to check.";
+          if (grammarStatusElement) {
+            grammarStatusElement.textContent = "Nothing to check.";
+            grammarStatusElement.style.marginLeft = "10px";
+          }
           return;
         }
 
         clearGrammarHighlights(cm);
 
-        if (grammarStatusElement) grammarStatusElement.textContent = `Checking ${checkScope}...`;
+        if (grammarStatusElement) {
+          grammarStatusElement.textContent = `Checking ${checkScope}...`;
+          grammarStatusElement.style.marginLeft = "10px";
+        }
         checkGrammarButton.disabled = true;
         checkGrammarButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Checking...`;
 
@@ -401,7 +439,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const result = await response.json();
 
           if (result.matches && result.matches.length > 0) {
-            result.matches.forEach((match) => {
+            for (const match of result.matches) {
               const actualFromIndex = match.offset + selectionOffset;
               const actualToIndex = match.offset + match.length + selectionOffset;
               const fromPos = cm.posFromIndex(actualFromIndex);
@@ -412,16 +450,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 title: `${match.message} (Rule: ${match.rule.id})`,
               });
               currentGrammarMarks.push(mark);
-            });
+            }
 
             if (grammarStatusElement) {
               grammarStatusElement.textContent = `${result.matches.length} potential issue(s) found in ${checkScope}.`;
               grammarStatusElement.style.color = "var(--warning-color)";
+              grammarStatusElement.style.marginLeft = "10px";
             }
           } else {
             if (grammarStatusElement) {
               grammarStatusElement.textContent = `No issues found in ${checkScope}.`;
               grammarStatusElement.style.color = "var(--success-color)";
+              grammarStatusElement.style.marginLeft = "10px";
             }
           }
         } catch (error) {
@@ -429,6 +469,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (grammarStatusElement) {
             grammarStatusElement.textContent = "Error checking grammar.";
             grammarStatusElement.style.color = "var(--danger-color)";
+            grammarStatusElement.style.marginLeft = "10px";
           }
           window.showAlertModal(`Could not check grammar: ${error.message}`, "Grammar Check Error");
         } finally {
@@ -442,7 +483,10 @@ document.addEventListener("DOMContentLoaded", () => {
       easyMDEInstance.codemirror.on("change", (cm, changeObj) => {
         if (currentGrammarMarks.length > 0) {
           clearGrammarHighlights(cm);
-          if (grammarStatusElement) grammarStatusElement.textContent = "Highlights cleared due to edit.";
+          if (grammarStatusElement) {
+            grammarStatusElement.textContent = "Highlights cleared due to edit.";
+            grammarStatusElement.style.marginLeft = "10px";
+          }
         }
         updateCharCount();
       });
@@ -499,4 +543,135 @@ document.addEventListener("DOMContentLoaded", () => {
       window.showAlertModal("Failed to load the footer editor.", "Editor Error");
     }
   }
+
+  function toggleTypeSpecificFields(selectedType) {
+    const docHeaderGroup = document.getElementById("documentation-header-group");
+    const docFooterGroup = document.getElementById("documentation-footer-group");
+    const clHeaderGroup = document.getElementById("changelog-header-group");
+    const clFooterGroup = document.getElementById("changelog-footer-group");
+
+    if (docHeaderGroup) docHeaderGroup.style.display = "none";
+    if (docFooterGroup) docFooterGroup.style.display = "none";
+    if (clHeaderGroup) clHeaderGroup.style.display = "none";
+    if (clFooterGroup) clFooterGroup.style.display = "none";
+    if (roadmapStageGroup) roadmapStageGroup.style.display = "none";
+    if (contentGroup) contentGroup.style.display = "block";
+
+    if (selectedType === "documentation") {
+      if (docHeaderGroup) docHeaderGroup.style.display = "block";
+      if (docFooterGroup) docFooterGroup.style.display = "block";
+    } else if (selectedType === "changelog") {
+      if (clHeaderGroup) clHeaderGroup.style.display = "block";
+      if (clFooterGroup) clFooterGroup.style.display = "block";
+    } else if (selectedType === "roadmap") {
+      if (roadmapStageGroup) roadmapStageGroup.style.display = "block";
+      if (contentGroup) contentGroup.style.display = "none";
+      if (docHeaderGroup) docHeaderGroup.style.display = "none";
+      if (docFooterGroup) docFooterGroup.style.display = "none";
+      if (clHeaderGroup) clHeaderGroup.style.display = "none";
+      if (clFooterGroup) clFooterGroup.style.display = "none";
+    }
+  }
+
+  if (typeSelect) {
+    typeSelect.addEventListener("change", (event) => {
+      toggleTypeSpecificFields(event.target.value);
+    });
+
+    toggleTypeSpecificFields(typeSelect.value);
+  }
+
+  const duplicateButton = document.getElementById("duplicate-entry-btn");
+
+  async function handleDuplicateEntry(button) {
+    const entryId = button.dataset.entryId;
+    const projectId = button.dataset.projectId;
+
+    if (!entryId || !projectId) {
+      window.showAlertModal("Cannot duplicate: Button is missing required IDs.", "Error");
+      console.error("Missing IDs on duplicate button:", {
+        entry: entryId,
+        project: projectId,
+      });
+      return;
+    }
+
+    const titleInput = document.getElementById("title");
+    const typeSelect = document.getElementById("type");
+    const statusSelect = document.getElementById("status");
+    const tagsInput = document.getElementById("tags");
+    const collectionInput = document.getElementById("collection");
+    const docHeaderSelect = document.getElementById("custom_documentation_header");
+    const docFooterSelect = document.getElementById("custom_documentation_footer");
+    const clHeaderSelect = document.getElementById("custom_changelog_header");
+    const clFooterSelect = document.getElementById("custom_changelog_footer");
+    const sidebarSelect = document.getElementById("show_in_project_sidebar");
+    const roadmapStageSelect = document.getElementById("roadmap_stage");
+
+    const currentContent = easyMDEInstance ? easyMDEInstance.value() : "";
+    const currentTitle = titleInput?.value || "";
+    const currentType = typeSelect?.value || "documentation";
+    const currentStatus = statusSelect?.disabled ? document.querySelector('input[name="status"][type="hidden"]')?.value || "published" : statusSelect?.value || "draft";
+    const currentCollection = collectionInput?.disabled ? document.querySelector('input[name="collection"][type="hidden"]')?.value || "" : collectionInput?.value || "";
+
+    const payload = {
+      title: currentTitle,
+      type: currentType,
+      content: currentContent,
+      tags: tagsInput?.value || "",
+      collection: currentCollection,
+      custom_documentation_header: docHeaderSelect?.value || null,
+      custom_documentation_footer: docFooterSelect?.value || null,
+      custom_changelog_header: clHeaderSelect?.value || null,
+      custom_changelog_footer: clFooterSelect?.value || null,
+      show_in_project_sidebar: sidebarSelect?.value === "true",
+      roadmap_stage: roadmapStageSelect?.value || null,
+    };
+
+    window.showConfirmModal({
+      title: "Confirm Duplication",
+      message: `Create a new draft entry as a copy of the current state of "<strong>${escapeHtml(currentTitle)}</strong>"?`,
+      confirmText: "Duplicate as Draft",
+      action: "duplicate",
+      onConfirm: async () => {
+        button.disabled = true;
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Duplicating...`;
+
+        try {
+          const response = await fetch(`/api/projects/${projectId}/entries/${entryId}/duplicate`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.error || `HTTP error! status: ${response.status}`);
+          }
+
+          if (result.newEntryId) {
+            window.location.href = `/projects/${projectId}/edit/${result.newEntryId}?duplicated=true`;
+          } else {
+            throw new Error("API did not return the new entry ID.");
+          }
+        } catch (error) {
+          console.error("Failed to duplicate entry:", error);
+          window.showAlertModal(`Could not duplicate entry: ${error.message}`, "Error");
+          button.disabled = false;
+          button.innerHTML = `<i class="fas fa-copy"></i> Duplicate Entry`;
+        }
+      },
+      onCancel: () => {
+        console.log("Duplication cancelled.");
+      },
+    });
+  }
+
+  duplicateButton?.addEventListener("click", () => {
+    handleDuplicateEntry(duplicateButton);
+  });
 });

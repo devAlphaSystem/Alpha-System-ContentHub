@@ -1,4 +1,4 @@
-import { pb, POCKETBASE_URL, NODE_ENV } from "./config.js";
+import { pb, POCKETBASE_URL, NODE_ENV, PORT } from "./config.js";
 
 export function requireLogin(req, res, next) {
   if (!req.session.user || !req.session.token) {
@@ -33,6 +33,7 @@ export function setLocals(req, res, next) {
   res.locals.user = req.session.user || null;
   res.locals.pocketbaseUrl = POCKETBASE_URL;
   res.locals.theme = req.session.theme || "light";
+  res.locals.currentPath = req.path;
 
   const protocol = req.protocol;
   const host = req.get("host");
@@ -46,6 +47,9 @@ export function setLocals(req, res, next) {
 
   if (!req.session.validPreviews) {
     req.session.validPreviews = {};
+  }
+  if (!req.session.validProjectPasswords) {
+    req.session.validProjectPasswords = {};
   }
   next();
 }
@@ -69,6 +73,9 @@ export function handleErrors(err, req, res, next) {
     console.warn(`[${status}] Client Error: ${err.message}`);
   }
 
+  const defaultTitle = status === 404 ? "Page Not Found (404)" : status === 403 ? "Access Denied (403)" : `Server Error (${status})`;
+  res.locals.pageTitle = res.locals.pageTitle || defaultTitle;
+
   if (status === 404) {
     if (req.path.startsWith("/preview/")) {
       res.render("preview/invalid", {
@@ -76,11 +83,11 @@ export function handleErrors(err, req, res, next) {
         message: res.locals.message || "This preview link appears to be invalid or has expired.",
       });
     } else {
-      res.render("errors/404", { pageTitle: "Page Not Found (404)" });
+      res.render("errors/404");
     }
   } else if (status === 403) {
-    res.render("errors/403", { pageTitle: "Access Denied (403)" });
+    res.render("errors/403");
   } else {
-    res.render("errors/500", { pageTitle: `Server Error (${status})` });
+    res.render("errors/500");
   }
 }

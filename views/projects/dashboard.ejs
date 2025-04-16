@@ -1,0 +1,127 @@
+<% locals.pageTitle='Dashboard - ' + project.name %>
+
+<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: project.id }) %>
+
+<div class="content-header">
+  <h1>Project Dashboard: <span class="text-muted"><%= project.name %></span></h1>
+  <div class="header-actions">
+    <% if (locals.firstSidebarEntryId) { %>
+      <a href="/view/<%= firstSidebarEntryId %>" class="btn btn-secondary" target="_blank" title="View the first public page of this project">
+        <i class="fas fa-eye"></i> View Public Page
+      </a>
+    <% } %>
+    <% if (project.roadmap_enabled && project.is_publicly_viewable) { %>
+      <a href="/roadmap/<%= project.id %>" class="btn btn-secondary" target="_blank" title="View the public roadmap for this project">
+        <i class="fas fa-route"></i> View Roadmap
+      </a>
+    <% } %>
+    <a href="/projects/<%= project.id %>/edit" class="btn btn-secondary" title="Edit Project Settings">
+      <i class="fas fa-cog"></i> Settings
+    </a>
+    <a href="/projects/<%= project.id %>/new" class="btn btn-primary">
+      <i class="fas fa-plus"></i> Create New Entry
+    </a>
+  </div>
+</div>
+
+<% if (project.description) { %>
+  <p class="mb-4"><%= project.description %></p>
+<% } %>
+
+<% if (locals.error) { %>
+  <div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle alert-icon"></i>
+    <span><%= error %></span>
+  </div>
+<% } %>
+
+<% if (metrics) { %>
+  <div class="row">
+    <div class="col" style="margin-bottom: 25px; flex: 1 1 200px;">
+      <div class="card">
+        <div class="card-body text-center" style="padding: 20px;">
+          <div style="font-size: 1.8rem; font-weight: 600; color: var(--primary-color); margin-bottom: 5px;"><%= metrics.totalEntries %></div>
+          <div style="font-size: 0.9rem; color: var(--text-secondary);">Total Entries (Docs & CL)</div>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="margin-bottom: 25px; flex: 1 1 200px;">
+      <div class="card">
+        <div class="card-body text-center" style="padding: 20px;">
+          <div style="font-size: 1.8rem; font-weight: 600; color: var(--success-color); margin-bottom: 5px;"><%= metrics.totalViews %></div>
+          <div style="font-size: 0.9rem; color: var(--text-secondary);">Total Views (Docs & CL)</div>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="margin-bottom: 25px; flex: 1 1 200px;">
+      <div class="card">
+        <div class="card-body text-center" style="padding: 20px;">
+          <div style="font-size: 1.8rem; font-weight: 600; color: var(--badge-docs-text); margin-bottom: 5px;"><%= metrics.entriesByType.documentation %></div>
+          <div style="font-size: 0.9rem; color: var(--text-secondary);">Documentation</div>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="margin-bottom: 25px; flex: 1 1 200px;">
+      <div class="card">
+        <div class="card-body text-center" style="padding: 20px;">
+          <div style="font-size: 1.8rem; font-weight: 600; color: var(--badge-changelog-text); margin-bottom: 5px;"><%= metrics.entriesByType.changelog %></div>
+          <div style="font-size: 0.9rem; color: var(--text-secondary);">Changelogs</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col" style="flex: 2 1 60%;">
+      <div class="card">
+        <div class="card-body" style="padding: 20px;">
+          <h5 class="card-title" style="text-align: center; margin-bottom: 15px; font-weight: 600;">Entry Creations (Last 30 Days - Docs & CL)</h5>
+          <div id="chart-activity" style="min-height: 300px;">
+            <% if (!metrics.activityData || metrics.activityData.length === 0) { %>
+              <div style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+                <i class="fas fa-calendar-alt" style="font-size: 2rem; margin-right: 0.5rem;"></i> No recent creation activity
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col" style="flex: 1 1 35%;">
+      <div class="card">
+        <div class="card-body" style="padding: 20px;">
+          <h5 class="card-title" style="margin-bottom: 15px; font-weight: 600;">Recently Updated (Docs & CL)</h5>
+          <% if (metrics.recentEntries && metrics.recentEntries.length > 0) { %>
+            <ul style="list-style: none; padding: 0; margin: 0;">
+              <% for(const entry of metrics.recentEntries) { %>
+                <li style="border-bottom: 1px solid var(--border-light); padding: 10px 0; display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <a href="/projects/<%= project.id %>/edit/<%= entry.id %>" style="font-weight: 500; display: block; margin-bottom: 2px;"><%= entry.title %></a>
+                    <small class="text-muted"><%= entry.formattedUpdated %></small>
+                  </div>
+                  <span class="badge type-badge type-<%= entry.type %>" style="flex-shrink: 0; margin-left: 10px;"><%= entry.type %></span>
+                </li>
+              <% } %>
+            </ul>
+          <% } else { %>
+            <p class="text-muted" style="text-align: center; padding: 20px 0;">No recent entries found.</p>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<% } else if (!locals.error) { %>
+  <div class="card">
+    <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+      <i class="fas fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+      <p>Loading project dashboard metrics...</p>
+    </div>
+  </div>
+<% } %>
+
+<script>
+  const projectMetrics = <%- JSON.stringify(metrics || {}) %>;
+</script>
+
+<%- include('../partials/footer', { scriptPath: '/js/project_dashboard.js' }) %>

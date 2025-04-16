@@ -4,24 +4,15 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>
-      <%= entry.title %> - <%= entry.type==='changelog' ? 'Changelog' : 'Documentation' %>
-    </title>
-
+    <title><%= locals.pageTitle || entry.title %></title>
     <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-    <!-- Icons (Font Awesome) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-
-    <!-- Highlight CSS -->
     <link rel="stylesheet" href="/css/vendors/hljs-theme.css">
-
-    <!-- Main View Stylesheet -->
     <link rel="stylesheet" href="/css/view-style.css">
   </head>
 
@@ -29,25 +20,66 @@
 
     <script>
       const currentTheme = localStorage.getItem("theme") || "light";
-
+      
       if (currentTheme === "dark") {
         document.body.classList.add("dark-mode");
       }
     </script>
 
+    <header class="mobile-header">
+      <button id="mobile-project-nav-toggle" class="mobile-nav-toggle <% if (!project) { %>hidden<% } %>" aria-label="Toggle Project Navigation">
+        <i class="fas fa-bars"></i>
+      </button>
+      <a href="/" class="mobile-logo"><%= project ? project.name : 'Content Hub' %></a>
+      <button id="mobile-toc-nav-toggle" class="mobile-nav-toggle" aria-label="Toggle Table of Contents">
+        <i class="fas fa-list-ul"></i>
+      </button>
+    </header>
+
     <div class="page-wrapper">
-      <aside class="sidebar">
-        <div class="sidebar-sticky-content">
-          <h3 class="toc-title">On this page</h3>
-          <nav id="toc" class="table-of-contents"></nav>
-          <div class="theme-toggle-container">
-            <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme">
-              <i class="fas fa-sun"></i>
-              <i class="fas fa-moon"></i>
-            </button>
+      <% if (project && (sidebarEntries && sidebarEntries.length > 0 || project.roadmap_enabled)) { %>
+        <aside class="project-sidebar" id="project-sidebar">
+          <div class="sidebar-sticky-content">
+            <h3 class="project-sidebar-title">
+              <a href="/projects/<%= project.id %>/entries" title="Go to project admin page (requires login)">
+                <%= project.name %>
+              </a>
+            </h3>
+            <nav class="project-entries-nav">
+              <ul>
+                <% if (sidebarEntries && sidebarEntries.length > 0) { %>
+                    <% for(const item of sidebarEntries) { %>
+                      <li>
+                        <a href="/view/<%= item.id %>" class="project-entry-link <% if (item.id === entry.id) { %>active<% } %>">
+                          <% if (item.type === 'changelog') { %>
+                            <i class="fas fa-history fa-fw type-icon"></i>
+                          <% } else { %>
+                            <i class="fas fa-file-alt fa-fw type-icon"></i>
+                          <% } %>
+                          <span><%= item.title %></span>
+                        </a>
+                      </li>
+                    <% } %>
+                <% } %>
+                <% if (project.roadmap_enabled) { %>
+                 <li>
+                    <a href="/roadmap/<%= project.id %>" class="project-entry-link">
+                        <i class="fas fa-columns fa-fw type-icon"></i>
+                        <span>Project Roadmap</span>
+                    </a>
+                 </li>
+                <% } %>
+              </ul>
+            </nav>
+             <div class="theme-toggle-container">
+                <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme">
+                <i class="fas fa-sun"></i>
+                <i class="fas fa-moon"></i>
+                </button>
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
+      <% } %>
 
       <div class="main-content">
         <% if (locals.customHeaderHtml) { %>
@@ -61,7 +93,7 @@
             <span class="entry-type <%= entry.type %>">
               <%= entry.type==='changelog' ? 'Changelog' : 'Documentation' %>
             </span>
-            
+
             <% if (locals.readingTime && readingTime > 0) { %>
               <span class="reading-time"> <i class="far fa-clock"></i> <%= readingTime %> min read </span>
             <% } %>
@@ -90,18 +122,24 @@
           </div>
         <% } %>
       </div>
+
+      <aside class="toc-sidebar" id="toc-sidebar">
+        <div class="sidebar-sticky-content">
+          <h3 class="toc-title">On this page</h3>
+          <nav id="toc" class="table-of-contents"></nav>
+        </div>
+      </aside>
     </div>
 
-    <!-- Mermaid JS -->
-    <script src="/js/vendors/mermaid.js"></script>
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
-    <!-- Mermaid Initialization -->
+    <script src="/js/vendors/mermaid.js"></script>
     <script>
       function initializeMermaid(theme) {
         try {
           const mermaidTheme = theme === 'dark' ? 'dark' : 'neutral';
           mermaid.initialize({
-            startOnLoad: false, 
+            startOnLoad: false,
             theme: mermaidTheme,
             themeVariables: {
               darkMode: theme === 'dark',
@@ -114,20 +152,13 @@
           console.error("Error initializing or running Mermaid:", e);
         }
       }
-
       document.addEventListener('DOMContentLoaded', () => {
         const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
         initializeMermaid(currentTheme);
       });
     </script>
-
-    <!-- Highlight JS -->
     <script src="/js/vendors/highlight.min.js"></script>
-
-    <!-- Alpha System - Disable Dev Tools -->
     <script src="/js/vendors/disable-dev-tools.js"></script>
-
-    <!-- View JS -->
     <script src="/js/view.js"></script>
   </body>
 

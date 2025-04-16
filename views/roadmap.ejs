@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= locals.pageTitle || 'Roadmap' %></title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <link rel="stylesheet" href="/css/view-style.css">
+
+    <style>
+      .page-wrapper {
+        max-width: unset !important;
+      }
+
+      .roadmap-board-container {
+        padding: 20px 0;
+      }
+
+      .roadmap-board {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(300px, 1fr);
+        gap: 24px;
+        padding-bottom: 20px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-secondary) var(--bg-secondary);
+      }
+      
+      .roadmap-board::-webkit-scrollbar {
+        height: 10px;
+      }
+
+      .roadmap-board::-webkit-scrollbar-track {
+        background: var(--bg-secondary);
+        border-radius: 5px;
+      }
+
+      .roadmap-board::-webkit-scrollbar-thumb {
+        background-color: var(--border-secondary);
+        border-radius: 5px;
+        border: 2px solid var(--bg-secondary);
+      }
+
+      body.dark-mode .roadmap-board::-webkit-scrollbar-track {
+        background: var(--dark-bg-secondary);
+      }
+
+      body.dark-mode .roadmap-board::-webkit-scrollbar-thumb {
+        background-color: var(--dark-border-secondary);
+        border-color: var(--dark-bg-secondary);
+      }
+
+      .roadmap-column {
+        display: flex;
+        flex-direction: column;
+        background-color: var(--bg-secondary);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-primary);
+        max-height: calc(100vh - var(--header-height) - 120px); 
+        transition: background-color 0.3s ease, border-color 0.3s ease;
+      }
+
+      .roadmap-column-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-primary);
+        position: sticky;
+        top: 0;
+        background-color: var(--bg-secondary);
+        z-index: 10;
+        border-top-left-radius: var(--radius-lg);
+        border-top-right-radius: var(--radius-lg);
+        transition: background-color 0.3s ease, border-color 0.3s ease;
+      }
+
+      .roadmap-column-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .roadmap-column-count {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        background-color: var(--bg-inline-code);
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+      }
+
+      .roadmap-cards {
+        padding: 16px;
+        flex-grow: 1;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-secondary) transparent;
+      }
+
+      .roadmap-cards::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .roadmap-cards::-webkit-scrollbar-track {
+        background: transparent;
+        margin: 5px 0;
+      }
+
+      .roadmap-cards::-webkit-scrollbar-thumb {
+        background-color: var(--border-secondary);
+        border-radius: 3px;
+      }
+
+      body.dark-mode .roadmap-cards::-webkit-scrollbar-thumb {
+        background-color: var(--dark-border-secondary);
+      }
+
+      .roadmap-card {
+        background-color: var(--bg-primary);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-primary);
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        cursor: grab;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      }
+
+      .roadmap-card:last-child {
+        margin-bottom: 0;
+      }
+
+      .roadmap-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.06);
+        border-color: var(--border-secondary);
+      }
+
+      .roadmap-card-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 8px 0;
+        line-height: 1.4;
+      }
+
+      .roadmap-card-tags {
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .roadmap-card-tags .tag-badge {
+        margin: 0;
+        font-size: 0.75rem;
+        padding: 3px 8px;
+        background-color: var(--bg-inline-code);
+        color: var(--text-secondary);
+        border: 1px solid transparent;
+      }
+
+      .empty-stage-message {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        padding: 30px 10px;
+        font-style: italic;
+      }
+
+      body.dark-mode .roadmap-column {
+        background-color: var(--dark-bg-secondary);
+        border-color: var(--dark-border-primary);
+      }
+
+      body.dark-mode .roadmap-column-header {
+        background-color: var(--dark-bg-secondary);
+        border-bottom-color: var(--dark-border-primary);
+      }
+
+      body.dark-mode .roadmap-column-count {
+        background-color: var(--dark-bg-inline-code);
+        color: var(--dark-text-muted);
+      }
+
+      body.dark-mode .roadmap-card {
+        background-color: var(--dark-bg-primary);
+        border-color: var(--dark-border-primary);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      }
+
+      body.dark-mode .roadmap-card:hover {
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        border-color: var(--dark-border-secondary);
+      }
+
+      body.dark-mode .roadmap-card-tags .tag-badge {
+        background-color: var(--dark-bg-inline-code);
+        color: var(--dark-text-secondary);
+      }
+
+      @media (max-width: 767px) {
+        .roadmap-board-container {
+          padding: 10px 0;
+        }
+
+        .roadmap-board {
+          gap: 12px;
+        }
+
+        .roadmap-column {
+          grid-auto-columns: minmax(260px, 1fr);
+          min-width: 260px;
+          padding: 12px;
+        }
+
+        .roadmap-column-header {
+          padding: 10px 12px;
+          top: -12px;
+          margin-left: -12px;
+          margin-right: -12px;
+        }
+
+        .roadmap-column-title {
+          font-size: 0.95rem;
+        }
+
+        .roadmap-cards {
+          padding: 12px 5px 12px 1px;
+        }
+
+        .roadmap-card {
+          padding: 12px;
+        }
+
+        .roadmap-card-title {
+          font-size: 0.9rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body class="public-view">
+
+    <script>
+      const currentTheme = localStorage.getItem("theme") || "light";
+      
+      if (currentTheme === "dark") {
+        document.body.classList.add("dark-mode");
+      }
+    </script>
+
+     <header class="mobile-header">
+      <button id="mobile-project-nav-toggle" class="mobile-nav-toggle <% if (!project) { %>hidden<% } %>" aria-label="Toggle Project Navigation">
+        <i class="fas fa-bars"></i>
+      </button>
+      <a href="/" class="mobile-logo"><%= project ? project.name : 'Content Hub' %></a>
+       <button id="mobile-toc-nav-toggle" class="mobile-nav-toggle" aria-label="Toggle Table of Contents" style="visibility: hidden;">
+        <i class="fas fa-list-ul"></i>
+      </button>
+    </header>
+
+    <div class="page-wrapper">
+      <% if (project && (sidebarEntries && sidebarEntries.length > 0 || project.roadmap_enabled)) { %>
+        <aside class="project-sidebar" id="project-sidebar">
+          <div class="sidebar-sticky-content">
+            <h3 class="project-sidebar-title">
+              <a href="/projects/<%= project.id %>/roadmaps" title="Go to project admin page (requires login)">
+                <%= project.name %>
+              </a>
+            </h3>
+            <nav class="project-entries-nav">
+              <ul>
+                <% if (sidebarEntries && sidebarEntries.length > 0) { %>
+                  <% for(const item of sidebarEntries) { %>
+                    <li>
+                      <a href="/view/<%= item.id %>" class="project-entry-link">
+                        <% if (item.type === 'changelog') { %>
+                          <i class="fas fa-history fa-fw type-icon"></i>
+                        <% } else if (item.type === 'documentation') { %>
+                          <i class="fas fa-file-alt fa-fw type-icon"></i>
+                        <% } %>
+                        <span><%= item.title %></span>
+                      </a>
+                    </li>
+                  <% } %>
+                <% } %>
+                <% if (project.roadmap_enabled) { %>
+                  <li>
+                    <a href="/roadmap/<%= project.id %>" class="project-entry-link active">
+                      <i class="fas fa-columns fa-fw type-icon"></i>
+                      <span>Project Roadmap</span>
+                    </a>
+                  </li>
+                <% } %>
+              </ul>
+            </nav>
+            <div class="theme-toggle-container">
+              <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme">
+              <i class="fas fa-sun"></i>
+              <i class="fas fa-moon"></i>
+              </button>
+            </div>
+          </div>
+        </aside>
+      <% } %>
+
+      <div class="main-content">
+        <header class="content-header" style="border-bottom: none; padding-bottom: 0; margin-bottom: 0;">
+          <h1 class="entry-title" style="text-align: center; margin-bottom: 10px;"><%= project.name %> Roadmap</h1>
+        </header>
+
+        <div class="roadmap-board-container">
+          <div class="roadmap-board">
+            <% stages.forEach(stage => { %>
+              <div class="roadmap-column">
+                <div class="roadmap-column-header">
+                  <h2 class="roadmap-column-title">
+                    <span><%= stage %></span>
+                    <span class="roadmap-column-count"><%= entriesByStage[stage] ? entriesByStage[stage].length : 0 %></span>
+                  </h2>
+                </div>
+                <div class="roadmap-cards">
+                  <% if (entriesByStage[stage] && entriesByStage[stage].length > 0) { %>
+                    <% entriesByStage[stage].forEach(entry => { %>
+                      <div class="roadmap-card" data-id="<%= entry.id %>">
+                        <h3 class="roadmap-card-title"><%= entry.title %></h3>
+                        <% if (entry.tags && entry.tags.length > 0) { %>
+                          <div class="roadmap-card-tags">
+                            <% entry.tags.forEach(tag => { %>
+                              <span class="tag-badge"><%= tag %></span>
+                            <% }) %>
+                          </div>
+                        <% } %>
+                      </div>
+                    <% }) %>
+                  <% } else { %>
+                    <p class="empty-stage-message">No items in this stage.</p>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <script src="/js/vendors/mermaid.js"></script>
+
+    <script>
+      function initializeMermaid(theme) {
+        try {
+          const mermaidTheme = theme === 'dark' ? 'dark' : 'neutral';
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: mermaidTheme,
+            themeVariables: {
+              darkMode: theme === 'dark',
+              background: theme === 'dark' ? '#1f2937' : '#ffffff',
+            }
+          });
+          mermaid.run({ querySelector: '.language-mermaid' });
+          console.log('Mermaid initialized with theme:', mermaidTheme);
+        } catch (e) {
+          console.error("Error initializing or running Mermaid:", e);
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+        initializeMermaid(currentTheme);
+      });
+    </script>
+
+    <script src="/js/vendors/highlight.min.js"></script>
+    <script src="/js/vendors/disable-dev-tools.js"></script>
+    <script src="/js/view.js"></script>
+  </body>
+</html>

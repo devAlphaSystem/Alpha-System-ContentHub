@@ -1,127 +1,191 @@
 <% locals.pageTitle='Dashboard' %>
 
-<%- include('partials/header', { pageTitle: locals.pageTitle }) %>
+<%- include('partials/header', { pageTitle: locals.pageTitle, currentProjectId: null }) %>
 
 <div class="content-header">
-  <h1> <%= locals.pageTitle %> </h1>
+  <h1>Global Dashboard Overview</h1>
   <div class="header-actions">
-    <div class="search-group">
-      <label for="search-input" class="sr-only">Search Entries</label>
-      <input type="search" id="search-input" class="form-control" placeholder="Search entries..." title="Search by Title, Collection, Type">
-    </div>
-    <div class="filter-group">
-      <label for="collection-filter-select" class="sr-only">Filter by Collection</label>
-      <select id="collection-filter-select" class="form-control filter-select" title="Filter by Collection">
-        <option value="">All Collections</option>
-        <% if (locals.collectionsList && collectionsList.length > 0) { %>
-          <% collectionsList.forEach(coll => { %>
-            <option value="<%= coll %>"><%= coll %></option>
-          <% }) %>
-        <% } %>
-      </select>
-    </div>
-    <button id="refresh-entries-btn" class="btn btn-secondary" title="Refresh Table"> <i class="fas fa-sync-alt"></i> <span>Refresh</span> </button>
-    <a href="/new" class="btn btn-primary"> <i class="fas fa-plus"></i> Create New Entry </a>
+    <button id="refresh-dashboard-btn" class="btn btn-secondary" title="Refresh Dashboard">
+      <i class="fas fa-sync-alt"></i> <span>Refresh</span>
+    </button>
+    <a href="/projects/new" class="btn btn-primary">
+      <i class="fas fa-plus"></i> Create New Project
+    </a>
   </div>
 </div>
 
 <% if (locals.error) { %>
   <div class="alert alert-danger">
     <i class="fas fa-exclamation-triangle alert-icon"></i>
-    <span>
-      <% if (error === 'delete_failed') { %> Failed to delete the entry. Please try again. <% } else if (error === 'archive_failed') { %> Failed to archive the entry. Please try again. <% } else if (error === 'publish_staged_failed') { %> Failed to publish staged changes. Please try again. <% } else { %> An error occurred: <%= error %> <% } %>
-    </span>
+    <span><%= error %></span>
   </div>
 <% } %>
 
-<% if (locals.action) { %>
-  <div class="alert alert-info">
-    <i class="fas fa-check-circle alert-icon"></i>
-    <span>
-      <% if (action === 'deleted') { %> Entry deleted successfully. <% } else if (action === 'archived') { %> Entry archived successfully. <% } else if (action === 'published_staged') { %> Staged changes published successfully. <% } else { %> Action completed successfully. <% } %>
-    </span>
-  </div>
-<% } %>
-
-<div id="bulk-actions-container" class="bulk-actions-container" style="display: none;">
-  <span id="bulk-selected-count">0</span> item(s) selected
-  <div class="bulk-actions-dropdown">
-    <button class="btn btn-secondary dropdown-toggle" type="button" id="bulk-actions-button"> Bulk Actions <i class="fas fa-chevron-down"></i> </button>
-    <div class="dropdown-menu" id="bulk-actions-menu">
-      <button class="dropdown-item" data-action="publish">Set Status: Published</button>
-      <button class="dropdown-item" data-action="draft">Set Status: Draft</button>
-      <button class="dropdown-item" data-action="publish-staged">Publish Staged Changes</button>
-      <div class="dropdown-divider"></div>
-      <button class="dropdown-item" data-action="archive">Archive Selected</button>
-      <button class="dropdown-item action-delete" data-action="delete">Delete Selected</button>
+<% if (metrics) { %>
+  <div class="row" style="margin-bottom: 25px;">
+    <div class="col" style="flex: 1 1 150px;">
+      <div class="card">
+        <div class="card-body text-center" style="padding: 15px;">
+          <div style="font-size: 1.6rem; font-weight: 600; color: var(--primary-color);">
+            <%= metrics.totalProjects %>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Projects</div>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="flex: 1 1 150px;">
+      <div class="card">
+        <div class="card-body text-center" style="padding: 15px;">
+          <div style="font-size: 1.6rem; font-weight: 600; color: var(--text-primary);">
+            <%= metrics.totalEntries %>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Entries</div>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="flex: 1 1 150px;">
+      <div class="card">
+        <div class="card-body text-center" style="padding: 15px;">
+          <div style="font-size: 1.6rem; font-weight: 600; color: var(--success-color);">
+            <%= metrics.publishedCount %>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">Published</div>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="flex: 1 1 150px;">
+      <div class="card">
+        <div class="card-body text-center" style="padding: 15px;">
+          <div style="font-size: 1.6rem; font-weight: 600; color: var(--secondary-color);">
+            <%= metrics.draftCount %>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">Drafts</div>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="flex: 1 1 150px;">
+      <div class="card">
+        <div class="card-body text-center" style="padding: 15px;">
+          <div style="font-size: 1.6rem; font-weight: 600; color: var(--warning-color);">
+            <%= metrics.stagedCount %>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">Staged Changes</div>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="flex: 1 1 150px;">
+      <div class="card">
+        <div class="card-body text-center" style="padding: 15px;">
+          <div style="font-size: 1.6rem; font-weight: 600; color: var(--info-color);">
+            <%= metrics.totalViews %>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Views</div>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="card data-card <% if (entries.length === 0 && !locals.error) { %>hidden<% } %>">
-  <div class="table-responsive">
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th class="checkbox-column"><input type="checkbox" id="select-all-checkbox" title="Select All"></th>
-          <th data-sort-key="title" style="cursor: pointer;">Title <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-          <th data-sort-key="status" style="cursor: pointer;">Status <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-          <th data-sort-key="collection" style="cursor: pointer;">Collection <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-          <th data-sort-key="type" style="cursor: pointer;">Type <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-          <th data-sort-key="views" style="cursor: pointer;">Views <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-          <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort-down"></i></span></th>
-          <th class="actions-column">Actions</th>
-        </tr>
-      </thead>
-
-      <tbody id="entries-table-body">
-        <% for (const entry of entries) { %>
-          <tr data-entry-id="<%= entry.id %>" data-updated-timestamp="<%= new Date(entry.updated).getTime() %>" data-views-value="<%= entry.views || 0 %>">
-            <td class="checkbox-column"><input type="checkbox" class="entry-checkbox" value="<%= entry.id %>"></td>
-            <td data-label="Title"><%= entry.title %></td>
-            <td data-label="Status">
-              <span class="badge status-badge status-<%= entry.status.toLowerCase() %>"> <%= entry.status %> </span>
-              <% if (entry.has_staged_changes) { %>
-                <span class="badge status-badge status-staged" title="Unpublished changes exist">Staged</span>
-              <% } %>
-            </td>
-            <td data-label="Collection"><%= entry.collection || '-' %></td>
-            <td data-label="Type"><span class="badge type-badge type-<%= entry.type %>"> <%= entry.type %> </span></td>
-            <td data-label="Views"> <%= entry.views || 0 %> </td>
-            <td data-label="Updated"> <%= new Date(entry.updated).toLocaleDateString('en-US', { month: 'short' , day: 'numeric' , year: 'numeric' }) %> </td>
-            <td data-label="Actions" class="actions-cell">
-              <% if (entry.has_staged_changes) { %>
-                <button type="button" class="btn btn-icon btn-publish-staged js-publish-staged-btn" data-url="/api/entries/<%= entry.id %>/publish-staged" data-entry-title="<%= entry.title %>" title="Publish Staged Changes"> <i class="fas fa-upload"></i> </button>
-              <% } %>
-              <a href="/view/<%= entry.id %>?from_admin=1" target="_blank" class="btn btn-icon btn-view" title="View Public Page"><i class="fas fa-eye"></i></a>
-              <a href="/edit/<%= entry.id %>" class="btn btn-icon btn-edit" title="Edit <%= entry.has_staged_changes ? 'Staged ' : '' %>Entry"> <i class="fas fa-pencil-alt"></i> </a>
-              <form action="/archive/<%= entry.id %>" method="POST" class="archive-form" title="Archive Entry">
-                <button type="submit" class="btn btn-icon btn-archive"> <i class="fas fa-archive"></i> </button>
-              </form>
-              <form action="/delete/<%= entry.id %>" method="POST" class="delete-form" title="Delete Entry">
-                <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
-              </form>
-            </td>
-          </tr>
-        <% } %>
-      </tbody>
-    </table>
+  <div class="row" style="margin-bottom: 25px;">
+    <div class="col" style="flex: 1 1 48%;">
+      <div class="card">
+        <div class="card-body" style="padding: 20px;">
+          <h5 class="card-title" style="text-align: center; font-weight: 600;">Entries by Type</h5>
+          <div id="chart-global-types" style="min-height: 280px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="flex: 1 1 48%;">
+      <div class="card">
+        <div class="card-body" style="padding: 20px;">
+          <h5 class="card-title" style="text-align: center; font-weight: 600;">Entries by Status</h5>
+          <div id="chart-global-status" style="min-height: 280px;"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="pagination-controls card-footer">
-    <button id="prev-page-btn" class="btn btn-secondary" disabled> <i class="fas fa-chevron-left"></i> Previous </button>
-    <span id="page-info" class="page-info-text"> Page <%= pagination.page %> of <%= pagination.totalPages %> (<%= pagination.totalItems %> items) </span>
-    <button id="next-page-btn" class="btn btn-secondary" <% if (pagination.page>= pagination.totalPages) { %>disabled<% } %>> Next <i class="fas fa-chevron-right"></i> </button>
+  <div class="row" style="margin-bottom: 25px;">
+    <div class="col">
+      <div class="card">
+        <div class="card-body" style="padding: 20px;">
+          <h5 class="card-title" style="text-align: center; font-weight: 600;">Entry Creations (Last 30 Days)</h5>
+          <div id="chart-global-activity" style="min-height: 300px;">
+            <% if (!metrics.activityData || metrics.activityData.length === 0) { %>
+              <div style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+                <i class="fas fa-calendar-alt" style="font-size: 2rem; margin-right: 0.5rem;"></i> No recent creation activity
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-</div>
 
-<% if (entries.length === 0 && !locals.error) { %>
-  <div class="card empty-state-card">
-    <i class="fas fa-folder-open empty-state-icon"></i>
-    <h2>No entries yet</h2>
-    <p>Get started by creating your first changelog or documentation entry.</p>
-    <a href="/new" class="btn btn-primary">Create First Entry</a>
+  <div class="row">
+    <div class="col" style="flex: 1 1 48%;">
+      <div class="card">
+        <div class="card-body" style="padding: 20px;">
+          <h5 class="card-title" style="margin-bottom: 15px; font-weight: 600;">Recently Updated Projects</h5>
+          <% if (metrics.recentlyUpdatedProjects && metrics.recentlyUpdatedProjects.length > 0) { %>
+            <ul style="list-style: none; padding: 0; margin: 0;">
+              <% for(const project of metrics.recentlyUpdatedProjects) { %>
+                <li style="border-bottom: 1px solid var(--border-light); padding: 10px 0; display: flex; justify-content: space-between; align-items: center;">
+                  <a href="/projects/<%= project.id %>" style="font-weight: 500;">
+                    <%= project.name %>
+                  </a>
+                  <small class="text-muted">
+                    <%= project.formattedUpdated %>
+                  </small>
+                </li>
+              <% } %>
+            </ul>
+          <% } else { %>
+            <p class="text-muted" style="text-align: center; padding: 20px 0;">No projects found or updated recently.</p>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col" style="flex: 1 1 48%;">
+      <div class="card">
+        <div class="card-body" style="padding: 20px;">
+          <h5 class="card-title" style="margin-bottom: 15px; font-weight: 600;">Most Viewed Entries (All Time)</h5>
+          <% if (metrics.topViewedEntries && metrics.topViewedEntries.length > 0) { %>
+            <ul style="list-style: none; padding: 0; margin: 0;">
+              <% for(const entry of metrics.topViewedEntries) { %>
+                <li style="border-bottom: 1px solid var(--border-light); padding: 10px 0; display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <a href="/projects/<%= entry.projectId %>/edit/<%= entry.id %>" style="font-weight: 500; display: block; margin-bottom: 2px;">
+                      <%= entry.title %>
+                    </a>
+                    <small class="text-muted">In: <a href="/projects/<%= entry.projectId %>">
+                      <%= entry.projectName %>
+                    </a> (<%= entry.type %>)</small>
+                  </div>
+                  <span class="badge" style="background-color: var(--info-light-bg); color: var(--info-color); flex-shrink: 0; margin-left: 10px;">
+                    <%= entry.views %> views
+                  </span>
+                </li>
+              <% } %>
+            </ul>
+          <% } else { %>
+            <p class="text-muted" style="text-align: center; padding: 20px 0;">No entries have been viewed yet.</p>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% } else if (!locals.error) { %>
+  <div class="card">
+    <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+      <i class="fas fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+      <p>Loading dashboard metrics...</p>
+    </div>
   </div>
 <% } %>
 
-<%- include('partials/footer') %>
+<script>
+  const dashboardMetrics = <%- JSON.stringify(metrics || {}) %>;
+</script>
+
+<%- include('partials/footer', { scriptPath: '/js/dashboard.js' }) %>

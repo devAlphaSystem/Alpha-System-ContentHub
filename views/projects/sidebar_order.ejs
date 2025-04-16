@@ -1,0 +1,105 @@
+<% locals.pageTitle='Sidebar Order - ' + project.name %>
+
+<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: project.id }) %>
+
+<style>
+  .list-group {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .list-group-item {
+    padding: 12px 16px;
+    border: 1px solid var(--border-light);
+    background-color: var(--content-bg);
+    margin-bottom: -1px;
+    display: flex;
+    align-items: center;
+  }
+
+  .list-group-item:first-child {
+    border-top-left-radius: var(--radius-md);
+    border-top-right-radius: var(--radius-md);
+  }
+
+  .list-group-item:last-child {
+    margin-bottom: 0;
+    border-bottom-left-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
+  }
+
+  .list-group-item.sortable-ghost {
+    opacity: 0.4;
+    background-color: var(--sidebar-link-active-bg);
+  }
+
+  .list-group-item.sortable-chosen {
+    cursor: grabbing;
+  }
+
+  body.dark-mode .list-group-item {
+    background-color: var(--dark-content-bg);
+    border-color: var(--dark-border-light);
+  }
+
+  body.dark-mode .list-group-item.sortable-ghost {
+    background-color: var(--dark-sidebar-link-active-bg);
+  }
+
+  body.dark-mode .handle {
+    color: var(--dark-text-muted);
+  }
+</style>
+
+<div class="content-header">
+  <h1>Sidebar Order: <span class="text-muted"><%= project.name %></span></h1>
+  <div class="header-actions">
+    <button id="save-order-btn" class="btn btn-primary">
+      <i class="fas fa-save"></i> Save Order
+    </button>
+    <a href="/projects/<%= project.id %>" class="btn btn-secondary">Back to Overview</a>
+  </div>
+</div>
+
+<% if (locals.message === 'updated') { %>
+  <div class="alert alert-success">
+    <i class="fas fa-check-circle alert-icon"></i>
+    <span>Sidebar order updated successfully.</span>
+  </div>
+<% } %>
+
+<% if (locals.error) { %>
+  <div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle alert-icon"></i>
+    <span><%= error %></span>
+  </div>
+<% } %>
+
+<div class="card">
+  <div class="card-body" style="padding: 20px;">
+    <p class="text-muted" style="margin-bottom: 20px;">Drag and drop the entries below to reorder how they appear in the public project sidebar. Only entries marked "Show in Project Sidebar?" will appear here. Roadmap items are excluded.</p>
+
+    <% if (entries && entries.length > 0) { %>
+      <ul id="sortable-entries" class="list-group">
+        <% for (const entry of entries) { %>
+          <li class="list-group-item" data-id="<%= entry.id %>">
+            <i class="fas fa-grip-vertical handle" style="cursor: grab; margin-right: 10px; color: var(--text-muted);"></i>
+            <span style="margin-right: 10px;">
+              <% if (entry.type === 'documentation') { %>
+                <i class="fas fa-file-alt fa-fw" title="Documentation"></i>
+              <% } else if (entry.type === 'changelog') { %>
+                <i class="fas fa-history fa-fw" title="Changelog"></i>
+              <% } %>
+            </span>
+            <%= entry.title %>
+          </li>
+        <% } %>
+      </ul>
+    <% } else { %>
+      <p class="text-muted" style="text-align: center; padding: 30px 0;">No entries are currently set to show in the public sidebar for this project.</p>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/footer', { scriptPath: '/js/sidebar_order.js' }) %>

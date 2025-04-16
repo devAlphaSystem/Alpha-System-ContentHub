@@ -1,0 +1,111 @@
+<% locals.pageTitle='Edit Project: ' + project.name %>
+
+<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: project.id }) %>
+
+<div class="content-header">
+  <h1>Edit Project: <span class="text-muted"><%= project.name %></span></h1>
+</div>
+
+<% if (locals.message === 'updated') { %>
+  <div class="alert alert-info">
+    <i class="fas fa-check-circle alert-icon"></i>
+    <span>Project settings updated successfully.</span>
+  </div>
+<% } %>
+
+<% if (locals.errors) { %>
+  <div class="alert alert-danger error-summary">
+    <i class="fas fa-exclamation-circle alert-icon"></i>
+    <div>
+      <p><strong>Please fix the following errors:</strong></p>
+      <ul>
+        <% for (const key of Object.keys(errors)) { %>
+          <li><strong><%= key %>:</strong> <%= errors[key].message || errors[key] %></li>
+        <% } %>
+      </ul>
+    </div>
+  </div>
+<% } %>
+
+<div class="card form-card">
+  <form action="/projects/<%= project.id %>/edit" method="POST" novalidate autocomplete="off" id="edit-form">
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
+      <label for="name">Project Name <span class="required">*</span></label>
+      <input type="text" id="name" name="name" required class="form-control <%= locals.errors?.name ? 'is-invalid' : '' %>" value="<%= project.name %>" autofocus>
+    </div>
+
+    <div class="form-group form-group-full">
+      <label for="description">Description (Optional)</label>
+      <textarea id="description" name="description" class="form-control" style="resize: vertical;"><%= project.description %></textarea>
+      <small class="form-text">A brief description of the project.</small>
+    </div>
+
+    <h3 style="margin: 15px 0; font-size: 1.1rem; font-weight: 600;">Access Control</h3>
+
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="is_publicly_viewable" name="is_publicly_viewable" value="true" <%= project.is_publicly_viewable ? 'checked' : '' %>>
+        <label class="form-check-label" for="is_publicly_viewable">Enable Public View</label>
+      </div>
+      <small class="form-text">If disabled, public `/view/:id` and `/roadmap/:projectId` links for this project will not work.</small>
+    </div>
+
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="password_protected" name="password_protected" value="true" <%= project.password_protected ? 'checked' : '' %> aria-controls="project-password-group">
+        <label class="form-check-label" for="password_protected">Require Password for Public View</label>
+      </div>
+      <small class="form-text">If enabled, visitors will need a password to access any public `/view/:id` or `/roadmap/:projectId` page in this project.</small>
+       <% if (locals.errors?.password_protected) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.password_protected.message %></small> <% } %>
+    </div>
+
+    <div id="project-password-group" class="form-group form-group-full" style="<%= project.password_protected ? '' : 'display: none;' %>">
+      <label for="access_password">Project Access Password</label>
+      <input type="password" id="access_password" name="access_password" class="form-control" placeholder="Enter new password or leave blank to keep current">
+      <small class="form-text">Only enter a value if you want to set or change the password. It will be stored securely.</small>
+      <% if (locals.errors?.access_password) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.access_password.message %></small> <% } %>
+    </div>
+
+    <h3 style="margin: 15px 0; font-size: 1.1rem; font-weight: 600;">Features</h3>
+
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="roadmap_enabled" name="roadmap_enabled" value="true" <%= project.roadmap_enabled ? 'checked' : '' %>>
+        <label class="form-check-label" for="roadmap_enabled">Enable Public Roadmap</label>
+      </div>
+      <small class="form-text">If enabled, the public `/roadmap/:projectId` page will be accessible (subject to overall Public View and Password settings).</small>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-lg">
+        <i class="fas fa-save"></i> Save Changes
+      </button>
+      <a href="/projects/<%= project.id %>" class="btn btn-secondary btn-lg">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  const passwordToggle = document.getElementById('password_protected');
+  const passwordGroup = document.getElementById('project-password-group');
+  const passwordInput = document.getElementById('access_password');
+  const publicViewToggle = document.getElementById('is_publicly_viewable');
+
+  function togglePasswordFields() {
+     if (passwordToggle.checked && publicViewToggle.checked) {
+      passwordGroup.style.display = '';
+    } else {
+      passwordGroup.style.display = 'none';
+      if (!passwordToggle.checked) {
+         passwordInput.value = '';
+      }
+    }
+  }
+
+  passwordToggle?.addEventListener('change', togglePasswordFields);
+  publicViewToggle?.addEventListener('change', togglePasswordFields);
+
+  togglePasswordFields();
+</script>
+
+<%- include('../partials/footer', { scriptPath: null }) %>

@@ -4,10 +4,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>
-      <%= locals.pageTitle || 'Page Not Found (404)' %>
-    </title>
-    
+    <title><%= locals.pageTitle || 'Page Not Found (404)' %></title>
     <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
 
     <!-- Fonts -->
@@ -21,12 +18,12 @@
     <!-- Main Admin Stylesheet -->
     <link rel="stylesheet" href="/css/style.css">
   </head>
-  
+
   <body class="admin-body">
     <div class="page-wrapper">
       <div class="main-content-wrapper" style="margin-left: 0; width: 100%;">
         <header class="top-bar"></header>
-
+        
         <main class="page-content">
           <div class="error-page-container">
             <div class="card error-card">
@@ -39,4 +36,4 @@
             </div>
           </div>
 
-<%- include('../partials/footer') %>
+  <%- include('../partials/footer') %>

@@ -28,7 +28,11 @@ router.post("/login", loginLimiter, async (req, res) => {
       if (err) {
         console.error("Session regeneration failed:", err);
         pb.authStore.clear();
-        logAuditEvent(req, "LOGIN_FAILURE", "users", null, { email: email, reason: "Session regeneration failed", error: err?.message });
+        logAuditEvent(req, "LOGIN_FAILURE", "users", null, {
+          email: email,
+          reason: "Session regeneration failed",
+          error: err?.message,
+        });
         return res.status(500).render("login", {
           error: "Login failed due to a server issue. Please try again.",
           pageTitle: "Login",
@@ -45,7 +49,9 @@ router.post("/login", loginLimiter, async (req, res) => {
       });
       res.setHeader("Set-Cookie", cookie);
 
-      logAuditEvent(req, "LOGIN_SUCCESS", "users", authData.record.id, { email: email });
+      logAuditEvent(req, "LOGIN_SUCCESS", "users", authData.record.id, {
+        email: email,
+      });
 
       const returnTo = req.session.returnTo || "/";
       req.session.returnTo = undefined;
@@ -57,7 +63,11 @@ router.post("/login", loginLimiter, async (req, res) => {
     if (error.status === 400) {
       errorMessage = "Invalid email or password.";
     }
-    logAuditEvent(req, "LOGIN_FAILURE", "users", null, { email: email, reason: errorMessage, status: error.status });
+    logAuditEvent(req, "LOGIN_FAILURE", "users", null, {
+      email: email,
+      reason: errorMessage,
+      status: error.status,
+    });
     res.clearCookie("pb_auth");
     res.status(401).render("login", { error: errorMessage, pageTitle: "Login" });
   }
@@ -71,7 +81,9 @@ router.get("/logout", (req, res, next) => {
   req.session.destroy((err) => {
     if (err) {
       console.error("Error destroying session:", err);
-      logAuditEvent(req, "LOGOUT_FAILURE", "users", userId, { error: err?.message });
+      logAuditEvent(req, "LOGOUT_FAILURE", "users", userId, {
+        error: err?.message,
+      });
       return res.redirect("/login");
     }
     logAuditEvent(req, "LOGOUT_SUCCESS", "users", userId);

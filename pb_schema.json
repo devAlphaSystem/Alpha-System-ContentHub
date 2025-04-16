@@ -127,6 +127,402 @@
     "system": false
   },
   {
+    "id": "pbc_4214752105",
+    "listRule": "owner.id = @request.auth.id",
+    "viewRule": "owner.id = @request.auth.id",
+    "createRule": "owner.id = @request.auth.id",
+    "updateRule": "owner.id = @request.auth.id",
+    "deleteRule": "owner.id = @request.auth.id",
+    "name": "changelog_footers",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text1579384326",
+        "max": 0,
+        "min": 0,
+        "name": "name",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "convertURLs": false,
+        "hidden": false,
+        "id": "editor4274335913",
+        "maxSize": 0,
+        "name": "content",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "editor"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "_pb_users_auth_",
+        "hidden": false,
+        "id": "relation3479234172",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "owner",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_484305853",
+        "hidden": false,
+        "id": "relation800313582",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "project",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [],
+    "system": false
+  },
+  {
+    "id": "pbc_3853890220",
+    "listRule": "owner.id = @request.auth.id",
+    "viewRule": "owner.id = @request.auth.id",
+    "createRule": "owner.id = @request.auth.id",
+    "updateRule": "owner.id = @request.auth.id",
+    "deleteRule": "owner.id = @request.auth.id",
+    "name": "changelog_headers",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text1579384326",
+        "max": 0,
+        "min": 0,
+        "name": "name",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "convertURLs": false,
+        "hidden": false,
+        "id": "editor4274335913",
+        "maxSize": 0,
+        "name": "content",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "editor"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "_pb_users_auth_",
+        "hidden": false,
+        "id": "relation3479234172",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "owner",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_484305853",
+        "hidden": false,
+        "id": "relation800313582",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "project",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [],
+    "system": false
+  },
+  {
+    "id": "pbc_2024957089",
+    "listRule": "owner.id = @request.auth.id",
+    "viewRule": "owner.id = @request.auth.id",
+    "createRule": "owner.id = @request.auth.id",
+    "updateRule": "owner.id = @request.auth.id",
+    "deleteRule": "owner.id = @request.auth.id",
+    "name": "documentation_footers",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text1579384326",
+        "max": 0,
+        "min": 0,
+        "name": "name",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "convertURLs": false,
+        "hidden": false,
+        "id": "editor4274335913",
+        "maxSize": 0,
+        "name": "content",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "editor"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "_pb_users_auth_",
+        "hidden": false,
+        "id": "relation3479234172",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "owner",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_484305853",
+        "hidden": false,
+        "id": "relation800313582",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "project",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [],
+    "system": false
+  },
+  {
+    "id": "pbc_1715459428",
+    "listRule": "owner.id = @request.auth.id",
+    "viewRule": "owner.id = @request.auth.id",
+    "createRule": "owner.id = @request.auth.id",
+    "updateRule": "owner.id = @request.auth.id",
+    "deleteRule": "owner.id = @request.auth.id",
+    "name": "documentation_headers",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text1579384326",
+        "max": 0,
+        "min": 0,
+        "name": "name",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "convertURLs": false,
+        "hidden": false,
+        "id": "editor4274335913",
+        "maxSize": 0,
+        "name": "content",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "editor"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "_pb_users_auth_",
+        "hidden": false,
+        "id": "relation3479234172",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "owner",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_484305853",
+        "hidden": false,
+        "id": "relation800313582",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "project",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [],
+    "system": false
+  },
+  {
     "id": "pbc_395601678",
     "listRule": "owner.id = @request.auth.id",
     "viewRule": "status = \"published\" || owner.id = @request.auth.id",
@@ -274,32 +670,6 @@
         "type": "text"
       },
       {
-        "cascadeDelete": false,
-        "collectionId": "pbc_1716531311",
-        "hidden": false,
-        "id": "relation1524595909",
-        "maxSelect": 1,
-        "minSelect": 0,
-        "name": "custom_header",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "relation"
-      },
-      {
-        "cascadeDelete": false,
-        "collectionId": "pbc_2027782570",
-        "hidden": false,
-        "id": "relation3600601431",
-        "maxSelect": 1,
-        "minSelect": 0,
-        "name": "custom_footer",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "relation"
-      },
-      {
         "hidden": false,
         "id": "file104153177",
         "maxSelect": 99,
@@ -312,6 +682,19 @@
         "system": false,
         "thumbs": [],
         "type": "file"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_484305853",
+        "hidden": false,
+        "id": "relation800313582",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "project",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
       },
       {
         "hidden": false,
@@ -386,7 +769,8 @@
         "type": "select",
         "values": [
           "changelog",
-          "documentation"
+          "documentation",
+          "roadmap"
         ]
       },
       {
@@ -518,7 +902,8 @@
         "type": "select",
         "values": [
           "changelog",
-          "documentation"
+          "documentation",
+          "roadmap"
         ]
       },
       {
@@ -551,12 +936,34 @@
       },
       {
         "cascadeDelete": false,
-        "collectionId": "pbc_1716531311",
+        "collectionId": "pbc_484305853",
         "hidden": false,
-        "id": "relation1524595909",
+        "id": "relation800313582",
         "maxSelect": 1,
         "minSelect": 0,
-        "name": "custom_header",
+        "name": "project",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "bool1232164222",
+        "name": "show_in_project_sidebar",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_1715459428",
+        "hidden": false,
+        "id": "relation901151508",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "custom_documentation_header",
         "presentable": false,
         "required": false,
         "system": false,
@@ -564,12 +971,12 @@
       },
       {
         "cascadeDelete": false,
-        "collectionId": "pbc_2027782570",
+        "collectionId": "pbc_1715459428",
         "hidden": false,
-        "id": "relation3600601431",
+        "id": "relation547320831",
         "maxSelect": 1,
         "minSelect": 0,
-        "name": "custom_footer",
+        "name": "staged_documentation_header",
         "presentable": false,
         "required": false,
         "system": false,
@@ -577,12 +984,12 @@
       },
       {
         "cascadeDelete": false,
-        "collectionId": "pbc_1716531311",
+        "collectionId": "pbc_2024957089",
         "hidden": false,
-        "id": "relation177750370",
+        "id": "relation3119896198",
         "maxSelect": 1,
         "minSelect": 0,
-        "name": "staged_custom_header",
+        "name": "custom_documentation_footer",
         "presentable": false,
         "required": false,
         "system": false,
@@ -590,16 +997,112 @@
       },
       {
         "cascadeDelete": false,
-        "collectionId": "pbc_2027782570",
+        "collectionId": "pbc_2024957089",
         "hidden": false,
-        "id": "relation2262559984",
+        "id": "relation2900156013",
         "maxSelect": 1,
         "minSelect": 0,
-        "name": "staged_custom_footer",
+        "name": "staged_documentation_footer",
         "presentable": false,
         "required": false,
         "system": false,
         "type": "relation"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_3853890220",
+        "hidden": false,
+        "id": "relation1550691406",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "custom_changelog_header",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_3853890220",
+        "hidden": false,
+        "id": "relation795785253",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "staged_changelog_header",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_4214752105",
+        "hidden": false,
+        "id": "relation3492676060",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "custom_changelog_footer",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_4214752105",
+        "hidden": false,
+        "id": "relation2737640887",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "staged_changelog_footer",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "select1657756013",
+        "maxSelect": 1,
+        "name": "roadmap_stage",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "select",
+        "values": [
+          "Planned",
+          "Next Up",
+          "In Progress",
+          "Done"
+        ]
+      },
+      {
+        "hidden": false,
+        "id": "select847799498",
+        "maxSelect": 1,
+        "name": "staged_roadmap_stage",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "select",
+        "values": [
+          "Planned",
+          "Next Up",
+          "In Progress",
+          "Done"
+        ]
+      },
+      {
+        "hidden": false,
+        "id": "number2978102397",
+        "max": null,
+        "min": 0,
+        "name": "sidebar_order",
+        "onlyInt": true,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
       },
       {
         "hidden": false,
@@ -726,13 +1229,13 @@
     "system": false
   },
   {
-    "id": "pbc_2027782570",
-    "listRule": "owner.id = @request.auth.id",
-    "viewRule": "owner.id = @request.auth.id",
-    "createRule": "owner.id = @request.auth.id",
-    "updateRule": "owner.id = @request.auth.id",
-    "deleteRule": "owner.id = @request.auth.id",
-    "name": "footers",
+    "id": "pbc_484305853",
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": "",
+    "deleteRule": "",
+    "name": "projects",
     "type": "base",
     "fields": [
       {
@@ -764,84 +1267,12 @@
         "type": "text"
       },
       {
-        "convertURLs": false,
-        "hidden": false,
-        "id": "editor4274335913",
-        "maxSize": 0,
-        "name": "content",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "editor"
-      },
-      {
-        "cascadeDelete": false,
-        "collectionId": "_pb_users_auth_",
-        "hidden": false,
-        "id": "relation3479234172",
-        "maxSelect": 1,
-        "minSelect": 0,
-        "name": "owner",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "relation"
-      },
-      {
-        "hidden": false,
-        "id": "autodate2990389176",
-        "name": "created",
-        "onCreate": true,
-        "onUpdate": false,
-        "presentable": false,
-        "system": false,
-        "type": "autodate"
-      },
-      {
-        "hidden": false,
-        "id": "autodate3332085495",
-        "name": "updated",
-        "onCreate": true,
-        "onUpdate": true,
-        "presentable": false,
-        "system": false,
-        "type": "autodate"
-      }
-    ],
-    "indexes": [],
-    "system": false
-  },
-  {
-    "id": "pbc_1716531311",
-    "listRule": "owner.id = @request.auth.id",
-    "viewRule": "owner.id = @request.auth.id",
-    "createRule": "owner.id = @request.auth.id",
-    "updateRule": "owner.id = @request.auth.id",
-    "deleteRule": "owner.id = @request.auth.id",
-    "name": "headers",
-    "type": "base",
-    "fields": [
-      {
-        "autogeneratePattern": "[a-z0-9]{15}",
-        "hidden": false,
-        "id": "text3208210256",
-        "max": 15,
-        "min": 15,
-        "name": "id",
-        "pattern": "^[a-z0-9]+$",
-        "presentable": false,
-        "primaryKey": true,
-        "required": true,
-        "system": true,
-        "type": "text"
-      },
-      {
         "autogeneratePattern": "",
         "hidden": false,
-        "id": "text1579384326",
+        "id": "text1843675174",
         "max": 0,
         "min": 0,
-        "name": "name",
+        "name": "description",
         "pattern": "",
         "presentable": false,
         "primaryKey": false,
@@ -850,17 +1281,6 @@
         "type": "text"
       },
       {
-        "convertURLs": false,
-        "hidden": false,
-        "id": "editor4274335913",
-        "maxSize": 0,
-        "name": "content",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "editor"
-      },
-      {
         "cascadeDelete": false,
         "collectionId": "_pb_users_auth_",
         "hidden": false,
@@ -872,6 +1292,47 @@
         "required": false,
         "system": false,
         "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "bool2632918246",
+        "name": "is_publicly_viewable",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "bool4153032080",
+        "name": "password_protected",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text3689089495",
+        "max": 0,
+        "min": 0,
+        "name": "access_password_hash",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "bool1327822237",
+        "name": "roadmap_enabled",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
       },
       {
         "hidden": false,
@@ -954,6 +1415,19 @@
         "maxSelect": 1,
         "minSelect": 0,
         "name": "owner",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_484305853",
+        "hidden": false,
+        "id": "relation800313582",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "project",
         "presentable": false,
         "required": false,
         "system": false,

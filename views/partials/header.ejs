@@ -4,9 +4,10 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>
-      <%= locals.pageTitle || 'Admin Dashboard' %>
-    </title>
+    <title><%= locals.pageTitle || 'Admin Dashboard' %></title>
+
+    <link rel="preload" href="/img/logo_white.png" as="image">
+    <link rel="preload" href="/img/logo.png" as="image">
     
     <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
 
@@ -21,6 +22,9 @@
     <!-- EasyMDE CSS -->
     <link rel="stylesheet" href="/css/vendors/easymde.min.css">
 
+    <!-- SortableJS Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"> </script>
+
     <!-- PocketBase JS SDK -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pocketbase/0.25.2/pocketbase.umd.js"> </script>
 
@@ -28,13 +32,13 @@
     <link rel="stylesheet" href="/css/style.css">
   </head>
 
-  <body class="admin-body <%= (locals.theme === 'dark' ? 'dark-mode' : '') %>">
-
+  <body class="admin-body <%= (locals.theme === 'dark' ? 'dark-mode' : '') %>" data-project-id="<%= locals.currentProjectId || '' %>" data-entry-type="<%= locals.entryType || (locals.entry && locals.entry.type) || '' %>">
+    
     <div class="page-wrapper">
       <%- include('sidebar') %>
-        <div class="main-content-wrapper">
-          <header class="top-bar">
-            <button class="mobile-nav-toggle" aria-label="Toggle Navigation"> <i class="fas fa-bars"></i> </button>
-          </header>
-          
-          <main class="page-content">
+      <div class="main-content-wrapper">
+        <header class="top-bar">
+          <button class="mobile-nav-toggle" aria-label="Toggle Navigation"> <i class="fas fa-bars"></i> </button>
+        </header>
+
+        <main class="page-content">

@@ -1,0 +1,205 @@
+<% locals.pageTitle='Edit Entry - ' + project.name %>
+
+<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: project.id }) %>
+
+<div class="content-header">
+  <h1>Edit Entry: <span class="text-muted"><%= entry.title %></span></h1>
+  <div class="header-actions">
+    <% if (entry.status === 'draft') { %>
+      <button id="share-preview-btn" class="btn btn-info" data-entry-id="<%= entry.id %>" data-project-id="<%= project.id %>">
+        <i class="fas fa-share-alt"></i> Share Preview
+      </button>
+    <% } %>
+  </div>
+</div>
+
+<% if (locals.isEditingStaged) { %>
+  <div class="alert alert-warning">
+    <i class="fas fa-exclamation-triangle alert-icon"></i>
+    <span >You are editing <strong>staged changes</strong> for a published entry. Saving here will update the staged content. Use the 'Publish Staged Changes' button on the entries list to make them live.</span>
+  </div>
+<% } %> <% if (locals.errors) { %>
+  <div class="alert alert-danger error-summary">
+    <i class="fas fa-exclamation-circle alert-icon"></i>
+    <div>
+      <p><strong>Please fix the following errors:</strong></p>
+      <ul>
+        <% for (const key of Object.keys(errors)) { %>
+          <li>
+            <strong><%= key %>:</strong> <%= errors[key].message || errors[key] %>
+          </li>
+        <% } %>
+      </ul>
+    </div>
+  </div>
+<% } %>
+
+<div class="card form-card">
+  <form action="/projects/<%= project.id %>/edit/<%= entry.id %>" method="POST" class="entry-form" novalidate autocomplete="off">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="title">Title <span class="required">*</span></label>
+        <input type="text" id="title" name="title" required class="form-control <%= locals.errors?.title || locals.errors?.staged_title ? 'is-invalid' : '' %>" value="<%= entry.title %>">
+      </div>
+
+      <div class="form-group">
+        <label for="type">Type <span class="required">*</span></label>
+        <select id="type" name="type" required class="form-control <%= locals.errors?.type || locals.errors?.staged_type ? 'is-invalid' : '' %>">
+          <option value="documentation" <%= entry.type === 'documentation' ? 'selected' : '' %>> Documentation </option>
+          <option value="changelog" <%= entry.type === 'changelog' ? 'selected' : '' %>> Changelog </option>
+          <option value="roadmap" <%= entry.type === 'roadmap' ? 'selected' : '' %>> Roadmap </option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="status">Status <span class="required">*</span></label>
+        <select id="status" name="status" required class="form-control <%= locals.errors?.status ? 'is-invalid' : '' %>"
+          <%= locals.isEditingStaged ? 'disabled' : '' %>>
+          <option value="draft" <%= entry.status === 'draft' ? 'selected' : '' %>> Draft </option>
+          <option value="published" <%= entry.status === 'published' ? 'selected' : '' %>> Published </option>
+        </select>
+        <% if (locals.isEditingStaged) { %>
+          <input type="hidden" name="status" value="published">
+          <small class="form-text">Status cannot be changed while editing staged changes.</small>
+        <% } %>
+      </div>
+
+      <div class="form-group">
+        <label for="collection">Collection</label>
+        <input type="text" id="collection" name="collection" class="form-control" placeholder="e.g., API, Frontend" value="<%= entry.collection %>"
+          <%= locals.isEditingStaged ? 'disabled' : '' %>>
+        <% if (locals.isEditingStaged) { %>
+          <input type="hidden" name="collection" value="<%= entry.collection %>">
+          <small class="form-text">Collection cannot be changed while editing staged changes.</small>
+        <% } else { %>
+          <small class="form-text">Assign this entry to a collection within this project (optional).</small>
+        <% } %>
+      </div>
+
+      <div class="form-group">
+        <label for="tags">Tags</label>
+        <input type="text" id="tags" name="tags" class="form-control" placeholder="Comma-separated, e.g., api, v2" value="<%= entry.tags %>">
+        <small class="form-text">Separate multiple tags with commas.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="url">URL (Entry ID)</label>
+        <div class="input-group input-group-prefix">
+          <span class="input-group-text prefix-text" id="url-prefix"><%= locals.baseUrl %>/view/</span>
+          <input type="text" id="url" name="url" class="form-control prefixed-input" value="<%= entry.id %>" readonly disabled aria-describedby="url-prefix url-help" spellcheck="false">
+        </div>
+        <small class="form-text" id="url-help">The unique ID for this entry cannot be changed.</small>
+      </div>
+
+      <div class="form-group form-group-type-specific" id="documentation-header-group" style="display: <%= entry.type === 'documentation' ? 'block' : 'none' %>;">
+        <label for="custom_documentation_header">Documentation Header</label>
+        <select id="custom_documentation_header" name="custom_documentation_header" class="form-control <%= locals.errors?.custom_documentation_header || locals.errors?.staged_documentation_header ? 'is-invalid' : '' %>">
+          <option value="">Default Header</option>
+          <% for (const header of documentationHeaders) { %>
+            <option value="<%= header.id %>"
+              <%= entry.custom_documentation_header === header.id ? 'selected' : '' %>>
+              <%= header.name %>
+            </option>
+          <% } %>
+        </select>
+        <small class="form-text">Overrides the default header for Documentation entries.</small>
+      </div>
+
+      <div class="form-group form-group-type-specific" id="documentation-footer-group" style="display: <%= entry.type === 'documentation' ? 'block' : 'none' %>;">
+        <label for="custom_documentation_footer">Documentation Footer</label>
+        <select id="custom_documentation_footer" name="custom_documentation_footer" class="form-control <%= locals.errors?.custom_documentation_footer || locals.errors?.staged_documentation_footer ? 'is-invalid' : '' %>">
+          <option value="">Default Footer</option>
+          <% for (const footer of documentationFooters) { %>
+            <option value="<%= footer.id %>"
+              <%= entry.custom_documentation_footer === footer.id ? 'selected' : '' %>>
+              <%= footer.name %>
+            </option>
+          <% } %>
+        </select>
+        <small class="form-text">Overrides the default footer for Documentation entries.</small>
+      </div>
+
+      <div class="form-group form-group-type-specific" id="changelog-header-group" style="display: <%= entry.type === 'changelog' ? 'block' : 'none' %>;">
+        <label for="custom_changelog_header">Changelog Header</label>
+        <select id="custom_changelog_header" name="custom_changelog_header" class="form-control <%= locals.errors?.custom_changelog_header || locals.errors?.staged_changelog_header ? 'is-invalid' : '' %>">
+          <option value="">Default Header</option>
+          <% for (const header of changelogHeaders) { %>
+            <option value="<%= header.id %>"
+              <%= entry.custom_changelog_header === header.id ? 'selected' : '' %>>
+              <%= header.name %>
+            </option>
+          <% } %>
+        </select>
+        <small class="form-text">Overrides the default header for Changelog entries.</small>
+      </div>
+
+      <div class="form-group form-group-type-specific" id="changelog-footer-group" style="display: <%= entry.type === 'changelog' ? 'block' : 'none' %>;">
+        <label for="custom_changelog_footer">Changelog Footer</label>
+        <select id="custom_changelog_footer" name="custom_changelog_footer" class="form-control <%= locals.errors?.custom_changelog_footer || locals.errors?.staged_changelog_footer ? 'is-invalid' : '' %>">
+          <option value="">Default Footer</option>
+          <% for (const footer of changelogFooters) { %>
+            <option value="<%= footer.id %>"
+              <%= entry.custom_changelog_footer === footer.id ? 'selected' : '' %>>
+              <%= footer.name %>
+            </option>
+          <% } %>
+        </select>
+        <small class="form-text">Overrides the default footer for Changelog entries.</small>
+      </div>
+
+      <div class="form-group form-group-type-specific" id="roadmap-stage-group" style="display: <%= entry.type === 'roadmap' ? 'block' : 'none' %>;">
+        <label for="roadmap_stage">Roadmap Stage <span class="required">*</span></label>
+        <select id="roadmap_stage" name="roadmap_stage" class="form-control <%= locals.errors?.roadmap_stage || locals.errors?.staged_roadmap_stage ? 'is-invalid' : '' %>">
+          <option value="" disabled <%= !entry.roadmap_stage ? 'selected' : '' %>> Select stage... </option>
+          <% for (const stage of roadmapStages) { %>
+            <option value="<%= stage %>"
+              <%= entry.roadmap_stage === stage ? 'selected' : '' %>>
+              <%= stage %>
+            </option>
+          <% } %>
+        </select>
+        <% if (locals.errors?.roadmap_stage || locals.errors?.staged_roadmap_stage) { %>
+          <small class="form-text" style="color: var(--danger-color);">
+            <%= (locals.errors?.roadmap_stage || locals.errors?.staged_roadmap_stage).message %>
+          </small>
+        <% } %>
+      </div>
+
+      <div class="form-group">
+        <label for="show_in_project_sidebar">Show in Project Sidebar?</label>
+        <select id="show_in_project_sidebar" name="show_in_project_sidebar" class="form-control">
+          <option value="true" <%= entry.show_in_project_sidebar === true ? 'selected' : '' %>> Yes </option>
+          <option value="false" <%= entry.show_in_project_sidebar === false ? 'selected' : '' %>> No </option>
+        </select>
+        <small class="form-text">If "Yes", this entry will be listed in the left sidebar when viewing any entry within this project.</small>
+      </div>
+
+      <div class="form-group form-group-full form-group-content" style="display: <%= entry.type === 'roadmap' ? 'none' : 'block' %>;">
+        <label for="content">Content (Markdown) <span class="required">*</span></label>
+        <textarea id="content" name="content" rows="15" class="form-control markdown-input <%= locals.errors?.content || locals.errors?.staged_content ? 'is-invalid' : '' %>" data-entry-id="<%= entry.id %>"><%= entry.content %></textarea>
+        <div class="form-text-wrapper">
+          <small class="form-text">Use Markdown syntax. Toolbar provides formatting help.</small>
+          <small id="content-char-count" class="form-text char-counter"></small>
+        </div>
+        <div style="margin-top: 10px; float: right;">
+          <button type="button" id="check-grammar-btn" class="btn btn-secondary btn-sm">
+            <i class="fas fa-spell-check"></i> Check Grammar & Style
+          </button>
+          <span id="grammar-status" style="font-size: 0.8rem; color: var(--text-muted);"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-lg">
+        <i class="fas fa-save"></i> <%= locals.isEditingStaged ? 'Save Staged Changes' : 'Update Entry' %>
+      </button>
+      <button type="button" id="duplicate-entry-btn" class="btn btn-secondary btn-lg" data-entry-id="<%= entry.id %>" data-project-id="<%= project.id %>">
+        <i class="fas fa-copy"></i> Duplicate Entry
+      </button>
+      <a href="/projects/<%= project.id %>/<%= entry.type === 'documentation' ? 'documentation' : (entry.type === 'changelog' ? 'changelogs' : 'roadmaps') %>" class="btn btn-secondary btn-lg">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<%- include('../partials/footer', { scriptPath: '/js/editor.js' }) %>

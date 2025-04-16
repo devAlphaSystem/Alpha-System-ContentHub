@@ -1,0 +1,86 @@
+<% locals.pageTitle='Archived Changelogs - ' + project.name %>
+<% locals.entryType='changelog' %>
+
+<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: project.id }) %>
+
+<div class="content-header">
+  <h1>Archived Changelogs: <span class="text-muted"><%= project.name %></span></h1>
+  <div class="header-actions">
+    <button id="refresh-archived-btn" class="btn btn-secondary" title="Refresh Table">
+      <i class="fas fa-sync-alt"></i> <span>Refresh</span>
+    </button>
+    <a href="/projects/<%= project.id %>/changelogs" class="btn btn-secondary">Back to Active Changelogs</a>
+  </div>
+</div>
+
+<% if (locals.action === 'unarchived') { %>
+  <div class="alert alert-info">
+    <i class="fas fa-check-circle alert-icon"></i> <span>Entry unarchived successfully.</span>
+  </div>
+<% } else if (locals.action === 'deleted') { %>
+  <div class="alert alert-info">
+    <i class="fas fa-check-circle alert-icon"></i> <span>Archived entry permanently deleted.</span>
+  </div>
+<% } %>
+
+<% if (locals.error) { %>
+  <div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle alert-icon"></i> <span><%= error %></span>
+  </div>
+<% } %>
+
+<div class="card data-card <% if (entries.length === 0 && !locals.error) { %>hidden<% } %>" data-entry-type="<%= entryType %>">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-sort-key="title" style="cursor: pointer;">Title <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="status" style="cursor: pointer;">Original Status <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="updated" style="cursor: pointer;">Archived Date <span class="sort-icon"><i class="fas fa-sort-down"></i></span></th>
+          <th class="actions-column">Actions</th>
+        </tr>
+      </thead>
+
+      <tbody id="archived-table-body">
+        <% for (const entry of entries) { %>
+          <tr data-entry-id="<%= entry.id %>" data-updated-timestamp="<%= new Date(entry.updated).getTime() %>">
+            <td data-label="Title"><%= entry.title %></td>
+            <td data-label="Status"><span class="badge status-badge status-<%= entry.status.toLowerCase() %>"> <%= entry.status %> </span></td>
+            <td data-label="Archived"> <%= entry.formattedUpdated %> </td>
+            <td data-label="Actions" class="actions-cell">
+              <form action="/projects/<%= project.id %>/unarchive/<%= entry.id %>" method="POST" class="unarchive-form" title="Unarchive">
+                <button type="submit" class="btn btn-icon btn-unarchive"> <i class="fas fa-box-open"></i> </button>
+              </form>
+              <form action="/projects/<%= project.id %>/delete-archived/<%= entry.id %>" method="POST" class="delete-archived-form" title="Delete Permanently">
+                <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
+              </form>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination-controls card-footer">
+    <button id="prev-page-btn" class="btn btn-secondary" <% if (pagination.page <= 1) { %>disabled<% } %>>
+      <i class="fas fa-chevron-left"></i> Previous
+    </button>
+    <span id="page-info" class="page-info-text">
+      Page <%= pagination.page %> of <%= pagination.totalPages %> (<%= pagination.totalItems %> items)
+    </span>
+    <button id="next-page-btn" class="btn btn-secondary" <% if (pagination.page >= pagination.totalPages) { %>disabled<% } %>>
+      Next <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+</div>
+
+<% if (entries.length === 0 && !locals.error) { %>
+  <div class="card empty-state-card">
+    <i class="fas fa-archive empty-state-icon"></i>
+    <h2>No archived changelog entries for this project</h2>
+    <p>Entries you archive from the changelog list will appear here.</p>
+    <a href="/projects/<%= project.id %>/changelogs" class="btn btn-secondary">Back to Active Changelogs</a>
+  </div>
+<% } %>
+
+<%- include('../partials/footer', { scriptPath: '/js/archived.js' }) %>

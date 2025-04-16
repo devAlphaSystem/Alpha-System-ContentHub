@@ -6,41 +6,6 @@ import { pb, pbAdmin, viewDb, IP_HASH_SALT, VIEW_TIMEFRAME_HOURS, AVERAGE_WPM } 
 const window = new JSDOM("").window;
 const purify = DOMPurify(window);
 
-const DEFAULT_TEMPLATES = [
-  {
-    name: "Basic Changelog Entry",
-    content: "### ✨ New Features\n\n" + "*   Description of a new feature.\n\n" + "### 🐛 Bug Fixes\n\n" + "*   Description of a bug fix.\n\n" + "### 🚀 Improvements\n\n" + "*   Description of an improvement.",
-  },
-  {
-    name: "API Documentation Section",
-    content: "## Endpoint: `/api/v1/resource`\n\n" + "**Method:** `GET`\n\n" + "**Description:** Retrieves a list of resources.\n\n" + "**Parameters:**\n\n" + "| Name     | Type   | Description                |\n" + "| :------- | :----- | :------------------------- |\n" + "| `limit`  | number | *Optional*. Max items per page. |\n" + "| `offset` | number | *Optional*. Items to skip.    |\n\n" + "**Response:**\n\n" + "```json\n" + "{\n" + '  "data": [\n' + '    { "id": "...", "name": "..." }\n' + "  ],\n" + '  "pagination": { ... }\n' + "}\n" + "```",
-  },
-  {
-    name: "Simple Documentation Page",
-    content: "# Getting Started\n\n" + "Welcome to the documentation!\n\n" + "## Installation\n\n" + "Instructions on how to install...\n\n" + "## Configuration\n\n" + "Details about configuration options...",
-  },
-  {
-    name: "Mermaid: Flowchart Example",
-    content: "## Process Flow\n\n" + "Here is a visual representation of the process:\n\n" + "```mermaid\n" + "graph TD;\n" + "    A[Start] --> B{User Input?};\n" + "    B -- Yes --> C[Process Data];\n" + "    B -- No --> D[Show Error];\n" + "    C --> E[Display Results];\n" + "    D --> E;\n" + "    E --> F[End];\n" + "```\n\n" + "Further explanation of the steps...",
-  },
-  {
-    name: "Mermaid: Sequence Diagram Example",
-    content: "## Authentication Sequence\n\n" + "This diagram shows the login interaction:\n\n" + "```mermaid\n" + "sequenceDiagram\n" + "    participant User\n" + "    participant WebApp\n" + "    participant AuthAPI\n\n" + "    User->>WebApp: Enters Credentials\n" + "    WebApp->>AuthAPI: POST /login (email, password)\n" + "    AuthAPI-->>WebApp: { token: '...' }\n" + "    WebApp-->>User: Logged In Successfully\n" + "```\n\n" + "Notes on the authentication flow.",
-  },
-  {
-    name: "Mermaid: Class Diagram Example",
-    content: "## System Components\n\n" + "Basic class structure:\n\n" + "```mermaid\n" + "classDiagram\n" + "    class User {\n" + "        +userId: string\n" + "        +email: string\n" + "        +login()\n" + "    }\n" + "    class Entry {\n" + "        +entryId: string\n" + "        +title: string\n" + "        +content: string\n" + "        +owner: User\n" + "        +save()\n" + "    }\n" + "    class Template {\n" + "        +templateId: string\n" + "        +name: string\n" + "        +content: string\n" + "        +owner: User\n" + "    }\n" + '    User "1" -- "0..*" Entry : owns >\n' + '    User "1" -- "0..*" Template : owns >\n' + "```",
-  },
-  {
-    name: "Mermaid: State Diagram Example",
-    content: "## Entry Status States\n\n" + "Possible states for a content entry:\n\n" + "```mermaid\n" + "stateDiagram-v2\n" + "    [*] --> Draft\n" + "    Draft --> Published : Publish Action\n" + "    Published --> Draft : Unpublish Action\n" + "    Published --> Archived : Archive Action\n" + "    Draft --> Archived : Archive Action\n" + "    Archived --> Draft : Unarchive Action\n" + "    Archived --> [*] : Delete Permanently\n" + "    Draft --> [*] : Delete\n" + "    Published --> Published : Stage Changes\n" + "```",
-  },
-  {
-    name: "Mermaid: Pie Chart Example",
-    content: "## Content Type Distribution\n\n" + "Approximate breakdown of content types:\n\n" + "```mermaid\n" + "pie\n" + "    title Content Types\n" + '    "Documentation" : 65\n' + '    "Changelogs" : 25\n' + '    "Guides" : 10\n' + "```",
-  },
-];
-
 export function getIP(req) {
   const forwarded = req.headers["x-forwarded-for"];
   if (forwarded) {
@@ -67,9 +32,28 @@ export function sanitizeHtml(unsafeHtml) {
   return purify.sanitize(unsafeHtml);
 }
 
+export async function getProjectForOwner(projectId, userId) {
+  try {
+    const project = await pb.collection("projects").getOne(projectId);
+    if (project.owner !== userId) {
+      const err = new Error("Forbidden");
+      err.status = 403;
+      throw err;
+    }
+    return project;
+  } catch (error) {
+    if (error.status !== 404) {
+      console.error(`Failed to fetch project ${projectId} for owner ${userId}:`, error);
+    }
+    throw error;
+  }
+}
+
 export async function getPublicEntryById(id) {
   try {
-    const record = await pbAdmin.collection("entries_main").getFirstListItem(`id = '${id}' && status = 'published'`, { expand: "custom_header,custom_footer" });
+    const record = await pbAdmin.collection("entries_main").getFirstListItem(`id = '${id}' && status = 'published'`, {
+      expand: "project,custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer",
+    });
     return record;
   } catch (error) {
     if (error.status !== 404) {
@@ -81,7 +65,9 @@ export async function getPublicEntryById(id) {
 
 export async function getDraftEntryForPreview(id) {
   try {
-    const record = await pbAdmin.collection("entries_main").getOne(id, { expand: "custom_header,custom_footer" });
+    const record = await pbAdmin.collection("entries_main").getOne(id, {
+      expand: "project,custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer,staged_documentation_header,staged_documentation_footer,staged_changelog_header,staged_changelog_footer",
+    });
     return record;
   } catch (error) {
     if (error.status !== 404) {
@@ -91,149 +77,140 @@ export async function getDraftEntryForPreview(id) {
   }
 }
 
-export async function getUserTemplates(userId) {
-  const filter = `owner = '${userId}'`;
+export async function getUserTemplates(userId, projectId) {
+  const filterParts = [`owner = '${userId}'`];
+  if (projectId) {
+    filterParts.push(`project = '${projectId}'`);
+  }
+  const filter = filterParts.join(" && ");
   const fields = "id,name";
 
   try {
-    let templates = await pb.collection("templates").getFullList({
+    const templates = await pb.collection("templates").getFullList({
       sort: "name",
       filter: filter,
       fields: fields,
       $autoCancel: false,
     });
-
-    if (templates.length === 0) {
-      console.log(`No templates found for user ${userId}. Creating defaults...`);
-      const creationPromises = DEFAULT_TEMPLATES.map((templateData) => {
-        const dataToCreate = {
-          ...templateData,
-          owner: userId,
-        };
-        return pb.collection("templates").create(dataToCreate);
-      });
-
-      try {
-        const createdTemplates = await Promise.all(creationPromises);
-        console.log(`Successfully created ${createdTemplates.length} default templates for user ${userId}.`);
-        templates = createdTemplates.map((t) => ({ id: t.id, name: t.name }));
-        templates.sort((a, b) => a.name.localeCompare(b.name));
-      } catch (creationError) {
-        console.error(`Error creating default templates for user ${userId}:`, creationError);
-        return [];
-      }
-    }
-
     return templates;
   } catch (error) {
-    console.error(`Error fetching templates for user ${userId}:`, error);
+    console.error(`Error fetching templates for user ${userId}, project ${projectId}:`, error);
     throw error;
   }
 }
 
-export async function getTemplateForEdit(templateId, userId) {
+export async function getTemplateForEditAndProject(templateId, userId, projectId) {
   try {
     const template = await pb.collection("templates").getOne(templateId);
-    if (template.owner !== userId) {
+    if (template.owner !== userId || template.project !== projectId) {
       const err = new Error("Forbidden");
       err.status = 403;
       throw err;
     }
     return template;
   } catch (error) {
-    console.error(`Failed to fetch template ${templateId} for edit:`, error);
+    console.error(`Failed to fetch template ${templateId} for edit in project ${projectId}:`, error);
     throw error;
   }
 }
 
-export async function getEntryForOwner(entryId, userId) {
+export async function getEntryForOwnerAndProject(entryId, userId, projectId) {
   try {
-    const record = await pb.collection("entries_main").getOne(entryId);
-    if (record.owner !== userId) {
+    const record = await pb.collection("entries_main").getOne(entryId, {
+      expand: "custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer,staged_documentation_header,staged_documentation_footer,staged_changelog_header,staged_changelog_footer",
+    });
+    if (record.owner !== userId || record.project !== projectId) {
       const err = new Error("Forbidden");
       err.status = 403;
       throw err;
     }
     return record;
   } catch (error) {
-    console.error(`Failed to fetch entry ${entryId} for owner ${userId}:`, error);
+    console.error(`Failed to fetch entry ${entryId} for owner ${userId} in project ${projectId}:`, error);
     throw error;
   }
 }
 
-export async function getArchivedEntryForOwner(entryId, userId) {
+export async function getArchivedEntryForOwnerAndProject(entryId, userId, projectId) {
   try {
     const record = await pbAdmin.collection("entries_archived").getOne(entryId);
-    if (record.owner !== userId) {
+    if (record.owner !== userId || record.project !== projectId) {
       const err = new Error("Forbidden");
       err.status = 403;
       throw err;
     }
     return record;
   } catch (error) {
-    console.error(`Failed to fetch archived entry ${entryId} for owner ${userId}:`, error);
+    console.error(`Failed to fetch archived entry ${entryId} for owner ${userId} in project ${projectId}:`, error);
     throw error;
   }
 }
 
-export async function getUserHeaders(userId) {
+async function getProjectAssets(collectionName, userId, projectId) {
+  const filterParts = [`owner = '${userId}'`];
+  if (projectId) {
+    filterParts.push(`project = '${projectId}'`);
+  }
+  const filter = filterParts.join(" && ");
   try {
-    const headers = await pb.collection("headers").getFullList({
-      filter: `owner = '${userId}'`,
+    const assets = await pb.collection(collectionName).getFullList({
+      filter: filter,
       sort: "name",
       fields: "id,name",
       $autoCancel: false,
     });
-    return headers;
+    return assets;
   } catch (error) {
-    console.error(`Error fetching headers for user ${userId}:`, error);
+    console.error(`Error fetching ${collectionName} for user ${userId}, project ${projectId}:`, error);
     return [];
   }
 }
 
-export async function getUserFooters(userId) {
+async function getProjectAssetForEdit(collectionName, assetId, userId, projectId) {
   try {
-    const footers = await pb.collection("footers").getFullList({
-      filter: `owner = '${userId}'`,
-      sort: "name",
-      fields: "id,name",
-      $autoCancel: false,
-    });
-    return footers;
-  } catch (error) {
-    console.error(`Error fetching footers for user ${userId}:`, error);
-    return [];
-  }
-}
-
-export async function getHeaderForEdit(headerId, userId) {
-  try {
-    const header = await pb.collection("headers").getOne(headerId);
-    if (header.owner !== userId) {
+    const asset = await pb.collection(collectionName).getOne(assetId);
+    if (asset.owner !== userId || asset.project !== projectId) {
       const err = new Error("Forbidden");
       err.status = 403;
       throw err;
     }
-    return header;
+    return asset;
   } catch (error) {
-    console.error(`Failed to fetch header ${headerId} for edit:`, error);
+    console.error(`Failed to fetch ${collectionName} ${assetId} for edit in project ${projectId}:`, error);
     throw error;
   }
 }
 
-export async function getFooterForEdit(footerId, userId) {
-  try {
-    const footer = await pb.collection("footers").getOne(footerId);
-    if (footer.owner !== userId) {
-      const err = new Error("Forbidden");
-      err.status = 403;
-      throw err;
-    }
-    return footer;
-  } catch (error) {
-    console.error(`Failed to fetch footer ${footerId} for edit:`, error);
-    throw error;
-  }
+export async function getUserDocumentationHeaders(userId, projectId) {
+  return getProjectAssets("documentation_headers", userId, projectId);
+}
+
+export async function getUserDocumentationFooters(userId, projectId) {
+  return getProjectAssets("documentation_footers", userId, projectId);
+}
+
+export async function getUserChangelogHeaders(userId, projectId) {
+  return getProjectAssets("changelog_headers", userId, projectId);
+}
+
+export async function getUserChangelogFooters(userId, projectId) {
+  return getProjectAssets("changelog_footers", userId, projectId);
+}
+
+export async function getDocumentationHeaderForEditAndProject(headerId, userId, projectId) {
+  return getProjectAssetForEdit("documentation_headers", headerId, userId, projectId);
+}
+
+export async function getDocumentationFooterForEditAndProject(footerId, userId, projectId) {
+  return getProjectAssetForEdit("documentation_footers", footerId, userId, projectId);
+}
+
+export async function getChangelogHeaderForEditAndProject(headerId, userId, projectId) {
+  return getProjectAssetForEdit("changelog_headers", headerId, userId, projectId);
+}
+
+export async function getChangelogFooterForEditAndProject(footerId, userId, projectId) {
+  return getProjectAssetForEdit("changelog_footers", footerId, userId, projectId);
 }
 
 export function logEntryView(req, entryId) {
@@ -308,7 +285,7 @@ export async function logAuditEvent(req, action, targetCollection, targetRecord,
   }
 
   if (!userId && action !== "SYSTEM_ADMIN_AUTH" && action !== "POCKETBASE_ADMIN_AUTH_SUCCESS") {
-    const allowedSystemActions = ["PREVIEW_PASSWORD_SUCCESS", "PREVIEW_PASSWORD_FAILURE"];
+    const allowedSystemActions = ["PREVIEW_PASSWORD_SUCCESS", "PREVIEW_PASSWORD_FAILURE", "PROJECT_PASSWORD_SUCCESS", "PROJECT_PASSWORD_FAILURE"];
     if (!allowedSystemActions.includes(action)) {
       console.warn(`Audit log for action '${action}' is missing user ID.`);
     }

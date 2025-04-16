@@ -1,0 +1,80 @@
+<% locals.pageTitle='Changelog Footers - ' + project.name %>
+
+<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: project.id }) %>
+
+<div class="content-header">
+  <h1>Changelog Footers: <span class="text-muted"><%= project.name %></span></h1>
+  <div class="header-actions">
+    <button id="refresh-cl-footers-btn" class="btn btn-secondary" title="Refresh Table">
+      <i class="fas fa-sync-alt"></i> <span>Refresh</span>
+    </button>
+    <a href="/projects/<%= project.id %>/changelog_footers/new" class="btn btn-primary">
+      <i class="fas fa-plus"></i> Create New Changelog Footer
+    </a>
+  </div>
+</div>
+
+<% if (locals.message) { %>
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle alert-icon"></i>
+    <span> <%= message %> </span>
+  </div>
+<% } %>
+
+<% if (locals.error && locals.error === 'Could not load changelog footers.') { %>
+  <div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle alert-icon"></i>
+    <span>Error loading changelog footers for this project. Please try refreshing the page or contact support.</span>
+  </div>
+<% } %>
+
+<div class="card data-card <% if (footers.length === 0 && !locals.error) { %>hidden<% } %>">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-sort-key="name" style="cursor: pointer;">Footer Name <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort-down"></i></span></th>
+          <th class="actions-column">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="cl-footers-table-body">
+        <% for (const footer of footers) { %>
+          <tr data-footer-id="<%= footer.id %>" data-updated-timestamp="<%= new Date(footer.updated).getTime() %>">
+            <td data-label="Name"> <%= footer.name %> </td>
+            <td data-label="Updated"> <%= footer.formattedUpdated %> </td>
+            <td data-label="Actions" class="actions-cell">
+              <a href="/projects/<%= project.id %>/changelog_footers/edit/<%= footer.id %>" class="btn btn-icon btn-edit" title="Edit Changelog Footer"> <i class="fas fa-pencil-alt"></i> </a>
+              <form action="/projects/<%= project.id %>/changelog_footers/delete/<%= footer.id %>" method="POST" class="delete-cl-footer-form" title="Delete Changelog Footer">
+                <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
+              </form>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination-controls card-footer">
+    <button id="prev-page-btn" class="btn btn-secondary" <% if (pagination.page <= 1) { %>disabled<% } %>>
+      <i class="fas fa-chevron-left"></i> Previous
+    </button>
+    <span id="page-info" class="page-info-text">
+      Page <%= pagination.page %> of <%= pagination.totalPages %> (<%= pagination.totalItems %> items)
+    </span>
+    <button id="next-page-btn" class="btn btn-secondary" <% if (pagination.page >= pagination.totalPages) { %>disabled<% } %>>
+      Next <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+</div>
+
+<% if (footers.length === 0 && !locals.error) { %>
+  <div class="card empty-state-card">
+    <i class="far fa-arrow-alt-circle-down empty-state-icon"></i>
+    <h2>No custom changelog footers yet for this project</h2>
+    <p>Create reusable footers to customize the bottom of your changelog entry view pages.</p>
+    <a href="/projects/<%= project.id %>/changelog_footers/new" class="btn btn-primary">Create First Changelog Footer</a>
+  </div>
+<% } %>
+
+<%- include('../partials/footer', { scriptPath: '/js/changelog_footers.js' }) %>

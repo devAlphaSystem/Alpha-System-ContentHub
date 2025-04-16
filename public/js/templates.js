@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const dataCard = document.querySelector(".data-card");
   const emptyStateCard = document.querySelector(".empty-state-card");
   const tableElement = document.querySelector(".data-table");
+  const projectId = document.body.dataset.projectId;
 
   let currentPage = 1;
   let totalPages = 1;
@@ -26,14 +27,18 @@ document.addEventListener("DOMContentLoaded", () => {
         year: "numeric",
       });
     const updatedTimestamp = new Date(template.updated).getTime();
+    const editUrl = `/projects/${projectId}/templates/edit/${escapeHtml(template.id)}`;
+    const deleteUrl = `/projects/${projectId}/templates/delete/${escapeHtml(template.id)}`;
 
     return `
       <tr data-template-id="${escapeHtml(template.id)}" data-updated-timestamp="${updatedTimestamp}">
         <td data-label="Name">${escapeHtml(template.name)}</td>
         <td data-label="Updated">${formattedUpdated}</td>
         <td data-label="Actions" class="actions-cell">
-          <a href="/templates/edit/${escapeHtml(template.id)}" class="btn btn-icon btn-edit" title="Edit Template"><i class="fas fa-pencil-alt"></i></a>
-          <form action="/templates/delete/${escapeHtml(template.id)}" method="POST" class="delete-template-form" title="Delete Template"><button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button></form>
+          <a href="${editUrl}" class="btn btn-icon btn-edit" title="Edit Template"><i class="fas fa-pencil-alt"></i></a>
+          <form action="${deleteUrl}" method="POST" class="delete-template-form" title="Delete Template">
+            <button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button>
+          </form>
         </td>
       </tr>
     `;
@@ -84,11 +89,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (emptyStateCard) emptyStateCard.style.display = "";
     }
 
-    attachDeleteListeners();
+    attachActionListeners();
   }
 
   async function fetchTemplates() {
-    if (isLoading) return;
+    if (isLoading || !projectId) {
+      if (!projectId) console.warn("Project ID missing, cannot fetch templates.");
+      return;
+    }
     isLoading = true;
 
     if (refreshButton) {
@@ -99,7 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (nextPageBtn) nextPageBtn.disabled = true;
 
     const sortParam = `${currentSortDir === "desc" ? "-" : ""}${currentSortKey}`;
-    const url = `/api/templates?page=${currentPage}&perPage=${itemsPerPage}&sort=${sortParam}`;
+    const url = `/api/projects/${projectId}/templates?page=${currentPage}&perPage=${itemsPerPage}&sort=${sortParam}`;
 
     try {
       const response = await fetch(url);
@@ -116,7 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updatePaginationControls();
     } catch (error) {
       console.error("Failed to fetch templates:", error);
-      window.showAlertModal("Error loading templates. Please try refreshing the page.", "Loading Error");
+      window.showAlertModal("Error loading templates. Please try refreshing.", "Loading Error");
       if (templatesTableBody && tableElement) {
         const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 3;
         templatesTableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading templates.</td></tr>`;
@@ -137,28 +145,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function handleDeleteSubmit(event) {
-    event.preventDefault();
+  function handleFormSubmit(event) {
     const form = event.target;
     if (form.classList.contains("delete-template-form")) {
-      const name = form.closest("tr")?.querySelector("td[data-label='Name']")?.textContent || "this template";
-      const message = `Are you sure you want to delete the template "<strong>${escapeHtml(name)}</strong>"?<br>This action cannot be undone.`;
+      event.preventDefault();
+      const templateName = form.closest("tr")?.querySelector("td[data-label='Name']")?.textContent || "this template";
       window.showConfirmModal({
         form: form,
         title: "Confirm Deletion",
-        message: message,
+        message: `Are you sure you want to delete the template "<strong>${escapeHtml(templateName)}</strong>"? This action cannot be undone.`,
         action: "delete",
         confirmText: "Delete",
       });
     }
   }
 
-  function attachDeleteListeners() {
-    const deleteTemplateForms = document.querySelectorAll("form.delete-template-form");
-    for (const form of deleteTemplateForms) {
-      form.removeEventListener("submit", handleDeleteSubmit);
-      form.addEventListener("submit", handleDeleteSubmit);
-    }
+  function attachActionListeners() {
+    templatesTableBody?.removeEventListener("submit", handleFormSubmit);
+    templatesTableBody?.addEventListener("submit", handleFormSubmit);
   }
 
   function attachSortListeners() {
@@ -166,6 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const header of sortableHeaders) {
       const newHeader = header.cloneNode(true);
       header.parentNode.replaceChild(newHeader, header);
+
       newHeader.addEventListener("click", () => {
         if (isLoading) return;
 
@@ -175,7 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (sortKey === currentSortKey) {
           newSortDir = currentSortDir === "asc" ? "desc" : "asc";
         } else {
-          newSortDir = "asc";
+          newSortDir = sortKey === "updated" ? "desc" : "asc";
         }
 
         currentSortKey = sortKey;
@@ -185,7 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const allHeaders = document.querySelectorAll(".data-table th[data-sort-key]");
         for (const h of allHeaders) {
           const icon = h.querySelector(".sort-icon i");
-          if (!icon) continue;
+          if (!icon) return;
           if (h.dataset.sortKey === currentSortKey) {
             icon.className = currentSortDir === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
           } else {
@@ -218,40 +223,59 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  const initialSortHeader = document.querySelector(`.data-table th[data-sort-key="${currentSortKey}"]`);
-  if (initialSortHeader) {
-    const icon = initialSortHeader.querySelector(".sort-icon i");
-    if (icon) {
-      icon.className = currentSortDir === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
+  function initializeProjectTemplates() {
+    if (!projectId) {
+      console.warn("Project ID missing, cannot initialize templates.");
+      return;
     }
-  }
 
-  attachDeleteListeners();
-  attachSortListeners();
-
-  const initialPaginationData = document.querySelector(".pagination-controls");
-  if (initialPaginationData) {
-    try {
-      const pageInfoText = document.getElementById("page-info")?.textContent || "";
-      const pageMatch = pageInfoText.match(/Page (\d+) of (\d+)/);
-      const itemsMatch = pageInfoText.match(/\((\d+) items\)/);
-      if (pageMatch) {
-        currentPage = Number.parseInt(pageMatch[1], 10);
-        totalPages = Number.parseInt(pageMatch[2], 10);
+    const initialSortHeader = document.querySelector(`.data-table th[data-sort-key="${currentSortKey}"]`);
+    if (initialSortHeader) {
+      const icon = initialSortHeader.querySelector(".sort-icon i");
+      if (icon) {
+        icon.className = currentSortDir === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
       }
-      if (itemsMatch) {
-        totalItems = Number.parseInt(itemsMatch[1], 10);
+    }
+
+    attachActionListeners();
+    attachSortListeners();
+
+    const initialPaginationData = document.querySelector(".pagination-controls");
+    if (initialPaginationData) {
+      try {
+        const pageInfoText = document.getElementById("page-info")?.textContent || "";
+        const pageMatch = pageInfoText.match(/Page (\d+) of (\d+)/);
+        const itemsMatch = pageInfoText.match(/\((\d+) items\)/);
+        if (pageMatch) {
+          currentPage = Number.parseInt(pageMatch[1], 10);
+          totalPages = Number.parseInt(pageMatch[2], 10);
+        }
+        if (itemsMatch) {
+          totalItems = Number.parseInt(itemsMatch[1], 10);
+        }
+      } catch (e) {
+        console.warn("Could not parse initial pagination state from EJS.");
       }
-    } catch (e) {
-      console.warn("Could not parse initial pagination state from EJS.");
+    }
+
+    updatePaginationControls();
+
+    const needsInitialFetch = (templatesTableBody && templatesTableBody.children.length === 0 && (!emptyStateCard || emptyStateCard.style.display === "none")) || totalPages > 1;
+
+    if (needsInitialFetch) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const message = urlParams.get("message");
+      const error = urlParams.get("error");
+      if (!message && !error) {
+        fetchTemplates();
+      } else {
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    } else if (templatesTableBody && templatesTableBody.children.length > 0) {
+      attachActionListeners();
     }
   }
 
-  updatePaginationControls();
-
-  if (templatesTableBody && templatesTableBody.children.length === 0 && (!emptyStateCard?.style.display || emptyStateCard?.style.display === "none")) {
-    if (totalItems > 0 || !initialPaginationData) {
-      fetchTemplates();
-    }
-  }
+  initializeProjectTemplates();
 });

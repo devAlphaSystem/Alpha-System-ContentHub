@@ -18,8 +18,11 @@ process.on("SIGINT", () => {
   server.close(() => {
     console.log("HTTP server closed.");
     viewDb.close((err) => {
-      if (err) console.error("Error closing view tracking DB", err.message);
-      else console.log("View tracking database connection closed.");
+      if (err) {
+        console.error("Error closing view tracking DB", err.message);
+      } else {
+        console.log("View tracking database connection closed.");
+      }
       process.exit(0);
     });
   });

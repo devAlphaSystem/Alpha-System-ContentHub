@@ -8,6 +8,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const dataCard = document.querySelector(".data-card");
   const emptyStateCard = document.querySelector(".empty-state-card");
   const tableElement = document.querySelector(".data-table");
+  const projectId = document.body.dataset.projectId;
+  const entryType = document.body.dataset.entryType;
 
   let currentPage = 1;
   let totalPages = 1;
@@ -26,18 +28,19 @@ document.addEventListener("DOMContentLoaded", () => {
         year: "numeric",
       });
     const updatedTimestamp = new Date(entry.updated).getTime();
+    const unarchiveUrl = `/projects/${projectId}/unarchive/${escapeHtml(entry.id)}`;
+    const deleteUrl = `/projects/${projectId}/delete-archived/${escapeHtml(entry.id)}`;
 
     return `
       <tr data-entry-id="${escapeHtml(entry.id)}" data-updated-timestamp="${updatedTimestamp}">
         <td data-label="Title">${escapeHtml(entry.title)}</td>
         <td data-label="Status"><span class="badge status-badge status-${escapeHtml(entry.status.toLowerCase())}">${escapeHtml(entry.status)}</span></td>
-        <td data-label="Type"><span class="badge type-badge type-${escapeHtml(entry.type)}">${escapeHtml(entry.type)}</span></td>
         <td data-label="Archived">${formattedArchivedDate}</td>
         <td data-label="Actions" class="actions-cell">
-          <form action="/unarchive/${escapeHtml(entry.id)}" method="POST" class="unarchive-form" title="Unarchive">
+          <form action="${unarchiveUrl}" method="POST" class="unarchive-form" title="Unarchive">
             <button type="submit" class="btn btn-icon btn-unarchive"><i class="fas fa-box-open"></i></button>
           </form>
-          <form action="/delete-archived/${escapeHtml(entry.id)}" method="POST" class="delete-archived-form" title="Delete Permanently">
+          <form action="${deleteUrl}" method="POST" class="delete-archived-form" title="Delete Permanently">
             <button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button>
           </form>
         </td>
@@ -82,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (noMatchRow) noMatchRow.remove();
     } else if (totalItems > 0) {
       const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 5;
-      archivedTableBody.innerHTML = `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">No archived entries found for this page.</td></tr>`;
+      archivedTableBody.innerHTML = `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">No archived ${entryType} entries found for this page.</td></tr>`;
       if (dataCard) dataCard.classList.remove("hidden");
       if (emptyStateCard) emptyStateCard.style.display = "none";
     } else {
@@ -94,7 +97,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function fetchArchivedEntries() {
-    if (isLoading) return;
+    if (isLoading || !projectId || !entryType) {
+      if (!projectId) console.warn("Project ID missing, cannot fetch archived entries.");
+      if (!entryType) console.warn("Entry Type missing, cannot fetch archived entries.");
+      return;
+    }
     isLoading = true;
 
     if (refreshButton) {
@@ -105,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (nextPageBtn) nextPageBtn.disabled = true;
 
     const sortParam = `${currentSortDir === "desc" ? "-" : ""}${currentSortKey}`;
-    const url = `/api/archived-entries?page=${currentPage}&perPage=${itemsPerPage}&sort=${sortParam}`;
+    const url = `/api/projects/${projectId}/archived-entries?page=${currentPage}&perPage=${itemsPerPage}&sort=${sortParam}&type=${entryType}`;
 
     try {
       const response = await fetch(url);
@@ -153,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
       options = {
         form: form,
         title: "Confirm Unarchive",
-        message: `Are you sure you want to unarchive "<strong>${escapeHtml(title)}</strong>"? It will be moved back to the main dashboard.`,
+        message: `Are you sure you want to unarchive "<strong>${escapeHtml(title)}</strong>"? It will be moved back to the project's active entries.`,
         action: "unarchive",
         confirmText: "Unarchive",
       };
@@ -201,7 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
         currentSortDir = newSortDir;
         currentPage = 1;
 
-        document.querySelectorAll(".data-table th[data-sort-key]").forEach((h) => {
+        for (const h of document.querySelectorAll(".data-table th[data-sort-key]")) {
           const icon = h.querySelector(".sort-icon i");
           if (!icon) return;
           if (h.dataset.sortKey === currentSortKey) {
@@ -209,7 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
           } else {
             icon.className = "fas fa-sort";
           }
-        });
+        }
 
         fetchArchivedEntries();
       });
@@ -236,49 +243,59 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  const initialSortHeader = document.querySelector(`.data-table th[data-sort-key="${currentSortKey}"]`);
-  if (initialSortHeader) {
-    const icon = initialSortHeader.querySelector(".sort-icon i");
-    if (icon) {
-      icon.className = currentSortDir === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
+  function initializeProjectArchived() {
+    if (!projectId || !entryType) {
+      console.warn("Project ID or Entry Type missing, cannot initialize archived entries.");
+      return;
     }
-  }
 
-  attachActionListeners();
-  attachSortListeners();
-
-  const initialPaginationData = document.querySelector(".pagination-controls");
-  if (initialPaginationData) {
-    try {
-      const pageInfoText = document.getElementById("page-info")?.textContent || "";
-      const pageMatch = pageInfoText.match(/Page (\d+) of (\d+)/);
-      const itemsMatch = pageInfoText.match(/\((\d+) items\)/);
-      if (pageMatch) {
-        currentPage = Number.parseInt(pageMatch[1], 10);
-        totalPages = Number.parseInt(pageMatch[2], 10);
+    const initialSortHeader = document.querySelector(`.data-table th[data-sort-key="${currentSortKey}"]`);
+    if (initialSortHeader) {
+      const icon = initialSortHeader.querySelector(".sort-icon i");
+      if (icon) {
+        icon.className = currentSortDir === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
       }
-      if (itemsMatch) {
-        totalItems = Number.parseInt(itemsMatch[1], 10);
-      }
-    } catch (e) {
-      console.warn("Could not parse initial pagination state from EJS.");
     }
-  }
 
-  updatePaginationControls();
-
-  const needsInitialFetch = (archivedTableBody && archivedTableBody.children.length === 0 && (!emptyStateCard || emptyStateCard.style.display === "none")) || totalPages > 1;
-
-  if (needsInitialFetch) {
-    const urlParams = new URLSearchParams(window.location.search);
-    const action = urlParams.get("action");
-    const error = urlParams.get("error");
-    if (!action && !error) {
-      fetchArchivedEntries();
-    } else {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  } else if (archivedTableBody && archivedTableBody.children.length > 0) {
     attachActionListeners();
+    attachSortListeners();
+
+    const initialPaginationData = document.querySelector(".pagination-controls");
+    if (initialPaginationData) {
+      try {
+        const pageInfoText = document.getElementById("page-info")?.textContent || "";
+        const pageMatch = pageInfoText.match(/Page (\d+) of (\d+)/);
+        const itemsMatch = pageInfoText.match(/\((\d+) items\)/);
+        if (pageMatch) {
+          currentPage = Number.parseInt(pageMatch[1], 10);
+          totalPages = Number.parseInt(pageMatch[2], 10);
+        }
+        if (itemsMatch) {
+          totalItems = Number.parseInt(itemsMatch[1], 10);
+        }
+      } catch (e) {
+        console.warn("Could not parse initial pagination state from EJS.");
+      }
+    }
+
+    updatePaginationControls();
+
+    const needsInitialFetch = (archivedTableBody && archivedTableBody.children.length === 0 && (!emptyStateCard || emptyStateCard.style.display === "none")) || totalPages > 1;
+
+    if (needsInitialFetch) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const action = urlParams.get("action");
+      const error = urlParams.get("error");
+      if (!action && !error) {
+        fetchArchivedEntries();
+      } else {
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    } else if (archivedTableBody && archivedTableBody.children.length > 0) {
+      attachActionListeners();
+    }
   }
+
+  initializeProjectArchived();
 });
