@@ -51,6 +51,7 @@
           <option value="documentation" <%= locals.entry && entry.type === 'documentation' ? 'selected' : '' %>>Documentation</option>
           <option value="changelog" <%= locals.entry && entry.type === 'changelog' ? 'selected' : '' %>>Changelog</option>
           <option value="roadmap" <%= locals.entry && entry.type === 'roadmap' ? 'selected' : '' %>>Roadmap</option>
+          <option value="knowledge_base" <%= locals.entry && entry.type === 'knowledge_base' ? 'selected' : '' %>>Knowledge Base</option>
         </select>
       </div>
 
@@ -76,11 +77,11 @@
 
       <div class="form-group">
         <label for="url">URL (Optional ID)</label>
-        <div class="input-group input-group-prefix">
-          <span class="input-group-text prefix-text" id="url-prefix"><%= locals.baseUrl %>/view/</span>
-          <input type="text" id="url" name="url" class="form-control prefixed-input <%= locals.errors?.url ? 'is-invalid' : '' %>" value="<%= locals.entry ? entry.url : '' %>" minlength="15" maxlength="15" aria-describedby="url-prefix url-help" placeholder="Enter 15 chars..." autocomplete="off" spellcheck="false">
+        <div class="input-group input-group-prefix" id="url-input-group"> <span class="input-group-text prefix-text" id="url-prefix"><%= locals.baseUrl %>/view/</span>
+          <input type="text" id="url" name="url" class="form-control prefixed-input <%= locals.errors?.url ? 'is-invalid' : '' %>" value="<%= locals.entry ? entry.url : '' %>" minlength="15" maxlength="15" aria-describedby="url-prefix url-help url-feedback" placeholder="Enter 15 chars..." autocomplete="off" spellcheck="false">
         </div>
-        <small class="form-text">If provided, must be exactly 15 characters long and unique across all projects.</small>
+        <small class="form-text" id="url-help">If provided, must be exactly 15 characters long and unique across all projects.</small>
+        <small id="url-feedback" class="form-text url-feedback-message" style="min-height: 1.2em; margin-top: 4px;"></small>
         <% if (locals.errors?.url) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.url.message %></small> <% } %>
       </div>
 
@@ -149,7 +150,7 @@
         <% if (locals.errors?.roadmap_stage) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.roadmap_stage.message %></small> <% } %>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" style="display: <%= locals.entry?.type === 'knowledge_base' ? 'none' : 'block' %>;">
         <label for="show_in_project_sidebar">Show in Project Sidebar?</label>
         <select id="show_in_project_sidebar" name="show_in_project_sidebar" class="form-control">
           <option value="true" <%= !locals.entry || entry.show_in_project_sidebar === 'true' || entry.show_in_project_sidebar === true ? 'selected' : '' %>>Yes</option>
@@ -159,7 +160,13 @@
       </div>
 
       <div class="form-group form-group-full form-group-content" style="display: <%= locals.entry?.type === 'roadmap' ? 'none' : 'block' %>;">
-        <label for="content">Content (Markdown) <span class="required">*</span></label>
+        <label for="content">
+          <% if (locals.entry?.type === 'knowledge_base') { %>
+            Answer (Markdown) <span class="required">*</span>
+          <% } else { %>
+            Content (Markdown) <span class="required">*</span>
+          <% } %>
+        </label>
         <textarea id="content" name="content" rows="15" class="form-control markdown-input <%= locals.errors?.content ? 'is-invalid' : '' %>"><%= locals.entry ? entry.content : '' %></textarea>
         <div class="form-text-wrapper">
           <small class="form-text">Use Markdown syntax. Toolbar provides formatting help.</small>

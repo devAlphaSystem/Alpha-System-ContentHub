@@ -78,10 +78,10 @@
 
 <div class="card">
   <div class="card-body" style="padding: 20px;">
-    <p class="text-muted" style="margin-bottom: 20px;">Drag and drop the entries below to reorder how they appear in the public project sidebar. Only entries marked "Show in Project Sidebar?" will appear here. Roadmap items are excluded.</p>
+    <p class="text-muted">Drag and drop the entries below to reorder how they appear in the public project sidebar. Only entries marked "Show in Project Sidebar?" will appear here. Roadmap items are excluded.</p>
 
     <% if (entries && entries.length > 0) { %>
-      <ul id="sortable-entries" class="list-group">
+      <ul id="sortable-entries" class="list-group" style="margin-top: 20px;">
         <% for (const entry of entries) { %>
           <li class="list-group-item" data-id="<%= entry.id %>">
             <i class="fas fa-grip-vertical handle" style="cursor: grab; margin-right: 10px; color: var(--text-muted);"></i>
@@ -96,10 +96,15 @@
           </li>
         <% } %>
       </ul>
-    <% } else { %>
-      <p class="text-muted" style="text-align: center; padding: 30px 0;">No entries are currently set to show in the public sidebar for this project.</p>
     <% } %>
   </div>
 </div>
+
+<% if (entries && entries.length <= 0) { %>
+  <div class="card empty-state-card" style="margin-top: 25px;">
+    <i class="fas fa-sort-amount-down empty-state-icon"></i>
+    <h2>No entries are currently set to show in the public sidebar for this project</h2>
+  </div>
+<% } %>
 
 <%- include('../partials/footer', { scriptPath: '/js/sidebar_order.js' }) %>

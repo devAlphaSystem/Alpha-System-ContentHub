@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= locals.pageTitle || 'Knowledge Base' %></title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+    <link rel="stylesheet" href="/css/vendors/hljs-theme.css">
+    <link rel="stylesheet" href="/css/view-style.css">
+
+    <style>
+      .kb-container {
+        margin-top: 30px;
+        max-width: var(--content-max-width);
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .kb-item {
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-primary);
+        border-radius: var(--radius-lg); 
+        margin-bottom: 16px; 
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        overflow: hidden; 
+      }
+
+      .kb-item:hover {
+        border-color: var(--border-secondary);
+      }
+
+      .kb-item[open] {
+        box-shadow: 0 4px 12px var(--shadow-color);
+        border-color: var(--border-secondary); 
+      }
+
+      .kb-question {
+        padding: 16px 24px; 
+        font-weight: 600;
+        font-size: 1.05rem;
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+        color: var(--text-primary);
+        transition: background-color 0.15s ease;
+      }
+
+      .kb-item:hover > .kb-question {
+        background-color: var(--bg-secondary);
+      }
+
+      .kb-item[open] > .kb-question {
+        background-color: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-primary);
+      }
+
+      .kb-question::-webkit-details-marker {
+        display: none;
+      }
+
+      .kb-question::after {
+        content: "\f078";
+        font-family: "Font Awesome 6 Free";
+        font-weight: 900;
+        font-size: 0.9em;
+        transition: transform 0.25s ease-out;
+        flex-shrink: 0;
+        color: var(--text-muted);
+        margin-left: 10px; 
+      }
+
+      .kb-item[open] > .kb-question::after {
+        transform: rotate(-180deg);
+      }
+
+      .kb-tags {
+        margin-left: auto;
+        padding-left: 15px;
+        flex-shrink: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 35%; 
+        text-align: right;
+      }
+
+      .kb-tags .tag-badge {
+        margin-left: 5px;
+        margin-bottom: 0;
+        font-size: 0.75rem;
+        padding: 3px 6px;
+        vertical-align: middle;
+      }
+
+      .kb-answer {
+        padding: 20px 24px 24px 24px; 
+      }
+
+      .kb-answer.markdown-body > *:first-child {
+        margin-top: 0;
+      }
+
+      .kb-answer.markdown-body > *:last-child {
+        margin-bottom: 0;
+      }
+
+      body.dark-mode .kb-item {
+        background-color: var(--dark-bg-primary);
+        border-color: var(--dark-border-primary);
+      }
+
+      body.dark-mode .kb-item:hover {
+        border-color: var(--dark-border-secondary);
+      }
+
+      body.dark-mode .kb-item[open] {
+        box-shadow: 0 4px 12px var(--dark-shadow-color);
+        border-color: var(--dark-border-secondary);
+      }
+
+      body.dark-mode .kb-question {
+        color: var(--dark-text-primary);
+      }
+
+      body.dark-mode .kb-item:hover > .kb-question {
+        background-color: var(--dark-bg-secondary);
+      }
+
+      body.dark-mode .kb-item[open] > .kb-question {
+        background-color: var(--dark-bg-secondary);
+        border-bottom-color: var(--dark-border-primary);
+      }
+
+      body.dark-mode .kb-question::after {
+        color: var(--dark-text-muted);
+      }
+
+      #toc-sidebar .toc-title {
+        margin-bottom: 8px;
+      }
+
+      #toc-sidebar .table-of-contents ul {
+        padding-left: 0;
+      }
+
+      #toc-sidebar .table-of-contents li a {
+        padding: 6px 12px;
+        font-size: 0.875rem;
+        border-left: none;
+      }
+
+      #toc-sidebar .table-of-contents li a:hover {
+        background-color: var(--toc-link-hover-bg);
+      }
+
+      #toc-sidebar .table-of-contents li a.active {
+        background-color: var(--toc-link-hover-bg);
+        color: var(--toc-link-active-color);
+        font-weight: 600;
+      }
+    </style>
+  </head>
+
+  <body class="public-view">
+
+    <script>
+      const currentTheme = localStorage.getItem("theme") || "light";
+      
+      if (currentTheme === "dark") {
+        document.body.classList.add("dark-mode");
+      }
+    </script>
+
+    <header class="mobile-header">
+      <button id="mobile-project-nav-toggle" class="mobile-nav-toggle <% if (!project) { %>hidden<% } %>" aria-label="Toggle Project Navigation">
+        <i class="fas fa-bars"></i>
+      </button>
+      <a href="/" class="mobile-logo"><%= project ? project.name : 'Content Hub' %></a>
+      <button id="mobile-toc-nav-toggle" class="mobile-nav-toggle hidden" aria-label="Toggle Table of Contents">
+        <i class="fas fa-list-ul"></i>
+      </button>
+    </header>
+
+    <div class="page-wrapper">
+      <% if (project && sidebarEntries && sidebarEntries.length > 0) { %>
+        <aside class="project-sidebar" id="project-sidebar">
+          <div class="sidebar-sticky-content">
+            <h3 class="project-sidebar-title">
+              <a href="/projects/<%= project.id %>/entries" title="Go to project admin page (requires login)">
+                <%= project.name %>
+              </a>
+            </h3>
+            <nav class="project-entries-nav">
+              <ul>
+                <% for(const item of sidebarEntries) { %>
+                  <li>
+                    <a href="/view/<%= item.id %>" class="project-entry-link">
+                      <% if (item.type === 'changelog') { %>
+                        <i class="fas fa-history fa-fw type-icon"></i>
+                      <% } else { %>
+                        <i class="fas fa-file-alt fa-fw type-icon"></i>
+                      <% } %>
+                      <span><%= item.title %></span>
+                    </a>
+                  </li>
+                <% } %>
+                <li>
+                    <a href="/kb/<%= project.id %>" class="project-entry-link active">
+                      <i class="fas fa-question-circle fa-fw type-icon"></i>
+                      <span>Knowledge Base</span>
+                    </a>
+                </li>
+                <% if (project.roadmap_enabled) { %>
+                  <li>
+                    <a href="/roadmap/<%= project.id %>" class="project-entry-link">
+                      <i class="fas fa-route fa-fw type-icon"></i>
+                      <span>Roadmap</span>
+                    </a>
+                  </li>
+                <% } %>
+              </ul>
+            </nav>
+          </div>
+        </aside>
+      <% } %>
+
+      <div class="main-content">
+        <header class="content-header">
+          <h1 class="entry-title">Knowledge Base: <%= project.name %></h1>
+        </header>
+
+        <div class="kb-container">
+          <% if (kbEntries && kbEntries.length > 0) { %>
+            <% for (const entry of kbEntries) { %>
+              <details class="kb-item" id="kb-<%= entry.id %>">
+                <summary class="kb-question">
+                  <%= entry.question %>
+                  <% if (entry.tags && entry.tags.length > 0) { %>
+                    <span class="kb-tags">
+                      <% entry.tags.forEach(tag => { %>
+                        <span class="tag-badge"><%= tag %></span>
+                      <% }) %>
+                    </span>
+                  <% } %>
+                </summary>
+                <div class="kb-answer markdown-body">
+                  <%- entry.answerHtml %>
+                </div>
+              </details>
+            <% } %>
+          <% } else { %>
+            <p class="text-muted" style="text-align: center; padding: 40px 0;">No knowledge base articles found for this project.</p>
+          <% } %>
+        </div>
+      </div>
+
+      <aside class="toc-sidebar" id="toc-sidebar">
+        <div class="sidebar-sticky-content">
+          <h3 class="toc-title">Knowledge Base</h3>
+          <nav id="toc" class="table-of-contents">
+            <ul>
+              <% if (kbEntries && kbEntries.length > 0) { %>
+                <% for (const entry of kbEntries) { %>
+                  <li><a href="#kb-<%= entry.id %>"><%= entry.question %></a></li>
+                <% } %>
+              <% } else { %>
+                <li><span class="text-muted">No entries</span></li>
+              <% } %>
+            </ul>
+          </nav>
+          <div class="theme-toggle-container">
+            <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme">
+              <i class="fas fa-sun"></i>
+              <i class="fas fa-moon"></i>
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <script src="/js/vendors/mermaid.js"></script>
+
+    <script>
+      function initializeMermaid(theme) {
+        try {
+          const mermaidTheme = theme === 'dark' ? 'dark' : 'neutral';
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: mermaidTheme,
+            themeVariables: {
+              darkMode: theme === 'dark',
+              background: theme === 'dark' ? '#1f2937' : '#ffffff',
+            }
+          });
+          mermaid.run({ querySelector: '.language-mermaid' });
+        } catch (e) {
+          console.error("Error initializing or running Mermaid:", e);
+        }
+      }
+      document.addEventListener('DOMContentLoaded', () => {
+        const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+        initializeMermaid(currentTheme);
+      });
+    </script>
+
+    <script src="/js/vendors/highlight.min.js"></script>
+    <script src="/js/vendors/disable-dev-tools.js"></script>
+    <script src="/js/view.js"></script>
+  </body>
+</html>

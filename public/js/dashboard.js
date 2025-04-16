@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const refreshBtn = document.getElementById("refresh-dashboard-btn");
+  const refreshButton = document.getElementById("refresh-dashboard-btn");
 
-  refreshBtn?.addEventListener("click", () => {
+  refreshButton?.addEventListener("click", () => {
     window.location.reload();
   });
 
@@ -11,24 +11,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const gridColor = isDarkMode ? "#4b5563" : "#e0e0e0";
     const labelColor = isDarkMode ? "#e9ecef" : "#212529";
     const tooltipTheme = isDarkMode ? "dark" : "light";
-    const docColor = isDarkMode ? "var(--dark-badge-docs-text)" : "var(--badge-docs-text)";
-    const clColor = isDarkMode ? "var(--dark-badge-changelog-text)" : "var(--badge-changelog-text)";
-    const publishedColor = isDarkMode ? "var(--dark-success-color)" : "var(--success-color)";
-    const draftColor = isDarkMode ? "var(--dark-secondary-color)" : "var(--secondary-color)";
-    const stagedColor = isDarkMode ? "var(--dark-warning-color)" : "var(--warning-color)";
 
-    const typesChartContainer = document.querySelector("#chart-global-types");
-    if (typesChartContainer) {
-      const typesChartOptions = {
-        chart: { type: "donut", height: 280, theme: { mode: chartTheme } },
+    const typeChartColors = ["#188038", "#1967d2", "#862e9c"];
+    const statusChartColors = ["#1e8e3e", "#5f6368", "#f9ab00"];
+
+    const typeChartContainer = document.querySelector("#chart-global-types");
+    const statusChartContainer = document.querySelector("#chart-global-status");
+    const activityChartContainer = document.querySelector("#chart-global-activity");
+
+    if (typeChartContainer) {
+      const typeChartOptions = {
+        chart: {
+          type: "donut",
+          height: 280,
+          theme: { mode: chartTheme },
+        },
         series: [dashboardMetrics.documentationCount || 0, dashboardMetrics.changelogCount || 0],
         labels: ["Documentation", "Changelog"],
-        colors: [docColor, clColor],
+        colors: typeChartColors,
         dataLabels: {
           enabled: true,
           formatter: (val, opts) => opts.w.globals.series[opts.seriesIndex],
-          style: { fontSize: "14px", fontWeight: "bold" },
-          dropShadow: { enabled: false },
         },
         plotOptions: {
           pie: {
@@ -36,56 +39,66 @@ document.addEventListener("DOMContentLoaded", () => {
               size: "65%",
               labels: {
                 show: true,
-                name: { show: true },
-                value: {
-                  show: true,
-                  formatter: (val) => Number.parseInt(val),
-                },
                 total: {
                   show: true,
                   label: "Total Entries",
-                  formatter: (w) => dashboardMetrics.totalEntries || 0,
+                  formatter: (w) =>
+                    w.globals.seriesTotals.reduce((a, b) => {
+                      return a + b;
+                    }, 0),
                 },
               },
             },
           },
         },
         legend: {
-          show: true,
           position: "bottom",
           labels: { colors: labelColor },
         },
         tooltip: {
           theme: tooltipTheme,
           y: {
-            formatter: (val) => `${Number.parseInt(val)} entries`,
+            formatter: (value) => `${value} entries`,
           },
+          marker: {
+            show: true,
+          },
+          fixed: {
+            enabled: false,
+          },
+          followCursor: false,
         },
+        responsive: [
+          {
+            breakpoint: 480,
+            options: {
+              chart: {
+                height: 240,
+              },
+              legend: {
+                position: "bottom",
+              },
+            },
+          },
+        ],
       };
-      const typesChart = new ApexCharts(typesChartContainer, typesChartOptions);
-      typesChart.render();
-    } else {
-      console.warn("Chart container #chart-global-types not found.");
+      const typeChart = new ApexCharts(typeChartContainer, typeChartOptions);
+      typeChart.render();
     }
 
-    const statusChartContainer = document.querySelector("#chart-global-status");
-    const published = Number(dashboardMetrics.publishedCount) || 0;
-    const draft = Number(dashboardMetrics.draftCount) || 0;
-    const staged = Number(dashboardMetrics.stagedCount) || 0;
-
-    const purelyPublished = published - staged;
-
-    if (statusChartContainer && (purelyPublished > 0 || draft > 0 || staged > 0)) {
+    if (statusChartContainer) {
       const statusChartOptions = {
-        chart: { type: "donut", height: 280, theme: { mode: chartTheme } },
-        series: [purelyPublished, draft, staged],
+        chart: {
+          type: "donut",
+          height: 280,
+          theme: { mode: chartTheme },
+        },
+        series: [dashboardMetrics.publishedCount || 0, dashboardMetrics.draftCount || 0, dashboardMetrics.stagedCount || 0],
         labels: ["Published", "Draft", "Staged Changes"],
-        colors: [publishedColor, draftColor, stagedColor],
+        colors: statusChartColors,
         dataLabels: {
           enabled: true,
           formatter: (val, opts) => opts.w.globals.series[opts.seriesIndex],
-          style: { fontSize: "14px", fontWeight: "bold" },
-          dropShadow: { enabled: false },
         },
         plotOptions: {
           pie: {
@@ -93,44 +106,54 @@ document.addEventListener("DOMContentLoaded", () => {
               size: "65%",
               labels: {
                 show: true,
-                name: { show: true },
-                value: {
-                  show: true,
-                  formatter: (val) => Number.parseInt(val),
-                },
                 total: {
                   show: true,
                   label: "Total Entries",
-                  formatter: (w) => dashboardMetrics.totalEntries || 0,
+                  formatter: (w) => {
+                    return w.globals.seriesTotals.reduce((a, b) => {
+                      return a + b;
+                    }, 0);
+                  },
                 },
               },
             },
           },
         },
         legend: {
-          show: true,
           position: "bottom",
           labels: { colors: labelColor },
         },
         tooltip: {
           theme: tooltipTheme,
           y: {
-            formatter: (val, { seriesIndex, w }) => {
-              const label = w.globals.labels[seriesIndex];
-              return `${Number.parseInt(val)} ${label}`;
+            formatter: (value) => `${value} entries`,
+          },
+          marker: {
+            show: true,
+          },
+          fixed: {
+            enabled: false,
+          },
+          followCursor: false,
+        },
+        responsive: [
+          {
+            breakpoint: 480,
+            options: {
+              chart: {
+                height: 240,
+              },
+              legend: {
+                position: "bottom",
+              },
             },
           },
-        },
+        ],
       };
       const statusChart = new ApexCharts(statusChartContainer, statusChartOptions);
       statusChart.render();
-    } else if (statusChartContainer) {
-      statusChartContainer.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--text-muted);">No entries found to display status.</p>';
-    } else {
-      console.warn("Chart container #chart-global-status not found.");
     }
 
-    const activityChartContainer = document.querySelector("#chart-global-activity");
     if (activityChartContainer && dashboardMetrics.activityData && dashboardMetrics.activityData.length > 0) {
       const activityChartOptions = {
         chart: {
@@ -188,7 +211,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const activityChart = new ApexCharts(activityChartContainer, activityChartOptions);
       activityChart.render();
     } else if (activityChartContainer) {
-      // EJS handles the "no activity" message now
+      // Handled by EJS now
     } else {
       console.warn("Chart container #chart-global-activity not found.");
     }

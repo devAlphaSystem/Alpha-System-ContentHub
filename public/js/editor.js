@@ -549,13 +549,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const docFooterGroup = document.getElementById("documentation-footer-group");
     const clHeaderGroup = document.getElementById("changelog-header-group");
     const clFooterGroup = document.getElementById("changelog-footer-group");
+    const roadmapStageGroup = document.getElementById("roadmap-stage-group");
+    const contentGroup = document.querySelector(".form-group-content");
+    const contentLabel = contentGroup?.querySelector("label[for='content']");
 
     if (docHeaderGroup) docHeaderGroup.style.display = "none";
     if (docFooterGroup) docFooterGroup.style.display = "none";
     if (clHeaderGroup) clHeaderGroup.style.display = "none";
     if (clFooterGroup) clFooterGroup.style.display = "none";
     if (roadmapStageGroup) roadmapStageGroup.style.display = "none";
+
     if (contentGroup) contentGroup.style.display = "block";
+    if (contentLabel) contentLabel.innerHTML = 'Content (Markdown) <span class="required">*</span>';
 
     if (selectedType === "documentation") {
       if (docHeaderGroup) docHeaderGroup.style.display = "block";
@@ -566,10 +571,9 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (selectedType === "roadmap") {
       if (roadmapStageGroup) roadmapStageGroup.style.display = "block";
       if (contentGroup) contentGroup.style.display = "none";
-      if (docHeaderGroup) docHeaderGroup.style.display = "none";
-      if (docFooterGroup) docFooterGroup.style.display = "none";
-      if (clHeaderGroup) clHeaderGroup.style.display = "none";
-      if (clFooterGroup) clFooterGroup.style.display = "none";
+    } else if (selectedType === "knowledge_base") {
+      if (contentGroup) contentGroup.style.display = "block";
+      if (contentLabel) contentLabel.innerHTML = 'Answer (Markdown) <span class="required">*</span>';
     }
   }
 
@@ -673,5 +677,107 @@ document.addEventListener("DOMContentLoaded", () => {
 
   duplicateButton?.addEventListener("click", () => {
     handleDuplicateEntry(duplicateButton);
+  });
+
+  const urlFeedback = document.getElementById("url-feedback");
+  const urlInputGroup = document.getElementById("url-input-group");
+  const currentProjectIdForCheck = document.body.dataset.projectId;
+  let checkDebounceTimer;
+  let currentCheckController = null;
+
+  function setUrlFeedback(message, type) {
+    if (!urlFeedback || !urlInputGroup) return;
+
+    urlFeedback.textContent = message || "";
+    urlFeedback.className = "form-text url-feedback-message";
+    urlInputGroup.classList.remove("is-valid", "is-invalid");
+
+    if (type === "success") {
+      urlFeedback.classList.add("text-success");
+      urlInputGroup.classList.add("is-valid");
+    } else if (type === "error") {
+      urlFeedback.classList.add("text-danger");
+      urlInputGroup.classList.add("is-invalid");
+    } else if (type === "checking") {
+      urlFeedback.classList.add("text-muted");
+    }
+  }
+
+  async function checkUrlAvailability() {
+    if (!urlInput || !currentProjectIdForCheck) return;
+
+    const entryId = urlInput.value.trim();
+
+    if (currentCheckController) {
+      currentCheckController.abort();
+    }
+
+    if (entryId === "") {
+      setUrlFeedback("", null);
+      return;
+    }
+
+    if (entryId.length !== 15) {
+      setUrlFeedback("ID must be exactly 15 characters.", "error");
+      return;
+    }
+
+    setUrlFeedback("Checking availability...", "checking");
+    urlInput.disabled = true;
+
+    currentCheckController = new AbortController();
+    const signal = currentCheckController.signal;
+
+    try {
+      const response = await fetch(`/api/projects/${currentProjectIdForCheck}/check-entry-id/${entryId}`, { signal });
+
+      if (signal.aborted) {
+        console.log("ID check aborted for:", entryId);
+        return;
+      }
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const textResponse = await response.text();
+        console.error("Non-JSON response received:", response.status, textResponse);
+        throw new Error(`Server returned non-JSON response (Status: ${response.status})`);
+      }
+
+      const result = await response.json();
+
+      if (response.ok) {
+        if (result.available) {
+          setUrlFeedback("ID is available!", "success");
+        } else {
+          setUrlFeedback(result.reason || "ID is not available.", "error");
+        }
+      } else {
+        setUrlFeedback(result.reason || result.error || `Error: ${response.statusText}`, "error");
+      }
+    } catch (error) {
+      if (error.name === "AbortError") {
+        console.log("Fetch aborted for ID check:", entryId);
+      } else {
+        console.error("Error checking ID availability:", error);
+        setUrlFeedback(error.message || "Error checking availability. Try again.", "error");
+      }
+    } finally {
+      urlInput.disabled = false;
+      currentCheckController = null;
+    }
+  }
+
+  urlInput?.addEventListener("input", () => {
+    clearTimeout(checkDebounceTimer);
+    const entryId = urlInput.value.trim();
+
+    if (entryId !== "" && entryId.length !== 15) {
+      setUrlFeedback("ID must be exactly 15 characters.", "error");
+    } else if (entryId === "") {
+      setUrlFeedback("", null);
+    } else {
+      setUrlFeedback("...", "checking");
+      checkDebounceTimer = setTimeout(checkUrlAvailability, 500);
+    }
   });
 });

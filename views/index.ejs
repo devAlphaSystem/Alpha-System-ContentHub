@@ -39,7 +39,7 @@
           <div style="font-size: 1.6rem; font-weight: 600; color: var(--text-primary);">
             <%= metrics.totalEntries %>
           </div>
-          <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Entries</div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Entries (Docs & CL)</div>
         </div>
       </div>
     </div>
@@ -49,7 +49,7 @@
           <div style="font-size: 1.6rem; font-weight: 600; color: var(--success-color);">
             <%= metrics.publishedCount %>
           </div>
-          <div style="font-size: 0.8rem; color: var(--text-secondary);">Published</div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">Published (Docs & CL)</div>
         </div>
       </div>
     </div>
@@ -59,7 +59,7 @@
           <div style="font-size: 1.6rem; font-weight: 600; color: var(--secondary-color);">
             <%= metrics.draftCount %>
           </div>
-          <div style="font-size: 0.8rem; color: var(--text-secondary);">Drafts</div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">Drafts (All Types)</div>
         </div>
       </div>
     </div>
@@ -69,7 +69,7 @@
           <div style="font-size: 1.6rem; font-weight: 600; color: var(--warning-color);">
             <%= metrics.stagedCount %>
           </div>
-          <div style="font-size: 0.8rem; color: var(--text-secondary);">Staged Changes</div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">Staged Changes (Docs & CL)</div>
         </div>
       </div>
     </div>
@@ -79,7 +79,7 @@
           <div style="font-size: 1.6rem; font-weight: 600; color: var(--info-color);">
             <%= metrics.totalViews %>
           </div>
-          <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Views</div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Views (Docs & CL)</div>
         </div>
       </div>
     </div>
@@ -108,7 +108,7 @@
     <div class="col">
       <div class="card">
         <div class="card-body" style="padding: 20px;">
-          <h5 class="card-title" style="text-align: center; font-weight: 600;">Entry Creations (Last 30 Days)</h5>
+          <h5 class="card-title" style="text-align: center; font-weight: 600;">Entry Creations (Last 30 Days - All Types)</h5>
           <div id="chart-global-activity" style="min-height: 300px;">
             <% if (!metrics.activityData || metrics.activityData.length === 0) { %>
               <div style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
@@ -149,7 +149,7 @@
     <div class="col" style="flex: 1 1 48%;">
       <div class="card">
         <div class="card-body" style="padding: 20px;">
-          <h5 class="card-title" style="margin-bottom: 15px; font-weight: 600;">Most Viewed Entries (All Time)</h5>
+          <h5 class="card-title" style="margin-bottom: 15px; font-weight: 600;">Most Viewed Entries (Docs & CL)</h5>
           <% if (metrics.topViewedEntries && metrics.topViewedEntries.length > 0) { %>
             <ul style="list-style: none; padding: 0; margin: 0;">
               <% for(const entry of metrics.topViewedEntries) { %>

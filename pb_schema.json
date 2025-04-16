@@ -571,7 +571,9 @@
         "type": "select",
         "values": [
           "changelog",
-          "documentation"
+          "documentation",
+          "roadmap",
+          "knowledge_base"
         ]
       },
       {
@@ -770,7 +772,8 @@
         "values": [
           "changelog",
           "documentation",
-          "roadmap"
+          "roadmap",
+          "knowledge_base"
         ]
       },
       {
@@ -903,7 +906,8 @@
         "values": [
           "changelog",
           "documentation",
-          "roadmap"
+          "roadmap",
+          "knowledge_base"
         ]
       },
       {

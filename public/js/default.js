@@ -279,6 +279,17 @@ document.addEventListener("DOMContentLoaded", () => {
         mobileNavBackdrop?.classList.remove("is-visible");
         document.body.classList.remove("mobile-menu-open");
       }
+      const topBarCollapsibles = document.querySelectorAll(".top-bar .collapsible-content.is-expanded");
+      for (const content of topBarCollapsibles) {
+        const header = document.querySelector(`.top-bar .collapsible-header[data-target="${content.id}"]`);
+        if (header) {
+          header.classList.remove("is-expanded");
+          header.classList.add("is-collapsed");
+          header.setAttribute("aria-expanded", "false");
+          content.classList.remove("is-expanded");
+          content.classList.add("is-collapsed");
+        }
+      }
     }
   });
 
@@ -306,6 +317,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const currentPath = window.location.pathname;
   const sidebarLinks = document.querySelectorAll(".sidebar-inner .nav-link");
+  const topBarLinks = document.querySelectorAll(".top-bar .nav-link");
   let activeLinkFound = false;
   const currentProjectId = document.body.dataset.projectId;
   const currentEntryType = document.body.dataset.entryType;
@@ -314,7 +326,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const projectEditEntryRegex = /^\/projects\/[a-zA-Z0-9]+\/edit\/[a-zA-Z0-9]+$/;
   const projectNewEntryRegex = /^\/projects\/[a-zA-Z0-9]+\/new$/;
 
-  for (const link of sidebarLinks) {
+  function setActiveLink(link) {
+    link.classList.add("active");
+    activeLinkFound = true;
+    const collapsibleContent = link.closest(".collapsible-content");
+    if (collapsibleContent) {
+      const header = document.querySelector(`.collapsible-header[data-target="${collapsibleContent.id}"]`);
+      if (header && !header.classList.contains("is-expanded")) {
+        header.classList.add("is-expanded");
+        header.classList.remove("is-collapsed");
+        header.setAttribute("aria-expanded", "true");
+        collapsibleContent.classList.add("is-expanded");
+        collapsibleContent.classList.remove("is-collapsed");
+      }
+    }
+  }
+
+  for (const link of [...sidebarLinks, ...topBarLinks]) {
     link.classList.remove("active");
     const navId = link.dataset.navId;
     const href = link.getAttribute("href");
@@ -342,6 +370,9 @@ document.addEventListener("DOMContentLoaded", () => {
             break;
           case "project-templates":
             isActive = currentPath.startsWith(`${expectedBasePath}/templates`);
+            break;
+          case "project-sidebar-order":
+            isActive = currentPath.startsWith(`${expectedBasePath}/sidebar-order`);
             break;
           case "project-documentation":
             isActive = currentPath === `${expectedBasePath}/documentation`;
@@ -373,12 +404,6 @@ document.addEventListener("DOMContentLoaded", () => {
           case "project-archived-roadmap":
             isActive = currentPath.startsWith(`${expectedBasePath}/archived_roadmaps`);
             break;
-          case "project-settings":
-            isActive = currentPath === `${expectedBasePath}/edit`;
-            break;
-          case "project-audit-log":
-            isActive = currentPath.startsWith(`${expectedBasePath}/audit-log`);
-            break;
         }
 
         if (!isActive) {
@@ -398,20 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (isActive) {
-      link.classList.add("active");
-      activeLinkFound = true;
-
-      const collapsibleContent = link.closest(".collapsible-content");
-      if (collapsibleContent) {
-        const header = document.querySelector(`.collapsible-header[data-target="${collapsibleContent.id}"]`);
-        if (header && !header.classList.contains("is-expanded")) {
-          header.classList.add("is-expanded");
-          header.classList.remove("is-collapsed");
-          header.setAttribute("aria-expanded", "true");
-          collapsibleContent.classList.add("is-expanded");
-          collapsibleContent.classList.remove("is-collapsed");
-        }
-      }
+      setActiveLink(link);
     }
   }
 
@@ -419,25 +431,26 @@ document.addEventListener("DOMContentLoaded", () => {
     if (projectSubpageRegex.test(currentPath)) {
       const overviewLink = document.querySelector(`.sidebar-nav .nav-link[data-nav-id="project-overview"]`);
       if (overviewLink) {
-        overviewLink.classList.add("active");
+        setActiveLink(overviewLink);
       } else {
         const projectsLink = document.querySelector('.sidebar-nav .nav-link[data-nav-id="projects"]');
-        projectsLink?.classList.add("active");
+        if (projectsLink) setActiveLink(projectsLink);
       }
     } else {
       const dashboardLink = document.querySelector('.sidebar-nav .nav-link[data-nav-id="dashboard"]');
-      dashboardLink?.classList.add("active");
+      if (dashboardLink) setActiveLink(dashboardLink);
     }
   }
 
-  const sidebarInner = document.querySelector(".sidebar-inner");
-  const sidebarNav = sidebarInner?.querySelector(".sidebar-nav");
+  const topBar = document.querySelector(".top-bar");
 
-  function setInitialCollapseState() {
-    const headers = sidebarNav?.querySelectorAll(".collapsible-header");
-    if (!headers || !sidebarInner) return;
+  function setInitialCollapseState(container) {
+    const headers = container?.querySelectorAll(".collapsible-header");
+    if (!headers || !container) return;
 
-    sidebarInner.classList.add("collapsible-initializing");
+    const isTopBar = container.classList.contains("top-bar");
+
+    container.classList.add("collapsible-initializing");
 
     setTimeout(() => {
       for (const header of headers) {
@@ -445,15 +458,20 @@ document.addEventListener("DOMContentLoaded", () => {
         const content = document.getElementById(targetId);
         if (!content) continue;
 
-        const storageKey = `sidebarCollapse_${targetId}`;
-        const shouldBeCollapsed = localStorage.getItem(storageKey) === "true";
-        const isActiveInside = content.querySelector(".nav-link.active");
+        let isCollapsed;
 
-        if (isActiveInside && shouldBeCollapsed) {
-          localStorage.removeItem(storageKey);
+        if (isTopBar) {
+          isCollapsed = true;
+        } else {
+          const storageKey = `collapse_${targetId}`;
+          const shouldBeCollapsed = localStorage.getItem(storageKey) === "true";
+          const isActiveInside = content.querySelector(".nav-link.active");
+
+          if (isActiveInside && shouldBeCollapsed) {
+            localStorage.removeItem(storageKey);
+          }
+          isCollapsed = isActiveInside ? false : shouldBeCollapsed;
         }
-
-        const isCollapsed = isActiveInside ? false : shouldBeCollapsed;
 
         if (!isCollapsed) {
           header.classList.add("is-expanded");
@@ -461,50 +479,108 @@ document.addEventListener("DOMContentLoaded", () => {
           header.setAttribute("aria-expanded", "true");
           content.classList.add("is-expanded");
           content.classList.remove("is-collapsed");
+          if (isTopBar) {
+            const topBarRect = topBar.getBoundingClientRect();
+            const headerRect = header.getBoundingClientRect();
+            content.style.left = `${headerRect.left - topBarRect.left}px`;
+          }
         } else {
           header.classList.add("is-collapsed");
           header.classList.remove("is-expanded");
           header.setAttribute("aria-expanded", "false");
           content.classList.add("is-collapsed");
           content.classList.remove("is-expanded");
+          content.style.left = "";
         }
-        content.removeAttribute("style");
+        content.style.maxHeight = "";
+        content.style.paddingTop = "";
+        content.style.paddingBottom = "";
       }
       requestAnimationFrame(() => {
-        sidebarInner.classList.remove("collapsible-initializing");
+        container.classList.remove("collapsible-initializing");
       });
     }, 0);
   }
 
   function handleCollapseToggle(event) {
-    const header = event.target.closest(".collapsible-header");
-    if (!header || !sidebarNav) return;
+    const clickedHeader = event.target.closest(".collapsible-header");
+    if (!clickedHeader) return;
 
-    if (sidebarInner?.classList.contains("collapsible-initializing")) return;
+    const container = clickedHeader.closest(".sidebar-inner, .top-bar");
+    if (!container || container.classList.contains("collapsible-initializing")) return;
 
-    const targetId = header.dataset.target;
+    const targetId = clickedHeader.dataset.target;
     const content = document.getElementById(targetId);
     if (!content) return;
 
-    const isCurrentlyExpanded = header.classList.contains("is-expanded");
+    const isTopBar = container.classList.contains("top-bar");
+    const isOpening = !clickedHeader.classList.contains("is-expanded");
 
-    header.classList.toggle("is-expanded", !isCurrentlyExpanded);
-    header.classList.toggle("is-collapsed", isCurrentlyExpanded);
-    header.setAttribute("aria-expanded", String(!isCurrentlyExpanded));
+    if (isTopBar && isOpening) {
+      const otherExpandedHeaders = container.querySelectorAll(`.collapsible-header.is-expanded:not([data-target="${targetId}"])`);
 
-    content.classList.toggle("is-expanded", !isCurrentlyExpanded);
-    content.classList.toggle("is-collapsed", isCurrentlyExpanded);
+      for (const otherHeader of otherExpandedHeaders) {
+        const otherTargetId = otherHeader.dataset.target;
+        const otherContent = document.getElementById(otherTargetId);
 
-    const storageKey = `sidebarCollapse_${targetId}`;
-    if (isCurrentlyExpanded) {
-      localStorage.setItem(storageKey, "true");
-    } else {
-      localStorage.removeItem(storageKey);
+        if (otherContent) {
+          otherHeader.classList.remove("is-expanded");
+          otherHeader.classList.add("is-collapsed");
+          otherHeader.setAttribute("aria-expanded", "false");
+          otherContent.classList.remove("is-expanded");
+          otherContent.classList.add("is-collapsed");
+        }
+      }
+    }
+
+    clickedHeader.classList.toggle("is-expanded", isOpening);
+    clickedHeader.classList.toggle("is-collapsed", !isOpening);
+    clickedHeader.setAttribute("aria-expanded", String(isOpening));
+
+    content.classList.toggle("is-expanded", isOpening);
+    content.classList.toggle("is-collapsed", !isOpening);
+
+    if (isTopBar && isOpening) {
+      const topBarRect = topBar.getBoundingClientRect();
+      const headerRect = clickedHeader.getBoundingClientRect();
+      content.style.left = `${headerRect.left - topBarRect.left}px`;
+    }
+
+    if (!isTopBar) {
+      const storageKey = `collapse_${targetId}`;
+      if (!isOpening) {
+        localStorage.setItem(storageKey, "true");
+      } else {
+        localStorage.removeItem(storageKey);
+      }
     }
   }
 
-  if (sidebarNav && sidebarInner) {
-    setInitialCollapseState();
-    sidebarNav.addEventListener("click", handleCollapseToggle);
+  const sidebarInner = document.querySelector(".sidebar-inner");
+  if (sidebarInner) {
+    setInitialCollapseState(sidebarInner);
+    sidebarInner.addEventListener("click", handleCollapseToggle);
+  }
+
+  if (topBar) {
+    setInitialCollapseState(topBar);
+    topBar.addEventListener("click", handleCollapseToggle);
+
+    document.addEventListener("click", (event) => {
+      if (!topBar.contains(event.target)) {
+        const openCollapsibles = topBar.querySelectorAll(".collapsible-content.is-expanded");
+        for (const content of openCollapsibles) {
+          const header = topBar.querySelector(`.collapsible-header[data-target="${content.id}"]`);
+          if (header) {
+            header.classList.remove("is-expanded");
+            header.classList.add("is-collapsed");
+            header.setAttribute("aria-expanded", "false");
+            content.classList.remove("is-expanded");
+            content.classList.add("is-collapsed");
+            localStorage.setItem(`collapse_${content.id}`, "true");
+          }
+        }
+      }
+    });
   }
 });

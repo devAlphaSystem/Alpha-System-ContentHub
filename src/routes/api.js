@@ -108,7 +108,7 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
     const searchTerm = req.query.search;
     const entryType = req.query.type;
 
-    if (entryType && ["documentation", "changelog", "roadmap"].includes(entryType)) {
+    if (entryType && ["documentation", "changelog", "roadmap", "knowledge_base"].includes(entryType)) {
       baseFilterParts.push(`type = '${entryType}'`);
     } else {
       return res.status(400).json({ error: "Invalid or missing entry type filter." });
@@ -169,6 +169,36 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
       return res.status(400).json({ error: "Invalid search or filter criteria." });
     }
     res.status(500).json({ error: "Failed to fetch entries" });
+  }
+});
+
+router.get("/projects/:projectId/check-entry-id/:entryId", requireLogin, checkProjectAccessApi, async (req, res) => {
+  const { projectId, entryId } = req.params;
+
+  if (!entryId || typeof entryId !== "string" || entryId.length !== 15) {
+    return res.status(400).json({ available: false, reason: "Invalid ID format (must be 15 characters)." });
+  }
+
+  try {
+    await pbAdmin.collection("entries_main").getOne(entryId, {
+      fields: "id",
+      $autoCancel: false,
+    });
+
+    logAuditEvent(req, "ENTRY_ID_CHECK_FAILURE", "entries_main", entryId, { projectId: projectId, reason: "ID already exists" });
+    res.json({ available: false, reason: "ID already exists" });
+  } catch (error) {
+    if (error?.status === 404) {
+      logAuditEvent(req, "ENTRY_ID_CHECK_SUCCESS", "entries_main", entryId, { projectId: projectId, reason: "ID available" });
+      res.json({ available: true });
+    } else {
+      console.error(`API Error checking entry ID ${entryId} availability: Status ${error?.status || "N/A"}`, error?.message || error);
+      if (error?.data) {
+        console.error("PocketBase Error Data:", error.data);
+      }
+      logAuditEvent(req, "ENTRY_ID_CHECK_ERROR", "entries_main", entryId, { projectId: projectId, error: error?.message, status: error?.status });
+      res.status(500).json({ available: false, reason: "Server error checking availability" });
+    }
   }
 });
 
@@ -727,7 +757,7 @@ router.get("/projects/:projectId/archived-entries", requireLogin, checkProjectAc
     const sort = req.query.sort || "-updated";
     const entryType = req.query.type;
 
-    if (entryType && ["documentation", "changelog", "roadmap"].includes(entryType)) {
+    if (entryType && ["documentation", "changelog", "roadmap", "knowledge_base"].includes(entryType)) {
       baseFilterParts.push(`type = '${entryType}'`);
     } else {
       return res.status(400).json({ error: "Invalid or missing entry type filter." });

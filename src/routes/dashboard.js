@@ -34,11 +34,11 @@ router.get("/", requireLogin, async (req, res) => {
       $autoCancel: false,
     });
 
-    let totalEntries = 0;
-    let publishedCount = 0;
+    let totalEntriesDocsCl = 0;
+    let publishedCountDocsCl = 0;
     let draftCount = 0;
     let stagedCount = 0;
-    let totalViews = 0;
+    let totalViewsDocsCl = 0;
     let documentationCount = 0;
     let changelogCount = 0;
     let activityData = [];
@@ -47,16 +47,24 @@ router.get("/", requireLogin, async (req, res) => {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     for (const entry of allEntries) {
-      totalEntries++;
-      totalViews += entry.views || 0;
+      const isDocOrCl = entry.type === "documentation" || entry.type === "changelog";
 
-      if (entry.status === "published") {
-        publishedCount++;
-        if (entry.has_staged_changes) {
-          stagedCount++;
+      if (isDocOrCl) {
+        totalEntriesDocsCl++;
+        totalViewsDocsCl += entry.views || 0;
+
+        if (entry.status === "published") {
+          publishedCountDocsCl++;
+          if (entry.has_staged_changes) {
+            stagedCount++;
+          }
+        } else if (entry.status === "draft") {
+          draftCount++;
         }
       } else if (entry.status === "draft") {
         draftCount++;
+      } else if (entry.status === "published" && entry.has_staged_changes) {
+        stagedCount++;
       }
 
       if (entry.type === "documentation") {
@@ -76,26 +84,29 @@ router.get("/", requireLogin, async (req, res) => {
       .map(([date, count]) => ({ x: date, y: count }))
       .sort((a, b) => new Date(a.x) - new Date(b.x));
 
-    const topViewedEntries = allEntries.slice(0, 5).map((e) => ({
-      id: e.id,
-      title: e.title,
-      views: e.views || 0,
-      projectId: e.project,
-      projectName: e.expand?.project?.name || `Project ID: ${e.project}`,
-      type: e.type,
-    }));
+    const topViewedEntriesDocsCl = allEntries
+      .filter((e) => e.type === "documentation" || e.type === "changelog")
+      .slice(0, 5)
+      .map((e) => ({
+        id: e.id,
+        title: e.title,
+        views: e.views || 0,
+        projectId: e.project,
+        projectName: e.expand?.project?.name || `Project ID: ${e.project}`,
+        type: e.type,
+      }));
 
     const metrics = {
       totalProjects: totalProjects,
-      totalEntries: totalEntries,
-      publishedCount: publishedCount,
+      totalEntries: totalEntriesDocsCl,
+      publishedCount: publishedCountDocsCl,
       draftCount: draftCount,
       stagedCount: stagedCount,
-      totalViews: totalViews,
+      totalViews: totalViewsDocsCl,
       documentationCount: documentationCount,
       changelogCount: changelogCount,
       recentlyUpdatedProjects: recentlyUpdatedProjects,
-      topViewedEntries: topViewedEntries,
+      topViewedEntries: topViewedEntriesDocsCl,
       activityData: activityData,
     };
 

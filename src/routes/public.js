@@ -113,6 +113,13 @@ router.get("/view/:id", async (req, res, next) => {
       console.warn(`Roadmap entry ${entryId} has no associated project.`);
       return next();
     }
+    if (entry.type === "knowledge_base") {
+      if (entry.project) {
+        return res.redirect(`/kb/${entry.project}`);
+      }
+      console.warn(`Knowledge Base entry ${entryId} has no associated project.`);
+      return next();
+    }
 
     const project = entry.expand?.project;
 
@@ -162,7 +169,7 @@ router.get("/view/:id", async (req, res, next) => {
     if (project) {
       try {
         sidebarEntries = await pbAdmin.collection("entries_main").getFullList({
-          filter: `project = '${project.id}' && status = 'published' && show_in_project_sidebar = true && type != 'roadmap'`,
+          filter: `project = '${project.id}' && status = 'published' && show_in_project_sidebar = true && type != 'roadmap' && type != 'knowledge_base'`,
           sort: "+sidebar_order,+title",
           fields: "id, title, type",
           $autoCancel: false,
@@ -257,7 +264,7 @@ router.get("/roadmap/:projectId", async (req, res, next) => {
     let sidebarEntries = [];
     try {
       sidebarEntries = await pbAdmin.collection("entries_main").getFullList({
-        filter: `project = '${project.id}' && status = 'published' && show_in_project_sidebar = true && type != 'roadmap'`,
+        filter: `project = '${project.id}' && status = 'published' && show_in_project_sidebar = true && type != 'roadmap' && type != 'knowledge_base'`,
         sort: "+sidebar_order,+title",
         fields: "id, title, type",
         $autoCancel: false,
@@ -345,7 +352,7 @@ router.get("/preview/:token", async (req, res, next) => {
       project = entry.expand.project;
       try {
         sidebarEntries = await pbAdmin.collection("entries_main").getFullList({
-          filter: `project = '${entry.project}' && show_in_project_sidebar = true && (status = 'published' || status = 'draft') && type != 'roadmap'`,
+          filter: `project = '${entry.project}' && show_in_project_sidebar = true && (status = 'published' || status = 'draft') && type != 'roadmap' && type != 'knowledge_base'`,
           sort: "+sidebar_order,+title",
           fields: "id, title, type, status",
           $autoCancel: false,
@@ -423,6 +430,83 @@ router.post("/preview/:token", previewPasswordLimiter, async (req, res, next) =>
     }
     logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, { token: token, error: error?.message });
     console.error(`Error processing password for token ${token}:`, error);
+    next(error);
+  }
+});
+
+router.get("/kb/:projectId", async (req, res, next) => {
+  const projectId = req.params.projectId;
+  try {
+    const project = await pbAdmin.collection("projects").getOne(projectId, {
+      fields: "id, name, is_publicly_viewable, password_protected, access_password_hash",
+    });
+
+    if (!project || !project.is_publicly_viewable) {
+      logAuditEvent(req, "KB_VIEW_DENIED", "projects", projectId, {
+        reason: !project ? "Project not found" : "Project not public",
+      });
+      return next();
+    }
+
+    if (project.password_protected) {
+      if (!req.session.validProjectPasswords || !req.session.validProjectPasswords[project.id]) {
+        logAuditEvent(req, "PROJECT_PASSWORD_REQUIRED", "projects", projectId, {
+          target: "Knowledge Base View",
+        });
+        const returnToUrl = req.originalUrl;
+        return res.redirect(`/project-access/${project.id}/password?returnTo=${encodeURIComponent(returnToUrl)}`);
+      }
+    }
+
+    const kbEntriesRaw = await pbAdmin.collection("entries_main").getFullList({
+      filter: `project = '${projectId}' && type = 'knowledge_base' && status = 'published'`,
+      sort: "+title",
+      fields: "id, title, content, tags",
+      $autoCancel: false,
+    });
+
+    if (!kbEntriesRaw || kbEntriesRaw.length === 0) {
+      logAuditEvent(req, "KB_VIEW_DENIED", "projects", projectId, {
+        reason: "No published KB entries found",
+      });
+      return next();
+    }
+
+    const kbEntries = kbEntriesRaw.map((entry) => ({
+      id: entry.id,
+      question: entry.title,
+      answerHtml: parseMarkdownWithMermaid(entry.content),
+      tags: entry.tags
+        ? entry.tags
+            .split(",")
+            .map((t) => t.trim())
+            .filter((t) => t)
+        : [],
+    }));
+
+    let sidebarEntries = [];
+    try {
+      sidebarEntries = await pbAdmin.collection("entries_main").getFullList({
+        filter: `project = '${project.id}' && status = 'published' && show_in_project_sidebar = true && type != 'roadmap' && type != 'knowledge_base'`,
+        sort: "+sidebar_order,+title",
+        fields: "id, title, type",
+        $autoCancel: false,
+      });
+    } catch (sidebarError) {
+      console.error(`Failed to fetch sidebar entries for project ${project.id}:`, sidebarError);
+    }
+
+    res.render("knowledge", {
+      pageTitle: `Knowledge Base - ${project.name}`,
+      project: project,
+      kbEntries: kbEntries,
+      sidebarEntries: sidebarEntries,
+    });
+  } catch (error) {
+    if (error.status === 404) {
+      return next();
+    }
+    console.error(`Error processing public knowledge base for project ${projectId}:`, error);
     next(error);
   }
 });

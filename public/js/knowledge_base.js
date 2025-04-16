@@ -2,8 +2,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const dataCardElement = document.querySelector(".data-card[data-entry-type]");
   const entryType = dataCardElement?.dataset.entryType;
 
-  if (entryType !== "roadmap") {
-    console.warn("Roadmaps.js loaded on a non-roadmap page.");
+  if (entryType !== "knowledge_base") {
+    console.warn("Knowledge Base JS loaded on unexpected page type or type missing:", entryType);
   }
 
   const entriesTableBody = document.getElementById("entries-table-body");
@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const pageInfo = document.getElementById("page-info");
   const emptyStateCard = document.querySelector(".empty-state-card");
   const tableElement = document.querySelector(".data-table");
+  const collectionFilterSelect = document.getElementById("collection-filter-select");
   const searchInput = document.getElementById("search-input");
   const projectId = document.body.dataset.projectId;
 
@@ -26,9 +27,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let totalPages = 1;
   let totalItems = 0;
   const itemsPerPage = 10;
-  let currentSortKey = "roadmap_stage";
+  let currentSortKey = "title";
   let currentSortDir = "asc";
   let isLoading = false;
+  let currentCollectionFilter = "";
   let currentSearchTerm = "";
   let searchDebounceTimer;
 
@@ -55,8 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const archiveUrl = `/projects/${projectId}/archive/${escapeHtml(entry.id)}`;
     const deleteUrl = `/projects/${projectId}/delete/${escapeHtml(entry.id)}`;
     const publishStagedApiUrl = `/api/projects/${projectId}/entries/${escapeHtml(entry.id)}/publish-staged`;
-    const editTitle = `Edit ${entry.has_staged_changes ? "Staged " : ""}Roadmap Item`;
-    const publicRoadmapUrl = `/roadmap/${projectId}`;
+    const editTitle = `Edit ${entry.has_staged_changes ? "Staged " : ""}Entry`;
 
     const stagedBadge = entry.has_staged_changes ? `<span class="badge status-badge status-staged" title="Unpublished changes exist">Staged</span>` : "";
 
@@ -68,26 +69,25 @@ document.addEventListener("DOMContentLoaded", () => {
       `
       : "";
 
-    const stageDisplay = entry.roadmap_stage || "-";
+    const collectionDisplay = entry.collection ? escapeHtml(entry.collection) : "-";
 
     return `
       <tr data-entry-id="${escapeHtml(entry.id)}" data-updated-timestamp="${updatedTimestamp}">
         <td class="checkbox-column"><input type="checkbox" class="entry-checkbox" value="${escapeHtml(entry.id)}"></td>
-        <td data-label="Title">${escapeHtml(entry.title)}</td>
-        <td data-label="Stage">${escapeHtml(stageDisplay)}</td>
+        <td data-label="Question">${escapeHtml(entry.title)}</td>
         <td data-label="Status">
           <span class="badge status-badge status-${escapeHtml(entry.status.toLowerCase())}">${escapeHtml(entry.status)}</span>
           ${stagedBadge}
         </td>
+        <td data-label="Collection">${collectionDisplay}</td>
         <td data-label="Updated">${formattedUpdated}</td>
         <td data-label="Actions" class="actions-cell">
           ${publishStagedButton}
-          <a href="${publicRoadmapUrl}" target="_blank" class="btn btn-icon btn-view" title="View Public Roadmap"><i class="fas fa-columns"></i></a>
           <a href="${editUrl}" class="btn btn-icon btn-edit" title="${editTitle}"><i class="fas fa-pencil-alt"></i></a>
-          <form action="${archiveUrl}" method="POST" class="archive-form" title="Archive Item">
+          <form action="${archiveUrl}" method="POST" class="archive-form" title="Archive Entry">
             <button type="submit" class="btn btn-icon btn-archive"><i class="fas fa-archive"></i></button>
           </form>
-          <form action="${deleteUrl}" method="POST" class="delete-form" title="Delete Item">
+          <form action="${deleteUrl}" method="POST" class="delete-form" title="Delete Entry">
             <button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button>
           </form>
         </td>
@@ -117,6 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderTable(entries) {
     if (!entriesTableBody || !tableElement) return;
+
     entriesTableBody.innerHTML = "";
 
     if (entries.length > 0) {
@@ -131,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (noMatchRow) noMatchRow.remove();
     } else {
       const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 6;
-      const message = currentSearchTerm ? "No roadmap items match your search." : "No roadmap items found.";
+      const message = currentSearchTerm ? `No ${entryType.replace("_", " ")} entries match your search.` : currentCollectionFilter ? `No ${entryType.replace("_", " ")} entries found in this collection.` : `No ${entryType.replace("_", " ")} entries found.`;
       entriesTableBody.innerHTML = `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">${message}</td></tr>`;
 
       if (totalItems === 0) {
@@ -142,16 +143,22 @@ document.addEventListener("DOMContentLoaded", () => {
         if (emptyStateCard) emptyStateCard.style.display = "none";
       }
     }
+
     attachActionListeners();
     updateBulkActionUI();
   }
 
   async function fetchEntries(isNewSearch = false) {
-    if (isLoading || !projectId || entryType !== "roadmap") {
+    if (isLoading || !projectId || !entryType || !["documentation", "changelog", "knowledge_base"].includes(entryType)) {
+      if (!projectId) console.warn("Project ID missing, cannot fetch entries.");
+      if (!entryType) console.warn("Entry Type missing or invalid, cannot fetch entries.");
       return;
     }
     isLoading = true;
-    if (isNewSearch) currentPage = 1;
+
+    if (isNewSearch) {
+      currentPage = 1;
+    }
 
     if (refreshButton) {
       refreshButton.disabled = true;
@@ -160,6 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (prevPageBtn) prevPageBtn.disabled = true;
     if (nextPageBtn) nextPageBtn.disabled = true;
     if (selectAllCheckbox) selectAllCheckbox.disabled = true;
+    if (collectionFilterSelect) collectionFilterSelect.disabled = true;
     if (searchInput) searchInput.disabled = true;
 
     const sortParam = `${currentSortDir === "desc" ? "-" : ""}${currentSortKey}`;
@@ -170,6 +178,9 @@ document.addEventListener("DOMContentLoaded", () => {
       type: entryType,
     });
 
+    if (currentCollectionFilter && currentCollectionFilter !== "") {
+      params.append("collection", currentCollectionFilter);
+    }
     if (currentSearchTerm && currentSearchTerm.trim() !== "") {
       params.append("search", currentSearchTerm.trim());
     }
@@ -187,14 +198,16 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(errorMsg);
       }
       const data = await response.json();
+
       currentPage = data.page;
       totalPages = data.totalPages;
       totalItems = data.totalItems;
+
       renderTable(data.items);
       updatePaginationControls();
     } catch (error) {
-      console.error("Failed to fetch roadmap entries:", error);
-      window.showAlertModal(`Error loading roadmap items: ${error.message}`, "Loading Error");
+      console.error("Failed to fetch entries:", error);
+      window.showAlertModal(`Error loading entries: ${error.message}`, "Loading Error");
       if (entriesTableBody && tableElement) {
         const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 6;
         entriesTableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading entries.</td></tr>`;
@@ -212,6 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshButton.innerHTML = `<i class="fas fa-sync-alt"></i> <span>Refresh</span>`;
       }
       if (selectAllCheckbox) selectAllCheckbox.disabled = totalItems === 0;
+      if (collectionFilterSelect) collectionFilterSelect.disabled = false;
       if (searchInput) searchInput.disabled = false;
       updatePaginationControls();
     }
@@ -224,7 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     event.preventDefault();
     const form = event.target;
-    const title = form.closest("tr")?.querySelector("td[data-label='Title']")?.textContent || "this entry";
+    const title = form.closest("tr")?.querySelector("td[data-label='Question']")?.textContent || "this entry";
     let options = {};
 
     if (form.classList.contains("delete-form")) {
@@ -408,6 +422,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       newHeader.addEventListener("click", () => {
         if (isLoading) return;
+
         const sortKey = newHeader.dataset.sortKey;
         let newSortDir;
 
@@ -502,10 +517,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  collectionFilterSelect?.addEventListener("change", () => {
+    if (isLoading) return;
+    currentCollectionFilter = collectionFilterSelect.value;
+    fetchEntries(true);
+  });
+
   searchInput?.addEventListener("input", debouncedSearch);
 
-  function initializeProjectRoadmaps() {
-    if (!projectId || entryType !== "roadmap") {
+  function initializeKnowledgeBaseEntries() {
+    if (!projectId || entryType !== "knowledge_base") {
       console.error("Initialization skipped: Missing projectId or incorrect entryType.");
       return;
     }
@@ -577,11 +598,15 @@ document.addEventListener("DOMContentLoaded", () => {
       attachActionListeners();
     }
 
+    if (collectionFilterSelect) {
+      collectionFilterSelect.value = "";
+      currentCollectionFilter = "";
+    }
     if (searchInput) {
       searchInput.value = "";
       currentSearchTerm = "";
     }
   }
 
-  initializeProjectRoadmaps();
+  initializeKnowledgeBaseEntries();
 });

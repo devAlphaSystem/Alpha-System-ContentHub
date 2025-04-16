@@ -120,10 +120,21 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
   const projectId = req.params.projectId;
   const userId = req.session.user.id;
   let firstSidebarEntryId = null;
+  let hasPublishedKbEntries = false;
 
   try {
     try {
-      const firstEntryResult = await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && show_in_project_sidebar = true && status = 'published' && type != 'roadmap'`, {
+      await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && type = 'knowledge_base' && status = 'published'`, { fields: "id", $autoCancel: false });
+      hasPublishedKbEntries = true;
+    } catch (kbError) {
+      if (kbError.status !== 404) {
+        console.warn(`Error checking for published KB entries for project ${projectId}:`, kbError.message);
+      }
+      hasPublishedKbEntries = false;
+    }
+
+    try {
+      const firstEntryResult = await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && show_in_project_sidebar = true && status = 'published' && type != 'roadmap' && type != 'knowledge_base'`, {
         sort: "+sidebar_order,+title",
         fields: "id",
         $autoCancel: false,
@@ -138,7 +149,7 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
 
     let totalEntries = 0;
     let totalViews = 0;
-    const entriesByType = { changelog: 0, documentation: 0 };
+    const entriesByType = { changelog: 0, documentation: 0, knowledge_base: 0 };
     let activityData = [];
 
     const projectEntries = await pbAdmin.collection("entries_main").getFullList({
@@ -158,6 +169,8 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
         entriesByType.changelog++;
       } else if (entry.type === "documentation") {
         entriesByType.documentation++;
+      } else if (entry.type === "knowledge_base") {
+        entriesByType.knowledge_base++;
       }
 
       const createdDate = new Date(entry.created);
@@ -197,6 +210,7 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
       project: req.project,
       metrics: metrics,
       firstSidebarEntryId: firstSidebarEntryId,
+      hasPublishedKbEntries: hasPublishedKbEntries,
       error: null,
     });
   } catch (error) {
@@ -209,6 +223,7 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
       project: req.project,
       metrics: null,
       firstSidebarEntryId: null,
+      hasPublishedKbEntries: false,
       error: "Could not load project dashboard data.",
     });
   }
@@ -414,6 +429,7 @@ async function renderEntriesList(req, res, entryType) {
   const userId = req.session.user.id;
   let pageTitle = "";
   let viewName = "";
+  let listFields = "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags";
 
   switch (entryType) {
     case "documentation":
@@ -427,6 +443,11 @@ async function renderEntriesList(req, res, entryType) {
     case "roadmap":
       pageTitle = `Roadmap - ${req.project.name}`;
       viewName = "projects/roadmaps";
+      listFields += ",roadmap_stage";
+      break;
+    case "knowledge_base":
+      pageTitle = `Knowledge Base - ${req.project.name}`;
+      viewName = "projects/knowledge_base";
       break;
     default:
       return res.status(400).send("Invalid entry type");
@@ -440,26 +461,28 @@ async function renderEntriesList(req, res, entryType) {
     const resultList = await pb.collection("entries_main").getList(initialPage, ITEMS_PER_PAGE, {
       sort: initialSort,
       filter: filter,
-      fields: "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,roadmap_stage",
+      fields: listFields,
     });
 
     let collectionsList = [];
-    try {
-      const allCollectionsResult = await pbAdmin.collection("entries_main").getFullList({
-        filter: `owner = '${userId}' && project = '${projectId}' && type = '${entryType}' && collection != '' && collection != null`,
-        fields: "collection",
-        $autoCancel: false,
-      });
-      collectionsList = [...new Set(allCollectionsResult.map((item) => item.collection).filter(Boolean))].sort();
-    } catch (collectionError) {
-      console.warn(`Could not fetch collections list for project ${projectId}, type ${entryType}:`, collectionError);
+    if (entryType !== "roadmap" && entryType !== "knowledge_base") {
+      try {
+        const allCollectionsResult = await pbAdmin.collection("entries_main").getFullList({
+          filter: `owner = '${userId}' && project = '${projectId}' && type = '${entryType}' && collection != '' && collection != null`,
+          fields: "collection",
+          $autoCancel: false,
+        });
+        collectionsList = [...new Set(allCollectionsResult.map((item) => item.collection).filter(Boolean))].sort();
+      } catch (collectionError) {
+        console.warn(`Could not fetch collections list for project ${projectId}, type ${entryType}:`, collectionError);
+      }
     }
 
     const entriesWithViewUrl = [];
     for (const entry of resultList.items) {
       entriesWithViewUrl.push({
         ...entry,
-        viewUrl: entryType !== "roadmap" ? `/view/${entry.id}` : null,
+        viewUrl: entryType !== "roadmap" && entryType !== "knowledge_base" ? `/view/${entry.id}` : null,
         formattedUpdated: new Date(entry.updated).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -521,10 +544,15 @@ router.get("/:projectId/roadmaps", checkProjectAccess, (req, res) => {
   renderEntriesList(req, res, "roadmap");
 });
 
+router.get("/:projectId/knowledge_base", checkProjectAccess, (req, res) => {
+  renderEntriesList(req, res, "knowledge_base");
+});
+
 router.get("/:projectId/new", checkProjectAccess, async (req, res) => {
   const projectId = req.params.projectId;
   const userId = req.session.user.id;
-  const preselectType = ["documentation", "changelog", "roadmap"].includes(req.query.type) ? req.query.type : "documentation";
+  const validTypes = ["documentation", "changelog", "roadmap", "knowledge_base"];
+  const preselectType = validTypes.includes(req.query.type) ? req.query.type : "documentation";
 
   try {
     const [templates, documentationHeaders, documentationFooters, changelogHeaders, changelogFooters] = await Promise.all([getUserTemplates(userId, projectId), getUserDocumentationHeaders(userId, projectId), getUserDocumentationFooters(userId, projectId), getUserChangelogHeaders(userId, projectId), getUserChangelogFooters(userId, projectId)]);
@@ -580,7 +608,8 @@ router.post("/:projectId/new", checkProjectAccess, async (req, res) => {
     };
   if (!title || title.trim() === "") pbErrors.title = { message: "Title is required." };
   if (!type) pbErrors.type = { message: "Type is required." };
-  if (type !== "roadmap" && (!content || content.trim() === "")) pbErrors.content = { message: "Content is required." };
+  if (type !== "roadmap" && type !== "knowledge_base" && (!content || content.trim() === "")) pbErrors.content = { message: "Content is required." };
+  if (type === "knowledge_base" && (!content || content.trim() === "")) pbErrors.content = { message: "Answer content is required." };
   if (type === "roadmap" && (!roadmap_stage || roadmap_stage.trim() === "")) {
     pbErrors.roadmap_stage = { message: "Roadmap Stage is required." };
   }
@@ -695,6 +724,7 @@ router.post("/:projectId/new", checkProjectAccess, async (req, res) => {
     let redirectPath = `/projects/${projectId}/documentation`;
     if (type === "changelog") redirectPath = `/projects/${projectId}/changelogs`;
     if (type === "roadmap") redirectPath = `/projects/${projectId}/roadmaps`;
+    if (type === "knowledge_base") redirectPath = `/projects/${projectId}/knowledge_base`;
     res.redirect(redirectPath);
   } catch (error) {
     console.error(`Failed to create entry in project ${projectId}:`, error);
@@ -883,13 +913,30 @@ router.post("/:projectId/edit/:entryId", checkProjectAccess, async (req, res, ne
     if (submittedType === "roadmap" && (!roadmap_stage || roadmap_stage.trim() === "")) {
       pbErrors.roadmap_stage = { message: "Roadmap Stage is required." };
     }
-    if (submittedType !== "roadmap" && (!content || content.trim() === "")) {
+    if (submittedType !== "roadmap" && submittedType !== "knowledge_base" && (!content || content.trim() === "")) {
       pbErrors.content = { message: "Content is required." };
+    }
+    if (submittedType === "knowledge_base" && (!content || content.trim() === "")) {
+      pbErrors.content = { message: "Answer content is required." };
     }
 
     if (Object.keys(pbErrors).length > 0) {
       const [documentationHeaders, documentationFooters, changelogHeaders, changelogFooters] = await Promise.all([getUserDocumentationHeaders(userId, projectId), getUserDocumentationFooters(userId, projectId), getUserChangelogHeaders(userId, projectId), getUserChangelogFooters(userId, projectId)]);
-      const entryDataForForm = { ...originalRecord, title, type: submittedType, content: content || "", status: submittedStatus, tags, collection, custom_documentation_header, custom_documentation_footer, custom_changelog_header, custom_changelog_footer, show_in_project_sidebar: showInSidebarValue, roadmap_stage };
+      const entryDataForForm = {
+        ...originalRecord,
+        title,
+        type: submittedType,
+        content: content || "",
+        status: submittedStatus,
+        tags,
+        collection,
+        custom_documentation_header,
+        custom_documentation_footer,
+        custom_changelog_header,
+        custom_changelog_footer,
+        show_in_project_sidebar: showInSidebarValue,
+        roadmap_stage,
+      };
       return res.status(400).render("projects/edit_entry", {
         pageTitle: `Edit Entry - ${req.project.name}`,
         project: req.project,
@@ -972,6 +1019,7 @@ router.post("/:projectId/edit/:entryId", checkProjectAccess, async (req, res, ne
     let redirectPath = `/projects/${projectId}/documentation`;
     if (updatedRecord.type === "changelog") redirectPath = `/projects/${projectId}/changelogs`;
     if (updatedRecord.type === "roadmap") redirectPath = `/projects/${projectId}/roadmaps`;
+    if (updatedRecord.type === "knowledge_base") redirectPath = `/projects/${projectId}/knowledge_base`;
     res.redirect(redirectPath);
   } catch (error) {
     console.error(`Failed to update/stage entry ${entryId} in project ${projectId}:`, error);
@@ -1085,6 +1133,7 @@ router.post("/:projectId/delete/:entryId", checkProjectAccess, async (req, res, 
     let redirectPath = `/projects/${projectId}/documentation?action=deleted`;
     if (entryType === "changelog") redirectPath = `/projects/${projectId}/changelogs?action=deleted`;
     if (entryType === "roadmap") redirectPath = `/projects/${projectId}/roadmaps?action=deleted`;
+    if (entryType === "knowledge_base") redirectPath = `/projects/${projectId}/knowledge_base?action=deleted`;
     res.redirect(redirectPath);
   } catch (error) {
     console.error(`Failed to delete entry ${entryId} in project ${projectId}:`, error);
@@ -1100,6 +1149,7 @@ router.post("/:projectId/delete/:entryId", checkProjectAccess, async (req, res, 
     let errorRedirectPath = `/projects/${projectId}/documentation?error=delete_failed`;
     if (entryType === "changelog") errorRedirectPath = `/projects/${projectId}/changelogs?error=delete_failed`;
     if (entryType === "roadmap") errorRedirectPath = `/projects/${projectId}/roadmaps?error=delete_failed`;
+    if (entryType === "knowledge_base") errorRedirectPath = `/projects/${projectId}/knowledge_base?error=delete_failed`;
     res.redirect(errorRedirectPath);
   }
 });
@@ -1162,6 +1212,7 @@ router.post("/:projectId/archive/:entryId", checkProjectAccess, async (req, res,
     let redirectPath = `/projects/${projectId}/documentation?action=archived`;
     if (entryType === "changelog") redirectPath = `/projects/${projectId}/changelogs?action=archived`;
     if (entryType === "roadmap") redirectPath = `/projects/${projectId}/roadmaps?action=archived`;
+    if (entryType === "knowledge_base") redirectPath = `/projects/${projectId}/knowledge_base?action=archived`;
     res.redirect(redirectPath);
   } catch (error) {
     console.error(`Failed to archive entry ${entryId} in project ${projectId}:`, error);
@@ -1177,6 +1228,7 @@ router.post("/:projectId/archive/:entryId", checkProjectAccess, async (req, res,
     let errorRedirectPath = `/projects/${projectId}/documentation?error=archive_failed`;
     if (entryType === "changelog") errorRedirectPath = `/projects/${projectId}/changelogs?error=archive_failed`;
     if (entryType === "roadmap") errorRedirectPath = `/projects/${projectId}/roadmaps?error=archive_failed`;
+    if (entryType === "knowledge_base") errorRedirectPath = `/projects/${projectId}/knowledge_base?error=archive_failed`;
     res.redirect(errorRedirectPath);
   }
 });
@@ -1186,6 +1238,7 @@ async function renderArchivedList(req, res, entryType) {
   const userId = req.session.user.id;
   let pageTitle = "";
   let viewName = "";
+  let listFields = "id,title,status,type,updated,original_id";
 
   switch (entryType) {
     case "documentation":
@@ -1199,6 +1252,11 @@ async function renderArchivedList(req, res, entryType) {
     case "roadmap":
       pageTitle = `Archived Roadmap Items - ${req.project.name}`;
       viewName = "projects/archived_roadmaps";
+      listFields += ",roadmap_stage";
+      break;
+    case "knowledge_base":
+      pageTitle = `Archived Knowledge Base - ${req.project.name}`;
+      viewName = "projects/archived_knowledge_base";
       break;
     default:
       return res.status(400).send("Invalid entry type");
@@ -1212,7 +1270,7 @@ async function renderArchivedList(req, res, entryType) {
     const resultList = await pbAdmin.collection("entries_archived").getList(initialPage, ITEMS_PER_PAGE, {
       sort: initialSort,
       filter: filter,
-      fields: "id,title,status,type,updated,original_id,roadmap_stage",
+      fields: listFields,
     });
 
     const entriesForView = [];
@@ -1278,6 +1336,10 @@ router.get("/:projectId/archived_roadmaps", checkProjectAccess, (req, res) => {
   renderArchivedList(req, res, "roadmap");
 });
 
+router.get("/:projectId/archived_knowledge_base", checkProjectAccess, (req, res) => {
+  renderArchivedList(req, res, "knowledge_base");
+});
+
 router.post("/:projectId/unarchive/:entryId", checkProjectAccess, async (req, res, next) => {
   const entryId = req.params.entryId;
   const projectId = req.params.projectId;
@@ -1325,6 +1387,7 @@ router.post("/:projectId/unarchive/:entryId", checkProjectAccess, async (req, re
     let redirectPath = `/projects/${projectId}/archived_documentation?action=unarchived`;
     if (entryType === "changelog") redirectPath = `/projects/${projectId}/archived_changelogs?action=unarchived`;
     if (entryType === "roadmap") redirectPath = `/projects/${projectId}/archived_roadmaps?action=unarchived`;
+    if (entryType === "knowledge_base") redirectPath = `/projects/${projectId}/archived_knowledge_base?action=unarchived`;
     res.redirect(redirectPath);
   } catch (error) {
     console.error(`Failed to unarchive entry ${entryId} in project ${projectId}:`, error);
@@ -1340,6 +1403,7 @@ router.post("/:projectId/unarchive/:entryId", checkProjectAccess, async (req, re
     let errorRedirectPath = `/projects/${projectId}/archived_documentation?error=unarchive_failed`;
     if (entryType === "changelog") errorRedirectPath = `/projects/${projectId}/archived_changelogs?error=unarchive_failed`;
     if (entryType === "roadmap") errorRedirectPath = `/projects/${projectId}/archived_roadmaps?error=unarchive_failed`;
+    if (entryType === "knowledge_base") errorRedirectPath = `/projects/${projectId}/archived_knowledge_base?error=unarchive_failed`;
 
     if (error.status === 400 && error?.data?.data?.id) {
       console.error(`Potential ID conflict during unarchive for archived ID ${entryId}. Original ID ${originalRecord?.original_id} might exist in main table.`);
@@ -1371,6 +1435,7 @@ router.post("/:projectId/delete-archived/:entryId", checkProjectAccess, async (r
     let redirectPath = `/projects/${projectId}/archived_documentation?action=deleted`;
     if (entryType === "changelog") redirectPath = `/projects/${projectId}/archived_changelogs?action=deleted`;
     if (entryType === "roadmap") redirectPath = `/projects/${projectId}/archived_roadmaps?action=deleted`;
+    if (entryType === "knowledge_base") redirectPath = `/projects/${projectId}/archived_knowledge_base?action=deleted`;
     res.redirect(redirectPath);
   } catch (error) {
     console.error(`Failed to delete archived entry ${entryId} in project ${projectId}:`, error);
@@ -1386,6 +1451,7 @@ router.post("/:projectId/delete-archived/:entryId", checkProjectAccess, async (r
     let errorRedirectPath = `/projects/${projectId}/archived_documentation?error=delete_failed`;
     if (entryType === "changelog") errorRedirectPath = `/projects/${projectId}/archived_changelogs?error=delete_failed`;
     if (entryType === "roadmap") errorRedirectPath = `/projects/${projectId}/archived_roadmaps?error=delete_failed`;
+    if (entryType === "knowledge_base") errorRedirectPath = `/projects/${projectId}/archived_knowledge_base?error=delete_failed`;
     res.redirect(errorRedirectPath);
   }
 });
@@ -1613,7 +1679,7 @@ router.get("/:projectId/sidebar-order", checkProjectAccess, async (req, res, nex
 
   try {
     const sidebarEntries = await pb.collection("entries_main").getFullList({
-      filter: `project = '${projectId}' && owner = '${userId}' && show_in_project_sidebar = true && type != 'roadmap'`,
+      filter: `project = '${projectId}' && owner = '${userId}' && show_in_project_sidebar = true && type != 'roadmap' && type != 'knowledge_base'`,
       sort: "+sidebar_order,+title",
       fields: "id,title,sidebar_order,type",
     });
@@ -1627,7 +1693,10 @@ router.get("/:projectId/sidebar-order", checkProjectAccess, async (req, res, nex
     });
   } catch (error) {
     console.error(`Error fetching entries for sidebar ordering for project ${projectId}:`, error);
-    logAuditEvent(req, "SIDEBAR_ORDER_LOAD_FAILURE", "entries_main", null, { projectId: projectId, error: error?.message });
+    logAuditEvent(req, "SIDEBAR_ORDER_LOAD_FAILURE", "entries_main", null, {
+      projectId: projectId,
+      error: error?.message,
+    });
     res.redirect(`/projects/${projectId}?error=Could not load sidebar order page.`);
   }
 });
@@ -1648,7 +1717,11 @@ router.post("/:projectId/sidebar-order", checkProjectAccess, async (req, res, ne
         .update(entryId, { sidebar_order: index }, { filter: `owner = '${userId}' && project = '${projectId}'` })
         .catch((err) => {
           console.error(`Failed to update sidebar order for entry ${entryId}:`, err);
-          return { id: entryId, error: err.message || "Update failed", status: err.status || 500 };
+          return {
+            id: entryId,
+            error: err.message || "Update failed",
+            status: err.status || 500,
+          };
         });
     });
 
@@ -1656,7 +1729,10 @@ router.post("/:projectId/sidebar-order", checkProjectAccess, async (req, res, ne
     const errors = results.filter((r) => r?.error);
 
     if (errors.length > 0) {
-      logAuditEvent(req, "SIDEBAR_ORDER_UPDATE_PARTIAL", "entries_main", null, { projectId: projectId, errors: errors });
+      logAuditEvent(req, "SIDEBAR_ORDER_UPDATE_PARTIAL", "entries_main", null, {
+        projectId: projectId,
+        errors: errors,
+      });
       const statusCode = errors.some((e) => e.status === 403) ? 403 : errors.some((e) => e.status >= 500) ? 500 : 400;
       return res.status(statusCode).json({
         error: `Failed to update order for ${errors.length} out of ${entryOrder.length} entries.`,
@@ -1664,11 +1740,17 @@ router.post("/:projectId/sidebar-order", checkProjectAccess, async (req, res, ne
       });
     }
 
-    logAuditEvent(req, "SIDEBAR_ORDER_UPDATE_SUCCESS", "entries_main", null, { projectId: projectId, count: entryOrder.length });
+    logAuditEvent(req, "SIDEBAR_ORDER_UPDATE_SUCCESS", "entries_main", null, {
+      projectId: projectId,
+      count: entryOrder.length,
+    });
     res.status(200).json({ message: "Sidebar order updated successfully." });
   } catch (error) {
     console.error(`Error updating sidebar order for project ${projectId}:`, error);
-    logAuditEvent(req, "SIDEBAR_ORDER_UPDATE_FAILURE", "entries_main", null, { projectId: projectId, error: error?.message });
+    logAuditEvent(req, "SIDEBAR_ORDER_UPDATE_FAILURE", "entries_main", null, {
+      projectId: projectId,
+      error: error?.message,
+    });
     res.status(500).json({ error: "An unexpected error occurred while updating sidebar order." });
   }
 });

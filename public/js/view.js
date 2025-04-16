@@ -56,90 +56,122 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const tocContainer = document.getElementById("toc");
   const contentArea = document.getElementById("markdown-content-area");
+  const kbContainer = document.querySelector(".kb-container");
   const tocSidebar = document.getElementById("toc-sidebar");
 
-  if (tocContainer && contentArea && tocSidebar) {
-    const headings = contentArea.querySelectorAll("h2, h3, h4");
-    const tocList = document.createElement("ul");
-    const existingSlugs = new Set();
+  if (tocContainer && tocSidebar) {
+    let sectionsToObserve = [];
+    let tocLinks = [];
 
-    for (const heading of headings) {
-      const level = Number.parseInt(heading.tagName.substring(1), 10);
-      const text = heading.textContent?.trim() ?? "";
-      if (!text) continue;
+    if (contentArea) {
+      const headings = contentArea.querySelectorAll("h2, h3, h4");
+      const tocList = document.createElement("ul");
+      const existingSlugs = new Set();
 
-      const baseSlug = text
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^\w-]+/g, "");
-      let uniqueSlug = baseSlug;
-      let counter = 1;
-      while (existingSlugs.has(uniqueSlug) || document.getElementById(uniqueSlug)) {
-        uniqueSlug = `${baseSlug}-${counter}`;
-        counter++;
+      for (const heading of headings) {
+        const level = Number.parseInt(heading.tagName.substring(1), 10);
+        const text = heading.textContent?.trim() ?? "";
+        if (!text) continue;
+
+        const baseSlug = text
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^\w-]+/g, "");
+        let uniqueSlug = baseSlug;
+        let counter = 1;
+        while (existingSlugs.has(uniqueSlug) || document.getElementById(uniqueSlug)) {
+          uniqueSlug = `${baseSlug}-${counter}`;
+          counter++;
+        }
+        heading.id = uniqueSlug;
+        existingSlugs.add(uniqueSlug);
+
+        const listItem = document.createElement("li");
+        listItem.classList.add(`toc-h${level}`);
+        const link = document.createElement("a");
+        link.href = `#${uniqueSlug}`;
+        link.textContent = text;
+        listItem.appendChild(link);
+        tocList.appendChild(listItem);
+        sectionsToObserve.push(heading);
       }
-      heading.id = uniqueSlug;
-      existingSlugs.add(uniqueSlug);
 
-      const listItem = document.createElement("li");
-      listItem.classList.add(`toc-h${level}`);
-      const link = document.createElement("a");
-      link.href = `#${uniqueSlug}`;
-      link.textContent = text;
-      listItem.appendChild(link);
-      tocList.appendChild(listItem);
-    }
-
-    if (tocList.hasChildNodes()) {
-      tocContainer.appendChild(tocList);
+      if (tocList.hasChildNodes()) {
+        tocContainer.appendChild(tocList);
+        tocLinks = tocContainer.querySelectorAll("a");
+      } else {
+        tocSidebar.style.display = "none";
+      }
+    } else if (kbContainer) {
+      sectionsToObserve = kbContainer.querySelectorAll(".kb-item");
+      tocLinks = tocContainer.querySelectorAll("a");
+      if (tocLinks.length === 0) {
+        const noEntriesLi = tocContainer.querySelector("li span.text-muted");
+        if (!noEntriesLi) {
+          tocSidebar.style.display = "none";
+        }
+      }
     } else {
       tocSidebar.style.display = "none";
     }
 
-    const tocLinks = tocContainer.querySelectorAll("a");
-    const observerOptions = {
-      rootMargin: "-80px 0px -60% 0px",
-      threshold: 0,
-    };
-    let lastActiveLink = null;
+    if (sectionsToObserve.length > 0 && tocLinks.length > 0) {
+      const observerOptions = {
+        rootMargin: "-80px 0px -60% 0px",
+        threshold: 0,
+      };
+      let lastActiveLink = null;
 
-    const observerCallback = (entries) => {
-      let topmostVisibleEntry = null;
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          if (!topmostVisibleEntry || entry.boundingClientRect.top < topmostVisibleEntry.boundingClientRect.top) {
-            topmostVisibleEntry = entry;
+      const observerCallback = (entries) => {
+        let topmostVisibleEntry = null;
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            if (!topmostVisibleEntry || entry.boundingClientRect.top < topmostVisibleEntry.boundingClientRect.top) {
+              topmostVisibleEntry = entry;
+            }
           }
         }
+
+        let activeId = null;
+        if (topmostVisibleEntry) {
+          activeId = topmostVisibleEntry.target.getAttribute("id");
+        }
+
+        if (lastActiveLink) {
+          lastActiveLink.classList.remove("active");
+        }
+
+        if (activeId) {
+          const correspondingLink = tocContainer.querySelector(`a[href="#${activeId}"]`);
+          if (correspondingLink) {
+            correspondingLink.classList.add("active");
+            lastActiveLink = correspondingLink;
+          } else {
+            lastActiveLink = null;
+          }
+        } else {
+          lastActiveLink = null;
+        }
+      };
+
+      const observer = new IntersectionObserver(observerCallback, observerOptions);
+      for (const section of sectionsToObserve) {
+        observer.observe(section);
       }
 
-      if (topmostVisibleEntry) {
-        const id = topmostVisibleEntry.target.getAttribute("id");
-        const correspondingLink = tocContainer.querySelector(`a[href="#${id}"]`);
-        if (correspondingLink && correspondingLink !== lastActiveLink) {
+      for (const link of tocLinks) {
+        link.addEventListener("click", (e) => {
+          if (document.body.classList.contains("toc-sidebar-open")) {
+            document.body.classList.remove("toc-sidebar-open");
+            document.getElementById("sidebar-backdrop")?.classList.remove("is-visible");
+          }
           if (lastActiveLink) lastActiveLink.classList.remove("active");
-          correspondingLink.classList.add("active");
-          lastActiveLink = correspondingLink;
-        }
-      } else if (!entries.some((e) => e.isIntersecting) && lastActiveLink && window.scrollY < 200) {
-        lastActiveLink.classList.remove("active");
-        lastActiveLink = null;
+          link.classList.add("active");
+          lastActiveLink = link;
+        });
       }
-    };
-
-    const observer = new IntersectionObserver(observerCallback, observerOptions);
-    const sectionsToObserve = contentArea.querySelectorAll("h2, h3, h4");
-    for (const section of sectionsToObserve) {
-      observer.observe(section);
-    }
-
-    for (const link of tocLinks) {
-      link.addEventListener("click", (e) => {
-        if (document.body.classList.contains("toc-sidebar-open")) {
-          document.body.classList.remove("toc-sidebar-open");
-          document.getElementById("sidebar-backdrop")?.classList.remove("is-visible");
-        }
-      });
+    } else if (tocLinks.length === 0 && !kbContainer) {
+      tocSidebar.style.display = "none";
     }
   } else {
     if (tocSidebar) tocSidebar.style.display = "none";

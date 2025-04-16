@@ -15,6 +15,11 @@
         <i class="fas fa-route"></i> View Roadmap
       </a>
     <% } %>
+    <% if (project.is_publicly_viewable && locals.hasPublishedKbEntries) { %>
+      <a href="/kb/<%= project.id %>" class="btn btn-secondary" target="_blank" title="View the public knowledge base for this project">
+        <i class="fas fa-question-circle"></i> View KB
+      </a>
+    <% } %>
     <a href="/projects/<%= project.id %>/edit" class="btn btn-secondary" title="Edit Project Settings">
       <i class="fas fa-cog"></i> Settings
     </a>
