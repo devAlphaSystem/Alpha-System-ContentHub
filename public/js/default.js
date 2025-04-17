@@ -9,6 +9,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
   };
 
+  const globalSearchForm = document.querySelector(".global-search-form");
+  const globalSearchInput = document.querySelector(".global-search-input");
+
+  globalSearchForm?.addEventListener("submit", (event) => {
+    if (globalSearchInput && globalSearchInput.value.trim() === "") {
+      event.preventDefault();
+    }
+  });
+
   const confirmModal = document.getElementById("confirm-modal");
   const confirmModalTitle = document.getElementById("modal-title");
   const confirmModalMessage = document.getElementById("modal-message");

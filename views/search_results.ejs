@@ -1,0 +1,110 @@
+<%- include('partials/header', { pageTitle: locals.pageTitle, currentProjectId: null, searchQuery: locals.searchQuery }) %>
+
+<div class="content-header">
+  <h1><%= pageTitle %></h1>
+</div>
+
+<% if (locals.error) { %>
+  <div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle alert-icon"></i>
+    <span><%= error %></span>
+  </div>
+<% } %>
+
+<% if (results && results.length > 0) { %>
+  <div class="card data-card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Project</th>
+            <th>Collection</th>
+            <th>Status</th>
+            <th>Updated</th>
+            <th class="actions-column">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for(const entry of results) { %>
+            <tr>
+              <td data-label="Title"><%= entry.title %></td>
+              <td data-label="Type">
+                <span class="badge type-badge type-<%= entry.type.replace(' ', '_') %>">
+                  <%= entry.type.replace('_', ' ') %>
+                </span>
+              </td>
+              <td data-label="Project">
+                <% if (entry.project) { %>
+                  <a href="<%= entry.projectUrl %>"><%= entry.projectName %></a>
+                <% } else { %>
+                  <span>N/A</span>
+                <% } %>
+              </td>
+              <td data-label="Collection"><%= entry.collection || '-' %></td>
+              <td data-label="Status">
+                <span class="badge status-badge status-<%= entry.status %>">
+                  <%= entry.status %>
+                </span>
+              </td>
+              <td data-label="Updated"><%= entry.formattedUpdated %></td>
+              <td data-label="Actions" class="actions-cell">
+                <% if (entry.project) { %>
+                  <a href="<%= entry.editUrl %>" class="btn btn-icon btn-edit" title="Edit Entry"> <i class="fas fa-pencil-alt"></i> </a>
+                <% } %>
+                <% if (entry.type !== 'roadmap' && entry.type !== 'knowledge_base' && entry.status === 'published' && entry.project) { %>
+                  <a href="/view/<%= entry.id %>?from_admin=1" target="_blank" class="btn btn-icon btn-view" title="View Public Page"> <i class="fas fa-eye"></i> </a>
+                <% } %>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination-controls card-footer">
+      <button id="prev-page-btn" class="btn btn-secondary" data-page="<%= pagination.page - 1 %>" <% if (pagination.page <= 1) { %>disabled<% } %>>
+        <i class="fas fa-chevron-left"></i> Previous
+      </button>
+      <span id="page-info" class="page-info-text">
+        Page <%= pagination.page %> of <%= pagination.totalPages %> (<%= pagination.totalItems %> items)
+      </span>
+      <button id="next-page-btn" class="btn btn-secondary" data-page="<%= pagination.page + 1 %>" <% if (pagination.page >= pagination.totalPages) { %>disabled<% } %>>
+        Next <i class="fas fa-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+<% } else if (!locals.error) { %>
+  <div class="card empty-state-card">
+    <i class="fas fa-search empty-state-icon"></i>
+    <h2>No Results Found</h2>
+    <p>Your search for "<%= searchQuery %>" did not match any entries.</p>
+  </div>
+<% } %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const prevButton = document.getElementById('prev-page-btn');
+    const nextButton = document.getElementById('next-page-btn');
+    const currentQuery = "<%= encodeURIComponent(searchQuery) %>";
+
+    function navigateToPage(pageNumber) {
+      if (pageNumber && currentQuery) {
+        window.location.href = `?q=${currentQuery}&page=${pageNumber}`;
+      }
+    }
+
+    prevButton?.addEventListener('click', () => {
+      const page = prevButton.dataset.page;
+      navigateToPage(page);
+    });
+
+    nextButton?.addEventListener('click', () => {
+      const page = nextButton.dataset.page;
+      navigateToPage(page);
+    });
+  });
+</script>
+
+<%- include('partials/footer') %>

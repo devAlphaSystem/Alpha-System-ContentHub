@@ -5,6 +5,7 @@ import dashboardRouter from "./dashboard.js";
 import projectsRouter from "./projects.js";
 import auditLogRouter from "./audit_log.js";
 import apiRouter from "./api.js";
+import searchRouter from "./search.js";
 import { requireLogin } from "../middleware.js";
 
 const router = express.Router();
@@ -15,7 +16,7 @@ router.use("/", authRouter);
 router.use("/", requireLogin, dashboardRouter);
 router.use("/projects", requireLogin, projectsRouter);
 router.use("/audit-log", requireLogin, auditLogRouter);
-
+router.use("/search", requireLogin, searchRouter);
 router.use("/api", apiRouter);
 
 export default router;

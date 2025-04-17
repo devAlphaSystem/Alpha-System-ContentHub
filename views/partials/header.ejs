@@ -113,6 +113,13 @@
               </a>
             </div>
           <% } %>
+
+          <div class="top-bar-right">
+            <form action="/search" method="GET" class="global-search-form">
+              <input type="search" name="q" class="global-search-input" placeholder="Search all entries..." aria-label="Search all entries" value="<%= locals.searchQuery || '' %>">
+              <button type="submit" class="global-search-button" aria-label="Search"> <i class="fas fa-search"></i> </button>
+            </form>
+          </div>
         </header>
 
         <main class="page-content">

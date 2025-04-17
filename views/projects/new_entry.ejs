@@ -35,7 +35,6 @@
           <option value="" disabled>No templates available for this project</option>
         <% } %>
       </select>
-      <small class="form-text">Selecting a template will replace the current content below.</small>
     </div>
 
     <div class="form-grid">
@@ -66,26 +65,23 @@
       <div class="form-group">
         <label for="collection">Collection</label>
         <input type="text" id="collection" name="collection" class="form-control" placeholder="e.g., API, Frontend" value="<%= locals.entry ? entry.collection : '' %>">
-        <small class="form-text">Assign this entry to a collection within this project (optional).</small>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" style="display: <%= (locals.entry?.type === 'documentation' || locals.entry?.type === 'changelog') ? 'block' : 'none' %>;">
         <label for="tags">Tags</label>
         <input type="text" id="tags" name="tags" class="form-control" placeholder="Comma-separated, e.g., api, v2" value="<%= locals.entry ? entry.tags : '' %>">
-        <small class="form-text">Separate multiple tags with commas.</small>
       </div>
 
       <div class="form-group">
         <label for="url">URL (Optional ID)</label>
         <div class="input-group input-group-prefix" id="url-input-group"> <span class="input-group-text prefix-text" id="url-prefix"><%= locals.baseUrl %>/view/</span>
-          <input type="text" id="url" name="url" class="form-control prefixed-input <%= locals.errors?.url ? 'is-invalid' : '' %>" value="<%= locals.entry ? entry.url : '' %>" minlength="15" maxlength="15" aria-describedby="url-prefix url-help url-feedback" placeholder="Enter 15 chars..." autocomplete="off" spellcheck="false">
+          <input type="text" id="url" name="url" class="form-control prefixed-input <%= locals.errors?.url ? 'is-invalid' : '' %>" value="<%= locals.entry ? entry.url : '' %>" minlength="15" maxlength="15" aria-describedby="url-prefix url-feedback" placeholder="Enter 15 chars..." autocomplete="off" spellcheck="false">
         </div>
-        <small class="form-text" id="url-help">If provided, must be exactly 15 characters long and unique across all projects.</small>
         <small id="url-feedback" class="form-text url-feedback-message" style="min-height: 1.2em; margin-top: 4px;"></small>
         <% if (locals.errors?.url) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.url.message %></small> <% } %>
       </div>
 
-      <div class="form-group form-group-type-specific" id="documentation-header-group" style="display: <%= locals.entry?.type === 'documentation' || !locals.entry ? 'block' : 'none' %>;">
+      <div class="form-group form-group-type-specific" id="documentation-header-group" style="display: <%= locals.entry?.type === 'documentation' ? 'block' : 'none' %>;">
         <label for="custom_documentation_header">Documentation Header</label>
         <select id="custom_documentation_header" name="custom_documentation_header" class="form-control <%= locals.errors?.custom_documentation_header ? 'is-invalid' : '' %>">
           <option value="">Default Header</option>
@@ -95,10 +91,9 @@
             </option>
           <% } %>
         </select>
-        <small class="form-text">Overrides the default header for Documentation entries.</small>
       </div>
 
-      <div class="form-group form-group-type-specific" id="documentation-footer-group" style="display: <%= locals.entry?.type === 'documentation' || !locals.entry ? 'block' : 'none' %>;">
+      <div class="form-group form-group-type-specific" id="documentation-footer-group" style="display: <%= locals.entry?.type === 'documentation' ? 'block' : 'none' %>;">
         <label for="custom_documentation_footer">Documentation Footer</label>
         <select id="custom_documentation_footer" name="custom_documentation_footer" class="form-control <%= locals.errors?.custom_documentation_footer ? 'is-invalid' : '' %>">
           <option value="">Default Footer</option>
@@ -108,7 +103,6 @@
             </option>
           <% } %>
         </select>
-        <small class="form-text">Overrides the default footer for Documentation entries.</small>
       </div>
 
       <div class="form-group form-group-type-specific" id="changelog-header-group" style="display: <%= locals.entry?.type === 'changelog' ? 'block' : 'none' %>;">
@@ -121,7 +115,6 @@
             </option>
           <% } %>
         </select>
-        <small class="form-text">Overrides the default header for Changelog entries.</small>
       </div>
 
       <div class="form-group form-group-type-specific" id="changelog-footer-group" style="display: <%= locals.entry?.type === 'changelog' ? 'block' : 'none' %>;">
@@ -134,7 +127,6 @@
             </option>
           <% } %>
         </select>
-        <small class="form-text">Overrides the default footer for Changelog entries.</small>
       </div>
 
       <div class="form-group form-group-type-specific" id="roadmap-stage-group" style="display: <%= locals.entry?.type === 'roadmap' ? 'block' : 'none' %>;">
@@ -150,13 +142,12 @@
         <% if (locals.errors?.roadmap_stage) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.roadmap_stage.message %></small> <% } %>
       </div>
 
-      <div class="form-group" style="display: <%= locals.entry?.type === 'knowledge_base' ? 'none' : 'block' %>;">
+      <div class="form-group" style="display: <%= (locals.entry?.type === 'documentation' || locals.entry?.type === 'changelog') ? 'block' : 'none' %>;">
         <label for="show_in_project_sidebar">Show in Project Sidebar?</label>
         <select id="show_in_project_sidebar" name="show_in_project_sidebar" class="form-control">
           <option value="true" <%= !locals.entry || entry.show_in_project_sidebar === 'true' || entry.show_in_project_sidebar === true ? 'selected' : '' %>>Yes</option>
           <option value="false" <%= locals.entry && (entry.show_in_project_sidebar === 'false' || entry.show_in_project_sidebar === false) ? 'selected' : '' %>>No</option>
         </select>
-        <small class="form-text">If "Yes", this entry will be listed in the left sidebar when viewing any entry within this project.</small>
       </div>
 
       <div class="form-group form-group-full form-group-content" style="display: <%= locals.entry?.type === 'roadmap' ? 'none' : 'block' %>;">
@@ -169,7 +160,6 @@
         </label>
         <textarea id="content" name="content" rows="15" class="form-control markdown-input <%= locals.errors?.content ? 'is-invalid' : '' %>"><%= locals.entry ? entry.content : '' %></textarea>
         <div class="form-text-wrapper">
-          <small class="form-text">Use Markdown syntax. Toolbar provides formatting help.</small>
           <small id="content-char-count" class="form-text char-counter"></small>
         </div>
         <div style="margin-top: 10px; float: right;">
@@ -185,7 +175,7 @@
       <button type="submit" class="btn btn-primary btn-lg">
         <i class="fas fa-check"></i> Create Entry
       </button>
-      <a href="/projects/<%= project.id %>/<%= entry.type === 'documentation' ? 'documentation' : (entry.type === 'changelog' ? 'changelogs' : 'roadmaps') %>" class="btn btn-secondary btn-lg">Cancel</a>
+      <a href="/projects/<%= project.id %>" class="btn btn-secondary btn-lg">Cancel</a>
     </div>
   </form>
 </div>
