@@ -25,8 +25,12 @@
   --danger-light-border: #f5c6c4;
   --warning-color: #f9ab00;
   --warning-hover-color: #e9710a;
+  --warning-light-bg: #fef3c7;
+  --warning-light-border: #fcd34d;
   --success-color: #1e8e3e;
   --success-hover-color: #185e31;
+  --success-light-bg: #e6f4ea;
+  --success-light-border: #a8d8b6;
   --info-color: #17a2b8;
   --info-light-bg: #e3fafc;
   --info-light-border: #a5f3fc;
@@ -82,8 +86,12 @@
   --dark-danger-light-border: #5f3030;
   --dark-warning-color: #facc15;
   --dark-warning-hover-color: #fde047;
+  --dark-warning-light-bg: #4a3a14;
+  --dark-warning-light-border: #785a1c;
   --dark-success-color: #4ade80;
   --dark-success-hover-color: #86efac;
+  --dark-success-light-bg: #1c3a2e;
+  --dark-success-light-border: #2a5a42;
   --dark-info-color: #67e8f9;
   --dark-info-light-bg: #1f3b4a;
   --dark-info-light-border: #305568;
@@ -1357,6 +1365,16 @@ textarea.form-control {
   color: var(--danger-color);
 }
 
+.alert-warning {
+  color: var(--warning-color);
+  background-color: var(--warning-light-bg);
+  border-color: var(--warning-light-border);
+}
+
+.alert-warning .alert-icon {
+  color: var(--warning-color);
+}
+
 .alert-info {
   color: var(--info-color);
   background-color: var(--info-light-bg);
@@ -1375,6 +1393,46 @@ textarea.form-control {
 
 .alert-success .alert-icon {
   color: var(--success-color);
+}
+
+.dark .alert-danger {
+  color: var(--dark-danger-color);
+  background-color: var(--dark-danger-light-bg);
+  border-color: var(--dark-danger-light-border);
+}
+
+.dark .alert-danger .alert-icon {
+  color: var(--dark-danger-color);
+}
+
+.dark .alert-warning {
+  color: var(--dark-warning-color);
+  background-color: var(--dark-warning-light-bg);
+  border-color: var(--dark-warning-light-border);
+}
+
+.dark .alert-warning .alert-icon {
+  color: var(--dark-warning-color);
+}
+
+.dark .alert-info {
+  color: var(--dark-info-color);
+  background-color: var(--dark-info-light-bg);
+  border-color: var(--dark-info-light-border);
+}
+
+.dark .alert-info .alert-icon {
+  color: var(--dark-info-color);
+}
+
+.dark .alert-success {
+  color: var(--dark-success-color);
+  background-color: var(--dark-success-light-bg);
+  border-color: var(--dark-success-light-border);
+}
+
+.dark .alert-success .alert-icon {
+  color: var(--dark-success-color);
 }
 
 .error-summary ul {

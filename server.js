@@ -3,36 +3,40 @@ import http from "node:http";
 import { app } from "./src/app.js";
 import { PORT, POCKETBASE_URL, viewDb } from "./src/config.js";
 import { initializeCronJobs } from "./src/cron.js";
+import { logger } from "./src/logger.js";
 
 const server = http.createServer(app);
+logger.debug("HTTP server created.");
 
 initializeCronJobs();
 
 server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-  console.log(`Using PocketBase instance at ${POCKETBASE_URL}`);
+  logger.info(`Server running at http://localhost:${PORT}`);
+  logger.info(`Using PocketBase instance at ${POCKETBASE_URL}`);
+  logger.info(`Logging level set to: ${logger.getConfiguredLevel()}`);
 });
 
 process.on("SIGINT", () => {
-  console.log("SIGINT signal received: closing databases and server.");
+  logger.info("SIGINT signal received: closing databases and server.");
   server.close(() => {
-    console.log("HTTP server closed.");
+    logger.info("HTTP server closed.");
     viewDb.close((err) => {
       if (err) {
-        console.error("Error closing view tracking DB", err.message);
+        logger.error("Error closing view tracking DB", err.message);
       } else {
-        console.log("View tracking database connection closed.");
+        logger.info("View tracking database connection closed.");
       }
+      logger.info("Exiting process.");
       process.exit(0);
     });
   });
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  logger.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 
 process.on("uncaughtException", (error) => {
-  console.error("Uncaught Exception:", error);
+  logger.error("Uncaught Exception:", error);
   process.exit(1);
 });

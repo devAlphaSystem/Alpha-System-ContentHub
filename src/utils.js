@@ -2,78 +2,119 @@ import crypto from "node:crypto";
 import DOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
 import { pb, pbAdmin, viewDb, IP_HASH_SALT, VIEW_TIMEFRAME_HOURS, AVERAGE_WPM } from "./config.js";
+import { logger } from "./logger.js";
 
 const window = new JSDOM("").window;
 const purify = DOMPurify(window);
 
 export function getIP(req) {
   const forwarded = req.headers["x-forwarded-for"];
+  let ip = null;
   if (forwarded) {
     const ips = String(forwarded).split(",");
-    return ips[0].trim();
+    ip = ips[0].trim();
+  } else {
+    ip = req.ip || req.socket?.remoteAddress || null;
   }
-  return req.ip || req.socket?.remoteAddress || null;
+  logger.trace(`getIP determined IP: ${ip}`);
+  return ip;
 }
 
 export function hashIP(ip) {
-  if (!ip || !IP_HASH_SALT) return null;
-  return crypto.createHmac("sha256", IP_HASH_SALT).update(ip).digest("hex");
+  if (!ip || !IP_HASH_SALT) {
+    logger.trace("hashIP: No IP or salt provided, returning null.");
+    return null;
+  }
+  const hash = crypto.createHmac("sha256", IP_HASH_SALT).update(ip).digest("hex");
+  logger.trace(`hashIP: Hashed ${ip} to ${hash}`);
+  return hash;
 }
 
 export function hashPreviewPassword(password) {
   if (!password || !IP_HASH_SALT) {
-    console.error("Attempted to hash password without password or salt.");
+    logger.error("Attempted to hash password without password or salt.");
     return null;
   }
-  return crypto.createHmac("sha256", IP_HASH_SALT).update(password).digest("hex");
+  const hash = crypto.createHmac("sha256", IP_HASH_SALT).update(password).digest("hex");
+  logger.trace("hashPreviewPassword: Hashed password.");
+  return hash;
 }
 
 export function sanitizeHtml(unsafeHtml) {
+  logger.trace("Sanitizing HTML content.");
   return purify.sanitize(unsafeHtml);
 }
 
 export async function getProjectForOwner(projectId, userId) {
+  logger.debug(`Fetching project ${projectId} for owner ${userId}.`);
+  logger.time(`[UTIL] getProjectForOwner ${projectId}`);
   try {
     const project = await pb.collection("projects").getOne(projectId);
     if (project.owner !== userId) {
+      logger.warn(`Forbidden access attempt: User ${userId} tried to access project ${projectId} owned by ${project.owner}.`);
       const err = new Error("Forbidden");
       err.status = 403;
       throw err;
     }
+    logger.timeEnd(`[UTIL] getProjectForOwner ${projectId}`);
+    logger.trace(`Project ${projectId} fetched successfully for owner ${userId}.`);
     return project;
   } catch (error) {
-    if (error.status !== 404) {
-      console.error(`Failed to fetch project ${projectId} for owner ${userId}:`, error);
+    logger.timeEnd(`[UTIL] getProjectForOwner ${projectId}`);
+    if (error.status !== 404 && error.status !== 403) {
+      logger.error(`Failed to fetch project ${projectId} for owner ${userId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    } else if (error.status === 404) {
+      logger.debug(`Project ${projectId} not found for owner ${userId}.`);
     }
     throw error;
   }
 }
 
 export async function getPublicEntryById(id) {
+  logger.debug(`Fetching public entry ${id}.`);
+  logger.time(`[UTIL] getPublicEntryById ${id}`);
   try {
     const record = await pbAdmin.collection("entries_main").getFirstListItem(`id = '${id}' && status = 'published'`, {
       expand: "project,custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer",
     });
+    logger.timeEnd(`[UTIL] getPublicEntryById ${id}`);
+    logger.trace(`Public entry ${id} fetched successfully.`);
     return record;
   } catch (error) {
-    if (error.status !== 404) {
-      console.error(`Failed to fetch public entry ${id}:`, error);
+    logger.timeEnd(`[UTIL] getPublicEntryById ${id}`);
+    if (error.status === 404) {
+      logger.debug(`Public entry ${id} not found (404).`);
+      return null;
     }
-    return null;
+    logger.error(`Failed to fetch public entry ${id}: Status ${error?.status || "N/A"}`, error?.message || error);
+    if (error?.data) {
+      logger.error("PocketBase Error Data:", error.data);
+    }
+    throw error;
   }
 }
 
 export async function getDraftEntryForPreview(id) {
+  logger.debug(`Fetching entry ${id} for preview.`);
+  logger.time(`[UTIL] getDraftEntryForPreview ${id}`);
   try {
     const record = await pbAdmin.collection("entries_main").getOne(id, {
       expand: "project,custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer,staged_documentation_header,staged_documentation_footer,staged_changelog_header,staged_changelog_footer",
     });
+    logger.timeEnd(`[UTIL] getDraftEntryForPreview ${id}`);
+    logger.trace(`Entry ${id} for preview fetched successfully.`);
     return record;
   } catch (error) {
-    if (error.status !== 404) {
-      console.error(`Failed to fetch entry ${id} for preview:`, error);
+    logger.timeEnd(`[UTIL] getDraftEntryForPreview ${id}`);
+    if (error.status === 404) {
+      logger.debug(`Entry ${id} for preview not found (404).`);
+      return null;
     }
-    return null;
+    logger.error(`Failed to fetch entry ${id} for preview: Status ${error?.status || "N/A"}`, error?.message || error);
+    if (error?.data) {
+      logger.error("PocketBase Error Data:", error.data);
+    }
+    throw error;
   }
 }
 
@@ -84,6 +125,8 @@ export async function getUserTemplates(userId, projectId) {
   }
   const filter = filterParts.join(" && ");
   const fields = "id,name";
+  logger.debug(`Fetching templates for user ${userId}, project ${projectId || "N/A"} with filter: ${filter}`);
+  logger.time(`[UTIL] getUserTemplates ${userId} ${projectId || "N/A"}`);
 
   try {
     const templates = await pb.collection("templates").getFullList({
@@ -92,56 +135,89 @@ export async function getUserTemplates(userId, projectId) {
       fields: fields,
       $autoCancel: false,
     });
+    logger.timeEnd(`[UTIL] getUserTemplates ${userId} ${projectId || "N/A"}`);
+    logger.trace(`Fetched ${templates.length} templates for user ${userId}, project ${projectId || "N/A"}.`);
     return templates;
   } catch (error) {
-    console.error(`Error fetching templates for user ${userId}, project ${projectId}:`, error);
+    logger.timeEnd(`[UTIL] getUserTemplates ${userId} ${projectId || "N/A"}`);
+    logger.error(`Error fetching templates for user ${userId}, project ${projectId || "N/A"}: Status ${error?.status || "N/A"}`, error?.message || error);
     throw error;
   }
 }
 
 export async function getTemplateForEditAndProject(templateId, userId, projectId) {
+  logger.debug(`Fetching template ${templateId} for edit by user ${userId} in project ${projectId}.`);
+  logger.time(`[UTIL] getTemplateForEditAndProject ${templateId}`);
   try {
     const template = await pb.collection("templates").getOne(templateId);
     if (template.owner !== userId || template.project !== projectId) {
+      logger.warn(`Forbidden access attempt: User ${userId} tried to edit template ${templateId} (Owner: ${template.owner}, Project: ${template.project}) in project ${projectId}.`);
       const err = new Error("Forbidden");
       err.status = 403;
       throw err;
     }
+    logger.timeEnd(`[UTIL] getTemplateForEditAndProject ${templateId}`);
+    logger.trace(`Template ${templateId} fetched successfully for edit by user ${userId}.`);
     return template;
   } catch (error) {
-    console.error(`Failed to fetch template ${templateId} for edit in project ${projectId}:`, error);
+    logger.timeEnd(`[UTIL] getTemplateForEditAndProject ${templateId}`);
+    if (error.status !== 404 && error.status !== 403) {
+      logger.error(`Failed to fetch template ${templateId} for edit in project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    } else if (error.status === 404) {
+      logger.debug(`Template ${templateId} not found for edit.`);
+    }
     throw error;
   }
 }
 
 export async function getEntryForOwnerAndProject(entryId, userId, projectId) {
+  logger.debug(`Fetching entry ${entryId} for owner ${userId} in project ${projectId}.`);
+  logger.time(`[UTIL] getEntryForOwnerAndProject ${entryId}`);
   try {
     const record = await pb.collection("entries_main").getOne(entryId, {
       expand: "custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer,staged_documentation_header,staged_documentation_footer,staged_changelog_header,staged_changelog_footer",
     });
     if (record.owner !== userId || record.project !== projectId) {
+      logger.warn(`Forbidden access attempt: User ${userId} tried to access entry ${entryId} (Owner: ${record.owner}, Project: ${record.project}) in project ${projectId}.`);
       const err = new Error("Forbidden");
       err.status = 403;
       throw err;
     }
+    logger.timeEnd(`[UTIL] getEntryForOwnerAndProject ${entryId}`);
+    logger.trace(`Entry ${entryId} fetched successfully for owner ${userId} in project ${projectId}.`);
     return record;
   } catch (error) {
-    console.error(`Failed to fetch entry ${entryId} for owner ${userId} in project ${projectId}:`, error);
+    logger.timeEnd(`[UTIL] getEntryForOwnerAndProject ${entryId}`);
+    if (error.status !== 404 && error.status !== 403) {
+      logger.error(`Failed to fetch entry ${entryId} for owner ${userId} in project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    } else if (error.status === 404) {
+      logger.debug(`Entry ${entryId} not found for owner ${userId}.`);
+    }
     throw error;
   }
 }
 
 export async function getArchivedEntryForOwnerAndProject(entryId, userId, projectId) {
+  logger.debug(`Fetching archived entry ${entryId} for owner ${userId} in project ${projectId}.`);
+  logger.time(`[UTIL] getArchivedEntryForOwnerAndProject ${entryId}`);
   try {
     const record = await pbAdmin.collection("entries_archived").getOne(entryId);
     if (record.owner !== userId || record.project !== projectId) {
+      logger.warn(`Forbidden access attempt: User ${userId} tried to access archived entry ${entryId} (Owner: ${record.owner}, Project: ${record.project}) in project ${projectId}.`);
       const err = new Error("Forbidden");
       err.status = 403;
       throw err;
     }
+    logger.timeEnd(`[UTIL] getArchivedEntryForOwnerAndProject ${entryId}`);
+    logger.trace(`Archived entry ${entryId} fetched successfully for owner ${userId} in project ${projectId}.`);
     return record;
   } catch (error) {
-    console.error(`Failed to fetch archived entry ${entryId} for owner ${userId} in project ${projectId}:`, error);
+    logger.timeEnd(`[UTIL] getArchivedEntryForOwnerAndProject ${entryId}`);
+    if (error.status !== 404 && error.status !== 403) {
+      logger.error(`Failed to fetch archived entry ${entryId} for owner ${userId} in project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    } else if (error.status === 404) {
+      logger.debug(`Archived entry ${entryId} not found for owner ${userId}.`);
+    }
     throw error;
   }
 }
@@ -152,6 +228,8 @@ async function getProjectAssets(collectionName, userId, projectId) {
     filterParts.push(`project = '${projectId}'`);
   }
   const filter = filterParts.join(" && ");
+  logger.debug(`Fetching ${collectionName} for user ${userId}, project ${projectId || "N/A"} with filter: ${filter}`);
+  logger.time(`[UTIL] getProjectAssets ${collectionName} ${userId} ${projectId || "N/A"}`);
   try {
     const assets = await pb.collection(collectionName).getFullList({
       filter: filter,
@@ -159,24 +237,37 @@ async function getProjectAssets(collectionName, userId, projectId) {
       fields: "id,name",
       $autoCancel: false,
     });
+    logger.timeEnd(`[UTIL] getProjectAssets ${collectionName} ${userId} ${projectId || "N/A"}`);
+    logger.trace(`Fetched ${assets.length} ${collectionName} for user ${userId}, project ${projectId || "N/A"}.`);
     return assets;
   } catch (error) {
-    console.error(`Error fetching ${collectionName} for user ${userId}, project ${projectId}:`, error);
+    logger.timeEnd(`[UTIL] getProjectAssets ${collectionName} ${userId} ${projectId || "N/A"}`);
+    logger.error(`Error fetching ${collectionName} for user ${userId}, project ${projectId || "N/A"}: Status ${error?.status || "N/A"}`, error?.message || error);
     return [];
   }
 }
 
 async function getProjectAssetForEdit(collectionName, assetId, userId, projectId) {
+  logger.debug(`Fetching ${collectionName} ${assetId} for edit by user ${userId} in project ${projectId}.`);
+  logger.time(`[UTIL] getProjectAssetForEdit ${collectionName} ${assetId}`);
   try {
     const asset = await pb.collection(collectionName).getOne(assetId);
     if (asset.owner !== userId || asset.project !== projectId) {
+      logger.warn(`Forbidden access attempt: User ${userId} tried to edit ${collectionName} ${assetId} (Owner: ${asset.owner}, Project: ${asset.project}) in project ${projectId}.`);
       const err = new Error("Forbidden");
       err.status = 403;
       throw err;
     }
+    logger.timeEnd(`[UTIL] getProjectAssetForEdit ${collectionName} ${assetId}`);
+    logger.trace(`${collectionName} ${assetId} fetched successfully for edit by user ${userId}.`);
     return asset;
   } catch (error) {
-    console.error(`Failed to fetch ${collectionName} ${assetId} for edit in project ${projectId}:`, error);
+    logger.timeEnd(`[UTIL] getProjectAssetForEdit ${collectionName} ${assetId}`);
+    if (error.status !== 404 && error.status !== 403) {
+      logger.error(`Failed to fetch ${collectionName} ${assetId} for edit in project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    } else if (error.status === 404) {
+      logger.debug(`${collectionName} ${assetId} not found for edit.`);
+    }
     throw error;
   }
 }
@@ -215,6 +306,7 @@ export async function getChangelogFooterForEditAndProject(footerId, userId, proj
 
 export function logEntryView(req, entryId) {
   if (req && req.query.from_admin === "1") {
+    logger.trace(`View log skipped for entry ${entryId} (from_admin=1).`);
     return;
   }
 
@@ -222,54 +314,70 @@ export function logEntryView(req, entryId) {
   const hashedIP = hashIP(ipAddress);
 
   if (!entryId) {
-    console.warn("Attempted to log view without entryId.");
+    logger.warn("Attempted to log view without entryId.");
     return;
   }
 
   if (hashedIP) {
     const timeLimit = Math.floor(Date.now() / 1000) - VIEW_TIMEFRAME_HOURS * 60 * 60;
     const checkQuery = "SELECT id FROM view_logs WHERE entry_id = ? AND ip_address = ? AND viewed_at > ? LIMIT 1";
+    logger.trace(`Checking view log for entry ${entryId}, IP hash ${hashedIP}, time limit ${timeLimit}.`);
 
     viewDb.get(checkQuery, [entryId, hashedIP, timeLimit], (err, row) => {
       if (err) {
-        console.error("Error checking view logs:", err.message);
+        logger.error("Error checking view logs:", err.message);
       } else if (!row) {
+        logger.debug(`No recent view found for entry ${entryId}, IP hash ${hashedIP}. Logging new view.`);
         const insertQuery = "INSERT INTO view_logs (entry_id, ip_address, viewed_at) VALUES (?, ?, ?)";
         const nowTimestamp = Math.floor(Date.now() / 1000);
 
         viewDb.run(insertQuery, [entryId, hashedIP, nowTimestamp], (insertErr) => {
           if (insertErr) {
-            console.error("Error inserting view log:", insertErr.message);
+            logger.error("Error inserting view log:", insertErr.message);
           } else {
+            logger.trace(`View log inserted for entry ${entryId}.`);
             pbAdmin
               .collection("entries_main")
               .update(entryId, { "views+": 1 })
+              .then(() => {
+                logger.trace(`Incremented PocketBase view count for entry ${entryId}.`);
+              })
               .catch((pbUpdateError) => {
                 if (pbUpdateError?.status !== 404) {
-                  console.error(`Failed to increment PocketBase view count for entry ${entryId} using Admin client:`, pbUpdateError);
+                  logger.error(`Failed to increment PocketBase view count for entry ${entryId} using Admin client: Status ${pbUpdateError?.status || "N/A"}`, pbUpdateError?.message || pbUpdateError);
+                } else {
+                  logger.warn(`Attempted to increment view count for non-existent entry ${entryId}.`);
                 }
               });
           }
         });
+      } else {
+        logger.trace(`Recent view already logged for entry ${entryId}, IP hash ${hashedIP}. Skipping.`);
       }
     });
   } else {
-    console.warn("Could not determine or hash IP address for view tracking.");
+    logger.warn("Could not determine or hash IP address for view tracking.");
   }
 }
 
 export function clearEntryViewLogs(entryId) {
-  if (!entryId) return;
+  if (!entryId) {
+    logger.warn("Attempted to clear view logs without entryId.");
+    return;
+  }
+  logger.info(`Clearing view logs for entry ${entryId}.`);
   viewDb.run("DELETE FROM view_logs WHERE entry_id = ?", [entryId], (delErr) => {
     if (delErr) {
-      console.error(`Error cleaning view logs for entry ${entryId}:`, delErr.message);
+      logger.error(`Error cleaning view logs for entry ${entryId}:`, delErr.message);
+    } else {
+      logger.debug(`Successfully cleared view logs for entry ${entryId}.`);
     }
   });
 }
 
 export async function logAuditEvent(req, action, targetCollection, targetRecord, details) {
   if (!action) {
-    console.error("Audit log attempt failed: Action is required.");
+    logger.error("Audit log attempt failed: Action is required.");
     return;
   }
 
@@ -287,7 +395,7 @@ export async function logAuditEvent(req, action, targetCollection, targetRecord,
   if (!userId && action !== "SYSTEM_ADMIN_AUTH" && action !== "POCKETBASE_ADMIN_AUTH_SUCCESS") {
     const allowedSystemActions = ["PREVIEW_PASSWORD_SUCCESS", "PREVIEW_PASSWORD_FAILURE", "PROJECT_PASSWORD_SUCCESS", "PROJECT_PASSWORD_FAILURE"];
     if (!allowedSystemActions.includes(action)) {
-      console.warn(`Audit log for action '${action}' is missing user ID.`);
+      logger.warn(`Audit log for action '${action}' is missing user ID.`);
     }
   }
 
@@ -300,12 +408,15 @@ export async function logAuditEvent(req, action, targetCollection, targetRecord,
     details: details || null,
   };
 
+  logger.info(`AUDIT: User=${userId || "System/Anon"} Action=${action} Target=${targetCollection || "N/A"}:${targetRecord || "N/A"} IP=${ipAddress || "N/A"}`, details ? `Details=${JSON.stringify(details)}` : "");
+
   try {
     await pbAdmin.collection("audit_logs").create(logData);
+    logger.trace(`Audit log successfully written for action '${action}'.`);
   } catch (error) {
-    console.error(`Failed to write audit log for action '${action}':`, error?.message || error);
+    logger.error(`Failed to write audit log for action '${action}': Status ${error?.status || "N/A"}`, error?.message || error);
     if (error?.data?.data) {
-      console.error("Audit Log Error Details:", error.data.data);
+      logger.error("Audit Log Error Details:", error.data.data);
     }
   }
 }
@@ -321,5 +432,7 @@ export function calculateReadingTime(text, wpm = AVERAGE_WPM) {
   }
 
   const minutes = words / wpm;
-  return Math.max(1, Math.ceil(minutes));
+  const readingTime = Math.max(1, Math.ceil(minutes));
+  logger.trace(`Calculated reading time: ${readingTime} min for ${words} words.`);
+  return readingTime;
 }

@@ -1,10 +1,14 @@
 import express from "express";
 import { pbAdmin, ITEMS_PER_PAGE } from "../config.js";
 import { requireLogin } from "../middleware.js";
+import { logger } from "../logger.js";
 
 const router = express.Router();
 
 router.get("/", requireLogin, async (req, res, next) => {
+  const userId = req.session.user.id;
+  logger.debug(`[AUDIT] GET /audit-log (global) requested by user ${userId}`);
+  logger.time(`[AUDIT] GET /audit-log ${userId}`);
   try {
     const initialPage = 1;
     const initialSort = "-created";
@@ -13,12 +17,14 @@ router.get("/", requireLogin, async (req, res, next) => {
       sort: initialSort,
       expand: "user",
     });
+    logger.debug(`[AUDIT] Fetched ${resultList.items.length} global audit logs (page ${initialPage}/${resultList.totalPages})`);
 
     const formattedLogs = [];
     for (const log of resultList.items) {
       formattedLogs.push({ ...log });
     }
 
+    logger.timeEnd(`[AUDIT] GET /audit-log ${userId}`);
     res.render("audit-log", {
       logs: formattedLogs,
       pageTitle: "Global Audit Log",
@@ -33,7 +39,8 @@ router.get("/", requireLogin, async (req, res, next) => {
       currentProjectId: null,
     });
   } catch (error) {
-    console.error("Error fetching audit logs for page view:", error);
+    logger.timeEnd(`[AUDIT] GET /audit-log ${userId}`);
+    logger.error(`[AUDIT] Error fetching global audit logs for page view: Status ${error?.status || "N/A"}`, error?.message || error);
     res.render("audit-log", {
       logs: [],
       pageTitle: "Global Audit Log",

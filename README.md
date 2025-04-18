@@ -95,6 +95,9 @@ Configuration is managed through a `.env` file in the project root.
       # Generate strong, random strings for these secrets!
       SESSION_SECRET=your-very-strong-random-secret-key-here
       IP_HASH_SALT=another-very-strong-random-secret-for-hashing-ips
+
+      # Can be: NONE < ERROR < WARN < INFO < DEBUG < TRACE
+      LOG_LEVEL=INFO # Default if not present
     ```
 
 2.  **Configure PocketBase Collections (Automated Setup):**
