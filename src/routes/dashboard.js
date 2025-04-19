@@ -91,7 +91,10 @@ router.get("/", requireLogin, async (req, res) => {
     logger.trace("[DASH] Calculated entry counts and views.");
 
     activityData = Array.from(activityMap.entries())
-      .map(([date, count]) => ({ x: date, y: count }))
+      .map(([date, count]) => ({
+        x: date,
+        y: count,
+      }))
       .sort((a, b) => new Date(a.x) - new Date(b.x));
     logger.trace(`[DASH] Processed ${activityData.length} days of activity data.`);
 

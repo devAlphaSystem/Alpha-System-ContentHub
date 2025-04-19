@@ -21,7 +21,9 @@ router.get("/", requireLogin, async (req, res, next) => {
 
     const formattedLogs = [];
     for (const log of resultList.items) {
-      formattedLogs.push({ ...log });
+      formattedLogs.push({
+        ...log,
+      });
     }
 
     logger.timeEnd(`[AUDIT] GET /audit-log ${userId}`);

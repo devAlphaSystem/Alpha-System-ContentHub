@@ -11,7 +11,10 @@ router.get("/login", (req, res) => {
     logger.debug("User already logged in, redirecting from /login to /");
     return res.redirect("/");
   }
-  res.render("login", { error: null, pageTitle: "Login" });
+  res.render("login", {
+    error: null,
+    pageTitle: "Login",
+  });
 });
 
 router.post("/login", loginLimiter, async (req, res) => {
@@ -81,7 +84,10 @@ router.post("/login", loginLimiter, async (req, res) => {
       status: error.status,
     });
     res.clearCookie("pb_auth");
-    res.status(401).render("login", { error: errorMessage, pageTitle: "Login" });
+    res.status(401).render("login", {
+      error: errorMessage,
+      pageTitle: "Login",
+    });
   }
 });
 

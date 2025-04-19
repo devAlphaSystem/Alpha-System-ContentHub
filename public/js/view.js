@@ -12,7 +12,9 @@ document.addEventListener("DOMContentLoaded", () => {
           background: theme === "dark" ? "#1f2937" : "#ffffff",
         },
       });
-      mermaid.run({ querySelector: ".language-mermaid" });
+      mermaid.run({
+        querySelector: ".language-mermaid",
+      });
       console.log("Mermaid initialized with theme:", mermaidTheme);
     } catch (e) {
       console.error("Error initializing or running Mermaid:", e);

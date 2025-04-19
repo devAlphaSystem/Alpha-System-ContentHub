@@ -94,7 +94,9 @@ async function ensureAdminAuth() {
 const dbDir = path.join(BASE_DIR, "db");
 if (!fs.existsSync(dbDir)) {
   logger.info(`Creating database directory: ${dbDir}`);
-  fs.mkdirSync(dbDir, { recursive: true });
+  fs.mkdirSync(dbDir, {
+    recursive: true,
+  });
 }
 
 const SQLiteStore = connectSqlite3(session);

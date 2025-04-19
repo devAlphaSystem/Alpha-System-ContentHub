@@ -1,0 +1,23 @@
+# Node modules
+node_modules/*
+
+# Environment variables
+.env*
+
+# Package manager files
+package.json
+package-lock.json
+
+# Databases
+db/*.db
+
+# Pocketbase
+build_pb.js
+pb_schema.json
+
+# Vendors
+public/css/vendors/*
+public/js/vendors/*
+
+# Markdown
+*.md

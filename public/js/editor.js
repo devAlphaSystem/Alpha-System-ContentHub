@@ -432,7 +432,9 @@ document.addEventListener("DOMContentLoaded", () => {
         spellChecker: false,
         status: ["lines", "words"],
         toolbar: standardToolbar,
-        renderingConfig: { codeSyntaxHighlighting: true },
+        renderingConfig: {
+          codeSyntaxHighlighting: true,
+        },
         uploadImage: false,
         errorCallback: (errorMessage) => {
           console.error("EasyMDE Error:", errorMessage);
@@ -532,7 +534,9 @@ document.addEventListener("DOMContentLoaded", () => {
         spellChecker: false,
         status: ["lines", "words"],
         toolbar: standardToolbar,
-        renderingConfig: { codeSyntaxHighlighting: true },
+        renderingConfig: {
+          codeSyntaxHighlighting: true,
+        },
         uploadImage: false,
       });
     } catch (error) {
@@ -548,7 +552,9 @@ document.addEventListener("DOMContentLoaded", () => {
         spellChecker: false,
         status: ["lines", "words"],
         toolbar: standardToolbar,
-        renderingConfig: { codeSyntaxHighlighting: true },
+        renderingConfig: {
+          codeSyntaxHighlighting: true,
+        },
         uploadImage: false,
       });
     } catch (error) {
@@ -564,7 +570,9 @@ document.addEventListener("DOMContentLoaded", () => {
         spellChecker: false,
         status: ["lines", "words"],
         toolbar: standardToolbar,
-        renderingConfig: { codeSyntaxHighlighting: true },
+        renderingConfig: {
+          codeSyntaxHighlighting: true,
+        },
         uploadImage: false,
       });
     } catch (error) {
@@ -759,7 +767,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const signal = currentCheckController.signal;
 
     try {
-      const response = await fetch(`/api/projects/${currentProjectIdForCheck}/check-entry-id/${entryId}`, { signal });
+      const response = await fetch(`/api/projects/${currentProjectIdForCheck}/check-entry-id/${entryId}`, {
+        signal,
+      });
 
       if (signal.aborted) {
         console.log("ID check aborted for:", entryId);

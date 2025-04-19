@@ -7,14 +7,56 @@ import { logger } from "../logger.js";
 const router = express.Router();
 
 const customRenderer = new marked.Renderer();
+const originalImageRenderer = customRenderer.image;
 const originalCodeRenderer = customRenderer.code;
+
+customRenderer.image = function (href, title, text) {
+  let actualHref = href;
+  let themeClass = "";
+  let cleanHref = "";
+
+  if (typeof href === "object" && href !== null && href.href) {
+    actualHref = href.href;
+    logger.trace(`[MarkdownRender] Received object token, extracted href: ${actualHref}`);
+  } else if (typeof href !== "string") {
+    logger.warn(`[MarkdownRender] Unexpected href type received: ${typeof href}. Falling back.`, href);
+    return originalImageRenderer.call(this, href, title, text);
+  }
+
+  cleanHref = actualHref;
+
+  if (typeof actualHref === "string") {
+    if (actualHref.includes("#light")) {
+      themeClass = "light-mode-image";
+      cleanHref = actualHref.replace(/#light$/, "");
+      logger.trace(`[MarkdownRender] Detected light image: ${cleanHref}`);
+    } else if (actualHref.includes("#dark")) {
+      themeClass = "dark-mode-image";
+      cleanHref = actualHref.replace(/#dark$/, "");
+      logger.trace(`[MarkdownRender] Detected dark image: ${cleanHref}`);
+    }
+  }
+
+  const titleAttr = title ? ` title="${title}"` : "";
+  const classAttr = themeClass ? ` class="${themeClass}"` : "";
+  const escapedText = text ? text.replace(/"/g, "&quot;") : "";
+
+  if (typeof cleanHref !== "string") {
+    logger.error(`[MarkdownRender] cleanHref ended up non-string: ${typeof cleanHref}. Fallback needed.`);
+    return "<!-- Error rendering image: Invalid href type -->";
+  }
+
+  return `<img src="${cleanHref}" alt="${escapedText}"${titleAttr}${classAttr}>`;
+};
+
 customRenderer.code = function (code, language, isEscaped) {
   if (language === "mermaid") {
     return `<pre class="language-mermaid">${code}</pre>`;
   }
   return originalCodeRenderer.call(this, code, language, isEscaped);
 };
-function parseMarkdownWithMermaid(markdownContent) {
+
+function parseMarkdownWithThemeImages(markdownContent) {
   if (!markdownContent) {
     return "";
   }
@@ -27,7 +69,9 @@ router.get("/project-access/:projectId/password", async (req, res, next) => {
   const returnTo = req.query.returnTo || `/projects/${projectId}`;
   logger.debug(`[PUBLIC] Accessing project password page for project ${projectId}`);
   try {
-    const project = await pbAdmin.collection("projects").getOne(projectId, { fields: "id, name" });
+    const project = await pbAdmin.collection("projects").getOne(projectId, {
+      fields: "id, name",
+    });
     res.render("projects/project_password", {
       pageTitle: `Password Required - ${project.name}`,
       projectId: projectId,
@@ -167,26 +211,27 @@ router.get("/view/:id", async (req, res, next) => {
 
     logEntryView(req, entryId);
 
-    const cleanMainHtml = parseMarkdownWithMermaid(entry.content);
+    const cleanMainHtml = parseMarkdownWithThemeImages(entry.content);
     const readingTime = calculateReadingTime(entry.content);
 
     let customHeaderHtml = null;
     let customFooterHtml = null;
+    let headerRecord = null;
+    let footerRecord = null;
 
     if (entry.type === "documentation") {
-      if (entry.expand?.custom_documentation_header?.content) {
-        customHeaderHtml = parseMarkdownWithMermaid(entry.expand.custom_documentation_header.content);
-      }
-      if (entry.expand?.custom_documentation_footer?.content) {
-        customFooterHtml = parseMarkdownWithMermaid(entry.expand.custom_documentation_footer.content);
-      }
+      headerRecord = entry.expand?.custom_documentation_header;
+      footerRecord = entry.expand?.custom_documentation_footer;
     } else if (entry.type === "changelog") {
-      if (entry.expand?.custom_changelog_header?.content) {
-        customHeaderHtml = parseMarkdownWithMermaid(entry.expand.custom_changelog_header.content);
-      }
-      if (entry.expand?.custom_changelog_footer?.content) {
-        customFooterHtml = parseMarkdownWithMermaid(entry.expand.custom_changelog_footer.content);
-      }
+      headerRecord = entry.expand?.custom_changelog_header;
+      footerRecord = entry.expand?.custom_changelog_footer;
+    }
+
+    if (headerRecord?.content) {
+      customHeaderHtml = parseMarkdownWithThemeImages(headerRecord.content);
+    }
+    if (footerRecord?.content) {
+      customFooterHtml = parseMarkdownWithThemeImages(footerRecord.content);
     }
 
     let sidebarEntries = [];
@@ -261,7 +306,7 @@ router.get("/roadmap/:projectId", async (req, res, next) => {
         logger.timeEnd(`[PUBLIC] /roadmap/${projectId}`);
         return res.redirect(`/project-access/${project.id}/password?returnTo=${encodeURIComponent(returnToUrl)}`);
       }
-      logger.trace(`[PUBLIC] Project password verified for project ${projectId} (session).`);
+      logger.trace(`[PUBLIC] Project password verified for project ${project.id} (session).`);
     }
 
     logger.time(`[PUBLIC] FetchRoadmapEntries /roadmap/${projectId}`);
@@ -294,17 +339,6 @@ router.get("/roadmap/:projectId", async (req, res, next) => {
         });
       } else {
         logger.warn(`[PUBLIC] Roadmap item ${entry.id} has unknown stage: ${stage}`);
-        if (!entriesByStage.Uncategorized) entriesByStage.Uncategorized = [];
-        entriesByStage.Uncategorized.push({
-          id: entry.id,
-          title: entry.title,
-          tags: entry.tags
-            ? entry.tags
-                .split(",")
-                .map((t) => t.trim())
-                .filter((t) => t)
-            : [],
-        });
       }
     }
 
@@ -385,33 +419,34 @@ router.get("/preview/:token", async (req, res, next) => {
       });
     }
 
-    const entryType = entry.has_staged_changes ? entry.staged_type ?? entry.type : entry.type;
-    const entryContent = entry.has_staged_changes ? entry.staged_content ?? entry.content : entry.content;
-    const entryTitle = entry.has_staged_changes ? entry.staged_title ?? entry.title : entry.title;
-    const entryTags = entry.has_staged_changes ? entry.staged_tags ?? entry.tags : entry.tags;
+    const useStaged = entry.status === "published" && entry.has_staged_changes;
+    const entryType = useStaged ? (entry.staged_type ?? entry.type) : entry.type;
+    const entryContent = useStaged ? (entry.staged_content ?? entry.content) : entry.content;
+    const entryTitle = useStaged ? (entry.staged_title ?? entry.title) : entry.title;
+    const entryTags = useStaged ? (entry.staged_tags ?? entry.tags) : entry.tags;
 
-    const cleanMainHtml = parseMarkdownWithMermaid(entryContent);
+    const cleanMainHtml = parseMarkdownWithThemeImages(entryContent);
     const readingTime = calculateReadingTime(entryContent);
 
     let headerRecordToUse = null;
     let footerRecordToUse = null;
 
     if (entryType === "documentation") {
-      headerRecordToUse = entry.has_staged_changes ? entry.expand?.staged_documentation_header ?? entry.expand?.custom_documentation_header : entry.expand?.custom_documentation_header;
-      footerRecordToUse = entry.has_staged_changes ? entry.expand?.staged_documentation_footer ?? entry.expand?.custom_documentation_footer : entry.expand?.custom_documentation_footer;
+      headerRecordToUse = useStaged ? (entry.expand?.staged_documentation_header ?? entry.expand?.custom_documentation_header) : entry.expand?.custom_documentation_header;
+      footerRecordToUse = useStaged ? (entry.expand?.staged_documentation_footer ?? entry.expand?.custom_documentation_footer) : entry.expand?.custom_documentation_footer;
     } else if (entryType === "changelog") {
-      headerRecordToUse = entry.has_staged_changes ? entry.expand?.staged_changelog_header ?? entry.expand?.custom_changelog_header : entry.expand?.custom_changelog_header;
-      footerRecordToUse = entry.has_staged_changes ? entry.expand?.staged_changelog_footer ?? entry.expand?.custom_changelog_footer : entry.expand?.custom_changelog_footer;
+      headerRecordToUse = useStaged ? (entry.expand?.staged_changelog_header ?? entry.expand?.custom_changelog_header) : entry.expand?.custom_changelog_header;
+      footerRecordToUse = useStaged ? (entry.expand?.staged_changelog_footer ?? entry.expand?.custom_changelog_footer) : entry.expand?.custom_changelog_footer;
     }
 
     let customHeaderHtml = null;
     if (headerRecordToUse?.content) {
-      customHeaderHtml = parseMarkdownWithMermaid(headerRecordToUse.content);
+      customHeaderHtml = parseMarkdownWithThemeImages(headerRecordToUse.content);
     }
 
     let customFooterHtml = null;
     if (footerRecordToUse?.content) {
-      customFooterHtml = parseMarkdownWithMermaid(footerRecordToUse.content);
+      customFooterHtml = parseMarkdownWithThemeImages(footerRecordToUse.content);
     }
 
     let project = null;
@@ -485,7 +520,10 @@ router.post("/preview/:token", previewPasswordLimiter, async (req, res, next) =>
     previewRecord = await pbAdmin.collection("entries_previews").getFirstListItem(`token = '${token}' && expires_at > @now`);
 
     if (!previewRecord.password_hash) {
-      logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, { token: token, reason: "No password hash set on token" });
+      logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, {
+        token: token,
+        reason: "No password hash set on token",
+      });
       logger.warn(`[PUBLIC] Preview password submitted for token ${token}, but no password is set.`);
       return res.status(400).redirect(`/preview/${token}/password?error=Invalid request`);
     }
@@ -496,11 +534,17 @@ router.post("/preview/:token", previewPasswordLimiter, async (req, res, next) =>
         req.session.validPreviews = {};
       }
       req.session.validPreviews[token] = true;
-      logAuditEvent(req, "PREVIEW_PASSWORD_SUCCESS", "entries_previews", previewRecord.id, { token: token, entryId: previewRecord.entry });
+      logAuditEvent(req, "PREVIEW_PASSWORD_SUCCESS", "entries_previews", previewRecord.id, {
+        token: token,
+        entryId: previewRecord.entry,
+      });
       logger.info(`[PUBLIC] Preview password success for token ${token}`);
       return res.redirect(`/preview/${token}`);
     }
-    logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord.id, { token: token, reason: "Incorrect password submitted" });
+    logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord.id, {
+      token: token,
+      reason: "Incorrect password submitted",
+    });
     logger.warn(`[PUBLIC] Incorrect preview password for token ${token}`);
     return res.redirect(`/preview/${token}/password?error=Incorrect password`);
   } catch (error) {
@@ -512,7 +556,10 @@ router.post("/preview/:token", previewPasswordLimiter, async (req, res, next) =>
       logger.warn(`[PUBLIC] Invalid/expired preview token ${token} during password check.`);
       return res.redirect(`/preview/${token}/password?error=Invalid or expired link`);
     }
-    logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, { token: token, error: error?.message });
+    logAuditEvent(req, "PREVIEW_PASSWORD_FAILURE", "entries_previews", previewRecord?.id, {
+      token: token,
+      error: error?.message,
+    });
     logger.error(`[PUBLIC] Error processing password for token ${token}: Status ${error?.status || "N/A"}`, error?.message || error);
     next(error);
   }
@@ -546,7 +593,7 @@ router.get("/kb/:projectId", async (req, res, next) => {
         logger.timeEnd(`[PUBLIC] /kb/${projectId}`);
         return res.redirect(`/project-access/${project.id}/password?returnTo=${encodeURIComponent(returnToUrl)}`);
       }
-      logger.trace(`[PUBLIC] Project password verified for project ${projectId} (session).`);
+      logger.trace(`[PUBLIC] Project password verified for project ${project.id} (session).`);
     }
 
     logger.time(`[PUBLIC] FetchKBEntries /kb/${projectId}`);
@@ -567,17 +614,20 @@ router.get("/kb/:projectId", async (req, res, next) => {
       return next();
     }
 
-    const kbEntries = kbEntriesRaw.map((entry) => ({
-      id: entry.id,
-      question: entry.title,
-      answerHtml: parseMarkdownWithMermaid(entry.content),
-      tags: entry.tags
-        ? entry.tags
-            .split(",")
-            .map((t) => t.trim())
-            .filter((t) => t)
-        : [],
-    }));
+    const kbEntries = kbEntriesRaw.map((entry) => {
+      const cleanAnswerHtml = parseMarkdownWithThemeImages(entry.content);
+      return {
+        id: entry.id,
+        question: entry.title,
+        answerHtml: cleanAnswerHtml,
+        tags: entry.tags
+          ? entry.tags
+              .split(",")
+              .map((t) => t.trim())
+              .filter((t) => t)
+          : [],
+      };
+    });
 
     let sidebarEntries = [];
     try {

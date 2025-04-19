@@ -207,7 +207,11 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const cm of codeMirrors) {
       cm.classList.toggle("cm-s-easymde-dark", theme === "dark");
     }
-    document.dispatchEvent(new CustomEvent("themeChanged", { detail: theme }));
+    document.dispatchEvent(
+      new CustomEvent("themeChanged", {
+        detail: theme,
+      }),
+    );
   };
 
   async function setThemePreference(theme) {
@@ -225,7 +229,9 @@ document.addEventListener("DOMContentLoaded", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ theme: theme }),
+        body: JSON.stringify({
+          theme: theme,
+        }),
       });
 
       if (!response.ok) {

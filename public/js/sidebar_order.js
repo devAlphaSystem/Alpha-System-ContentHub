@@ -37,7 +37,9 @@ document.addEventListener("DOMContentLoaded", () => {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ entryOrder: orderedIds }),
+        body: JSON.stringify({
+          entryOrder: orderedIds,
+        }),
       });
 
       const result = await response.json();

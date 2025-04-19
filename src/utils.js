@@ -42,7 +42,7 @@ export function hashPreviewPassword(password) {
 
 export function sanitizeHtml(unsafeHtml) {
   logger.trace("Sanitizing HTML content.");
-  return purify.sanitize(unsafeHtml);
+  return purify.sanitize(unsafeHtml, { USE_PROFILES: { html: true } });
 }
 
 export async function getProjectForOwner(projectId, userId) {
@@ -338,7 +338,9 @@ export function logEntryView(req, entryId) {
             logger.trace(`View log inserted for entry ${entryId}.`);
             pbAdmin
               .collection("entries_main")
-              .update(entryId, { "views+": 1 })
+              .update(entryId, {
+                "views+": 1,
+              })
               .then(() => {
                 logger.trace(`Incremented PocketBase view count for entry ${entryId}.`);
               })

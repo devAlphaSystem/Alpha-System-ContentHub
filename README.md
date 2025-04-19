@@ -1,4 +1,4 @@
-![](https://db.alphasystem.dev/api/files/pbc_3165375535/contenthubmarkd/contenthub_logo_bmf7hxuvle.png)
+![](https://docs.alphasystem.dev/img/logo.png)
 
 # Alpha System - Content Hub (v2.0)
 

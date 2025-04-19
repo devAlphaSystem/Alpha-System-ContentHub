@@ -358,7 +358,10 @@ document.addEventListener("DOMContentLoaded", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ action, ids }),
+        body: JSON.stringify({
+          action,
+          ids,
+        }),
       });
 
       const result = await response.json();

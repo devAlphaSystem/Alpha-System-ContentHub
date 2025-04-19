@@ -13,7 +13,9 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
   fileFilter: (req, file, cb) => {
     const filetypes = /jpeg|jpg|png|gif|webp/;
     const mimetype = filetypes.test(file.mimetype);
@@ -36,7 +38,9 @@ async function checkProjectAccessApi(req, res, next) {
   logger.debug(`[API] checkProjectAccessApi called for project ${projectId}, user ${userId}`);
   if (!projectId) {
     logger.warn("[API] Project ID is required in checkProjectAccessApi.");
-    return res.status(400).json({ error: "Project ID is required." });
+    return res.status(400).json({
+      error: "Project ID is required.",
+    });
   }
   try {
     const project = await getProjectForOwner(projectId, userId);
@@ -46,14 +50,20 @@ async function checkProjectAccessApi(req, res, next) {
   } catch (error) {
     if (error.status === 403) {
       logger.warn(`[API] Forbidden access attempt by user ${userId} to project ${projectId}.`);
-      return res.status(403).json({ error: "Forbidden" });
+      return res.status(403).json({
+        error: "Forbidden",
+      });
     }
     if (error.status === 404) {
       logger.warn(`[API] Project ${projectId} not found for user ${userId}.`);
-      return res.status(404).json({ error: "Project not found" });
+      return res.status(404).json({
+        error: "Project not found",
+      });
     }
     logger.error(`[API] Error checking project access for ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
-    return res.status(500).json({ error: "Internal server error checking project access." });
+    return res.status(500).json({
+      error: "Internal server error checking project access.",
+    });
   }
 }
 
@@ -107,7 +117,9 @@ router.get("/projects", requireLogin, async (req, res) => {
     logAuditEvent(req, "API_PROJECT_LIST_FAILURE", "projects", null, {
       error: error?.message,
     });
-    res.status(500).json({ error: "Failed to fetch projects list" });
+    res.status(500).json({
+      error: "Failed to fetch projects list",
+    });
   }
 });
 
@@ -121,7 +133,9 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
   if (!entryType || !["documentation", "changelog", "roadmap", "knowledge_base"].includes(entryType)) {
     logger.warn(`[API] Invalid or missing entry type filter for project ${projectId}: ${entryType}`);
     logger.timeEnd(`[API] GET /projects/${projectId}/entries ${userId} ${entryType}`);
-    return res.status(400).json({ error: "Invalid or missing entry type filter." });
+    return res.status(400).json({
+      error: "Invalid or missing entry type filter.",
+    });
   }
 
   try {
@@ -192,9 +206,13 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
     logger.error(`[API] Error fetching entries for project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
     if (error?.data?.message?.includes("filter")) {
       logger.error("[API] PocketBase filter error details:", error.data);
-      return res.status(400).json({ error: "Invalid search or filter criteria." });
+      return res.status(400).json({
+        error: "Invalid search or filter criteria.",
+      });
     }
-    res.status(500).json({ error: "Failed to fetch entries" });
+    res.status(500).json({
+      error: "Failed to fetch entries",
+    });
   }
 });
 
@@ -204,7 +222,10 @@ router.get("/projects/:projectId/check-entry-id/:entryId", requireLogin, checkPr
 
   if (!entryId || typeof entryId !== "string" || entryId.length !== 15) {
     logger.warn(`[API] Invalid entry ID format for check: ${entryId}`);
-    return res.status(400).json({ available: false, reason: "Invalid ID format (must be 15 characters)." });
+    return res.status(400).json({
+      available: false,
+      reason: "Invalid ID format (must be 15 characters).",
+    });
   }
 
   try {
@@ -217,7 +238,10 @@ router.get("/projects/:projectId/check-entry-id/:entryId", requireLogin, checkPr
       projectId: projectId,
       reason: "ID already exists",
     });
-    res.json({ available: false, reason: "ID already exists" });
+    res.json({
+      available: false,
+      reason: "ID already exists",
+    });
   } catch (error) {
     if (error?.status === 404) {
       logger.debug(`[API] Entry ID ${entryId} is available.`);
@@ -225,7 +249,9 @@ router.get("/projects/:projectId/check-entry-id/:entryId", requireLogin, checkPr
         projectId: projectId,
         reason: "ID available",
       });
-      res.json({ available: true });
+      res.json({
+        available: true,
+      });
     } else {
       logger.error(`[API] Error checking entry ID ${entryId} availability: Status ${error?.status || "N/A"}`, error?.message || error);
       if (error?.data) {
@@ -236,7 +262,10 @@ router.get("/projects/:projectId/check-entry-id/:entryId", requireLogin, checkPr
         error: error?.message,
         status: error?.status,
       });
-      res.status(500).json({ available: false, reason: "Server error checking availability" });
+      res.status(500).json({
+        available: false,
+        reason: "Server error checking availability",
+      });
     }
   }
 });
@@ -258,7 +287,9 @@ router.post("/projects/:projectId/entries/:id/publish-staged", requireLogin, che
         reason: "Forbidden",
       });
       logger.timeEnd(`[API] POST /publish-staged ${entryId}`);
-      return res.status(403).json({ error: "Forbidden" });
+      return res.status(403).json({
+        error: "Forbidden",
+      });
     }
 
     if (record.status !== "published" || !record.has_staged_changes) {
@@ -268,7 +299,9 @@ router.post("/projects/:projectId/entries/:id/publish-staged", requireLogin, che
         reason: "Not published or no staged changes",
       });
       logger.timeEnd(`[API] POST /publish-staged ${entryId}`);
-      return res.status(400).json({ error: "Entry is not published or has no staged changes." });
+      return res.status(400).json({
+        error: "Entry is not published or has no staged changes.",
+      });
     }
 
     const updateData = {
@@ -293,7 +326,10 @@ router.post("/projects/:projectId/entries/:id/publish-staged", requireLogin, che
       staged_changelog_footer: null,
       staged_roadmap_stage: null,
     };
-    logger.debug(`[API] Publishing staged changes for entry ${entryId} with data:`, { title: updateData.title, type: updateData.type });
+    logger.debug(`[API] Publishing staged changes for entry ${entryId} with data:`, {
+      title: updateData.title,
+      type: updateData.type,
+    });
 
     await pbAdmin.collection("entries_main").update(entryId, updateData);
     logAuditEvent(req, "ENTRY_PUBLISH_STAGED", "entries_main", entryId, {
@@ -304,7 +340,9 @@ router.post("/projects/:projectId/entries/:id/publish-staged", requireLogin, che
     });
     logger.info(`[API] Staged changes published successfully for entry ${entryId}.`);
     logger.timeEnd(`[API] POST /publish-staged ${entryId}`);
-    res.status(200).json({ message: "Staged changes published successfully." });
+    res.status(200).json({
+      message: "Staged changes published successfully.",
+    });
   } catch (error) {
     logger.timeEnd(`[API] POST /publish-staged ${entryId}`);
     logger.error(`[API] Error publishing staged changes for entry ${entryId} in project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
@@ -313,12 +351,18 @@ router.post("/projects/:projectId/entries/:id/publish-staged", requireLogin, che
       error: error?.message,
     });
     if (error.status === 404) {
-      return res.status(404).json({ error: "Entry not found." });
+      return res.status(404).json({
+        error: "Entry not found.",
+      });
     }
     if (error.status === 403) {
-      return res.status(403).json({ error: "Forbidden" });
+      return res.status(403).json({
+        error: "Forbidden",
+      });
     }
-    res.status(500).json({ error: "Failed to publish staged changes." });
+    res.status(500).json({
+      error: "Failed to publish staged changes.",
+    });
   }
 });
 
@@ -341,7 +385,9 @@ router.post("/projects/:projectId/entries/:id/generate-preview", requireLogin, c
         reason: "Not a draft",
       });
       logger.timeEnd(`[API] POST /generate-preview ${entryId}`);
-      return res.status(400).json({ error: "Preview links can only be generated for drafts." });
+      return res.status(400).json({
+        error: "Preview links can only be generated for drafts.",
+      });
     }
 
     const token = crypto.randomBytes(32).toString("hex");
@@ -408,16 +454,24 @@ router.post("/projects/:projectId/entries/:id/generate-preview", requireLogin, c
       error: error?.message,
     });
     if (error.status === 404) {
-      return res.status(404).json({ error: "Entry not found" });
+      return res.status(404).json({
+        error: "Entry not found",
+      });
     }
     if (error.status === 403) {
-      return res.status(403).json({ error: "Forbidden" });
+      return res.status(403).json({
+        error: "Forbidden",
+      });
     }
     if (error?.data?.data?.token?.code === "validation_not_unique") {
       logger.error("[API] Preview token collision occurred.");
-      return res.status(500).json({ error: "Failed to generate unique token, please try again." });
+      return res.status(500).json({
+        error: "Failed to generate unique token, please try again.",
+      });
     }
-    res.status(500).json({ error: "Failed to generate preview link" });
+    res.status(500).json({
+      error: "Failed to generate preview link",
+    });
   }
 });
 
@@ -431,14 +485,18 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
   if (!action || !Array.isArray(ids) || ids.length === 0) {
     logger.warn("[API] Invalid bulk action request: Missing action or ids.");
     logger.timeEnd(`[API] POST /bulk-action ${action} ${projectId}`);
-    return res.status(400).json({ error: "Invalid request: 'action' and 'ids' array are required." });
+    return res.status(400).json({
+      error: "Invalid request: 'action' and 'ids' array are required.",
+    });
   }
 
   const validActions = ["publish", "draft", "archive", "unarchive", "delete", "permanent-delete", "publish-staged"];
   if (!validActions.includes(action)) {
     logger.warn(`[API] Invalid bulk action specified: ${action}`);
     logger.timeEnd(`[API] POST /bulk-action ${action} ${projectId}`);
-    return res.status(400).json({ error: `Invalid bulk action: ${action}` });
+    return res.status(400).json({
+      error: `Invalid bulk action: ${action}`,
+    });
   }
 
   const results = [];
@@ -454,7 +512,10 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
     let sourceCollectionName;
     let targetCollectionName = null;
     const logActionType = `BULK_${action.toUpperCase()}`;
-    const logDetails = { id: id, projectId: projectId };
+    const logDetails = {
+      id: id,
+      projectId: projectId,
+    };
     logger.trace(`[API] Processing bulk action '${action}' for ID: ${id}`);
 
     try {
@@ -480,7 +541,9 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
           if (sourceCollectionName !== "entries_main") {
             throw new Error(`Action '${action}' cannot apply to archived entries.`);
           }
-          const statusUpdateData = { status: action };
+          const statusUpdateData = {
+            status: action,
+          };
           if (action === "draft") {
             statusUpdateData.has_staged_changes = false;
             statusUpdateData.staged_title = null;
@@ -623,7 +686,11 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
       }
 
       logAuditEvent(req, logActionType, sourceCollectionName, id, logDetails);
-      results.push({ id, status: "fulfilled", action });
+      results.push({
+        id,
+        status: "fulfilled",
+        action,
+      });
       logger.trace(`[API] Bulk action '${action}' succeeded for ID: ${id}`);
     } catch (error) {
       logger.warn(`[API] Bulk action '${action}' failed for entry ${id} in project ${projectId} by user ${userId}: Status ${error?.status || "N/A"} ${error.message}`);
@@ -734,7 +801,9 @@ router.get("/projects/:projectId/templates", requireLogin, checkProjectAccessApi
   } catch (error) {
     logger.timeEnd(`[API] GET /projects/${projectId}/templates ${userId}`);
     logger.error(`[API] Error fetching templates for project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
-    res.status(500).json({ error: "Failed to fetch templates" });
+    res.status(500).json({
+      error: "Failed to fetch templates",
+    });
   }
 });
 
@@ -749,14 +818,20 @@ router.get("/projects/:projectId/templates/:id", requireLogin, checkProjectAcces
     const template = await getTemplateForEditAndProject(templateId, userId, projectId);
     logger.debug(`[API] Template ${templateId} content fetched successfully.`);
     logger.timeEnd(`[API] GET /projects/${projectId}/templates/${templateId}`);
-    res.json({ content: template.content });
+    res.json({
+      content: template.content,
+    });
   } catch (error) {
     logger.timeEnd(`[API] GET /projects/${projectId}/templates/${templateId}`);
     logger.error(`[API] Error fetching template ${templateId} for project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
     if (error.status === 404 || error.status === 403) {
-      return res.status(error.status).json({ error: error.message });
+      return res.status(error.status).json({
+        error: error.message,
+      });
     }
-    res.status(500).json({ error: "Failed to fetch template content" });
+    res.status(500).json({
+      error: "Failed to fetch template content",
+    });
   }
 });
 
@@ -766,16 +841,22 @@ router.post("/set-theme", requireLogin, (req, res) => {
   logger.debug(`[API] POST /set-theme requested by user ${userId}, theme: ${theme}`);
   if (theme === "light" || theme === "dark") {
     req.session.theme = theme;
-    logAuditEvent(req, "THEME_SET", null, null, { theme: theme });
+    logAuditEvent(req, "THEME_SET", null, null, {
+      theme: theme,
+    });
     logger.info(`[API] Theme preference updated to ${theme} for user ${userId}`);
-    res.status(200).json({ message: `Theme preference updated to ${theme}` });
+    res.status(200).json({
+      message: `Theme preference updated to ${theme}`,
+    });
   } else {
     logger.warn(`[API] Invalid theme value provided by user ${userId}: ${theme}`);
     logAuditEvent(req, "THEME_SET_FAILURE", null, null, {
       theme: theme,
       reason: "Invalid theme value",
     });
-    res.status(400).json({ error: "Invalid theme value provided." });
+    res.status(400).json({
+      error: "Invalid theme value provided.",
+    });
   }
 });
 
@@ -795,7 +876,9 @@ router.post("/projects/:projectId/entries/:id/upload-image", requireLogin, check
       reason: "No file uploaded",
     });
     logger.timeEnd(`[API] POST /upload-image ${entryId}`);
-    return res.status(400).json({ error: "No image file provided." });
+    return res.status(400).json({
+      error: "No image file provided.",
+    });
   }
 
   try {
@@ -804,7 +887,9 @@ router.post("/projects/:projectId/entries/:id/upload-image", requireLogin, check
     logger.trace(`[API] Existing files for entry ${entryId}: ${existingFiles.join(", ")}`);
 
     const form = new FormData();
-    const blob = new Blob([req.file.buffer], { type: req.file.mimetype });
+    const blob = new Blob([req.file.buffer], {
+      type: req.file.mimetype,
+    });
     form.append(imageFieldName, blob, req.file.originalname);
     logger.debug(`[API] Prepared FormData for upload to entry ${entryId}.`);
 
@@ -862,10 +947,14 @@ router.post("/projects/:projectId/entries/:id/upload-image", requireLogin, check
       error: error?.message,
     });
     if (error.status === 404) {
-      return res.status(404).json({ error: "Entry not found." });
+      return res.status(404).json({
+        error: "Entry not found.",
+      });
     }
     if (error.status === 403) {
-      return res.status(403).json({ error: "Forbidden." });
+      return res.status(403).json({
+        error: "Forbidden.",
+      });
     }
     if (error?.data?.data?.[imageFieldName]) {
       const validationError = error.data.data[imageFieldName].message;
@@ -875,7 +964,9 @@ router.post("/projects/:projectId/entries/:id/upload-image", requireLogin, check
       });
     }
     const errorMessage = error.message || "Failed to upload image.";
-    res.status(500).json({ error: errorMessage });
+    res.status(500).json({
+      error: errorMessage,
+    });
   }
 });
 
@@ -889,7 +980,9 @@ router.get("/projects/:projectId/archived-entries", requireLogin, checkProjectAc
   if (!entryType || !["documentation", "changelog", "roadmap", "knowledge_base"].includes(entryType)) {
     logger.warn(`[API] Invalid or missing entry type filter for archived entries, project ${projectId}: ${entryType}`);
     logger.timeEnd(`[API] GET /projects/${projectId}/archived-entries ${userId} ${entryType}`);
-    return res.status(400).json({ error: "Invalid or missing entry type filter." });
+    return res.status(400).json({
+      error: "Invalid or missing entry type filter.",
+    });
   }
 
   try {
@@ -928,7 +1021,9 @@ router.get("/projects/:projectId/archived-entries", requireLogin, checkProjectAc
   } catch (error) {
     logger.timeEnd(`[API] GET /projects/${projectId}/archived-entries ${userId} ${entryType}`);
     logger.error(`[API] Error fetching archived entries for project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
-    res.status(500).json({ error: "Failed to fetch archived entries" });
+    res.status(500).json({
+      error: "Failed to fetch archived entries",
+    });
   }
 });
 
@@ -971,7 +1066,9 @@ async function getProjectAssetsApi(collectionName, req, res) {
   } catch (error) {
     logger.timeEnd(`[API] GET /projects/${projectId}/${collectionName} ${userId}`);
     logger.error(`[API] Error fetching ${collectionName} for project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
-    res.status(500).json({ error: `Failed to fetch ${collectionName.replace("_", " ")}` });
+    res.status(500).json({
+      error: `Failed to fetch ${collectionName.replace("_", " ")}`,
+    });
   }
 }
 
@@ -1023,7 +1120,9 @@ router.get("/audit-log", requireLogin, apiLimiter, async (req, res) => {
   } catch (error) {
     logger.timeEnd(`[API] GET /audit-log ${userId}`);
     logger.error(`[API] Error fetching audit logs: Status ${error?.status || "N/A"}`, error?.message || error);
-    res.status(500).json({ error: "Failed to fetch audit logs" });
+    res.status(500).json({
+      error: "Failed to fetch audit logs",
+    });
   }
 });
 
@@ -1062,7 +1161,9 @@ router.delete("/audit-log/all", requireLogin, apiLimiter, async (req, res) => {
       deletedCount: deletedCount,
     });
     logger.timeEnd(`[API] DELETE /audit-log/all ${userId}`);
-    res.status(200).json({ message: `Successfully deleted ${deletedCount} audit log entries.` });
+    res.status(200).json({
+      message: `Successfully deleted ${deletedCount} audit log entries.`,
+    });
   } catch (error) {
     logger.timeEnd(`[API] DELETE /audit-log/all ${userId}`);
     logger.error(`[API] Error clearing all audit logs: Status ${error?.status || "N/A"}`, error?.message || error);
@@ -1070,7 +1171,9 @@ router.delete("/audit-log/all", requireLogin, apiLimiter, async (req, res) => {
       error: error?.message,
       deletedCountBeforeError: deletedCount,
     });
-    res.status(500).json({ error: "Failed to clear all audit logs." });
+    res.status(500).json({
+      error: "Failed to clear all audit logs.",
+    });
   }
 });
 
@@ -1142,7 +1245,9 @@ router.get("/audit-log/export/csv", requireLogin, apiLimiter, async (req, res) =
     logAuditEvent(req, "AUDIT_LOG_EXPORT_FAILURE", null, null, {
       error: error?.message,
     });
-    res.status(500).json({ error: "Failed to export audit logs." });
+    res.status(500).json({
+      error: "Failed to export audit logs.",
+    });
   }
 });
 
@@ -1157,19 +1262,27 @@ router.post("/projects/:projectId/entries/:entryId/duplicate", requireLogin, che
   try {
     if (!dataToDuplicate.title || dataToDuplicate.title.trim() === "") {
       logger.warn(`[API] Duplicate failed for ${entryId}: Title cannot be empty.`);
-      return res.status(400).json({ error: "Title cannot be empty." });
+      return res.status(400).json({
+        error: "Title cannot be empty.",
+      });
     }
     if (dataToDuplicate.type !== "roadmap" && dataToDuplicate.type !== "knowledge_base" && (!dataToDuplicate.content || dataToDuplicate.content.trim() === "")) {
       logger.warn(`[API] Duplicate failed for ${entryId}: Content cannot be empty for type ${dataToDuplicate.type}.`);
-      return res.status(400).json({ error: "Content cannot be empty." });
+      return res.status(400).json({
+        error: "Content cannot be empty.",
+      });
     }
     if (dataToDuplicate.type === "knowledge_base" && (!dataToDuplicate.content || dataToDuplicate.content.trim() === "")) {
       logger.warn(`[API] Duplicate failed for ${entryId}: Answer content cannot be empty for KB.`);
-      return res.status(400).json({ error: "Answer content is required." });
+      return res.status(400).json({
+        error: "Answer content is required.",
+      });
     }
     if (dataToDuplicate.type === "roadmap" && (!dataToDuplicate.roadmap_stage || dataToDuplicate.roadmap_stage.trim() === "")) {
       logger.warn(`[API] Duplicate failed for ${entryId}: Roadmap Stage cannot be empty.`);
-      return res.status(400).json({ error: "Roadmap Stage cannot be empty." });
+      return res.status(400).json({
+        error: "Roadmap Stage cannot be empty.",
+      });
     }
 
     const newData = {
@@ -1228,16 +1341,24 @@ router.post("/projects/:projectId/entries/:entryId/duplicate", requireLogin, che
       error: error?.message,
     });
     if (error.status === 404) {
-      return res.status(404).json({ error: "Original entry not found." });
+      return res.status(404).json({
+        error: "Original entry not found.",
+      });
     }
     if (error.status === 403) {
-      return res.status(403).json({ error: "Forbidden." });
+      return res.status(403).json({
+        error: "Forbidden.",
+      });
     }
     if (error?.data?.data) {
       logger.error("[API] PocketBase validation errors on duplicate:", error.data.data);
-      return res.status(400).json({ error: "Validation failed for the duplicated entry." });
+      return res.status(400).json({
+        error: "Validation failed for the duplicated entry.",
+      });
     }
-    res.status(500).json({ error: "Failed to duplicate entry." });
+    res.status(500).json({
+      error: "Failed to duplicate entry.",
+    });
   }
 });
 

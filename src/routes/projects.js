@@ -103,8 +103,15 @@ router.post("/new", async (req, res) => {
     return res.status(400).render("projects/new", {
       pageTitle: "Create New Project",
       currentProjectId: null,
-      project: { name, description },
-      errors: { name: { message: "Project name is required." } },
+      project: {
+        name,
+        description,
+      },
+      errors: {
+        name: {
+          message: "Project name is required.",
+        },
+      },
     });
   }
 
@@ -132,8 +139,15 @@ router.post("/new", async (req, res) => {
     res.status(500).render("projects/new", {
       pageTitle: "Create New Project",
       currentProjectId: null,
-      project: { name, description },
-      errors: { general: { message: "Failed to create project." } },
+      project: {
+        name,
+        description,
+      },
+      errors: {
+        general: {
+          message: "Failed to create project.",
+        },
+      },
     });
   }
 });
@@ -149,7 +163,10 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
   try {
     try {
       logger.trace(`[PROJ] Checking for published KB entries in project ${projectId}`);
-      await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && type = 'knowledge_base' && status = 'published'`, { fields: "id", $autoCancel: false });
+      await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && type = 'knowledge_base' && status = 'published'`, {
+        fields: "id",
+        $autoCancel: false,
+      });
       hasPublishedKbEntries = true;
       logger.trace(`[PROJ] Found published KB entries for project ${projectId}`);
     } catch (kbError) {
@@ -182,7 +199,11 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
     logger.time(`[PROJ] FetchProjectEntriesMetrics ${projectId}`);
     let totalEntries = 0;
     let totalViews = 0;
-    const entriesByType = { changelog: 0, documentation: 0, knowledge_base: 0 };
+    const entriesByType = {
+      changelog: 0,
+      documentation: 0,
+      knowledge_base: 0,
+    };
     let activityData = [];
 
     const projectEntries = await pbAdmin.collection("entries_main").getFullList({
@@ -217,7 +238,10 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
     logger.trace("[PROJ] Calculated project entry metrics.");
 
     activityData = Array.from(activityMap.entries())
-      .map(([date, count]) => ({ x: date, y: count }))
+      .map(([date, count]) => ({
+        x: date,
+        y: count,
+      }))
       .sort((a, b) => new Date(a.x) - new Date(b.x));
     logger.trace(`[PROJ] Processed ${activityData.length} days of project activity.`);
 
@@ -303,7 +327,9 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
   const errors = {};
 
   if (!name || name.trim() === "") {
-    errors.name = { message: "Project name is required." };
+    errors.name = {
+      message: "Project name is required.",
+    };
   }
 
   const isPublic = is_publicly_viewable === "true";
@@ -346,7 +372,12 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
           password_protected: requirePassword,
           roadmap_enabled: isRoadmapEnabled,
         },
-        errors: { ...errors, general: { message: "Failed to load project data after error." } },
+        errors: {
+          ...errors,
+          general: {
+            message: "Failed to load project data after error.",
+          },
+        },
       });
     }
   }
@@ -409,7 +440,11 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
           password_protected: requirePassword,
           roadmap_enabled: isRoadmapEnabled,
         },
-        errors: { general: { message: "Failed to update project." } },
+        errors: {
+          general: {
+            message: "Failed to update project.",
+          },
+        },
       });
     } catch (fetchError) {
       logger.error(`[PROJ] Failed to fetch project ${projectId} after update error: ${fetchError.message}`);
@@ -423,7 +458,11 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
           password_protected: requirePassword,
           roadmap_enabled: isRoadmapEnabled,
         },
-        errors: { general: { message: "Failed to update project and reload data." } },
+        errors: {
+          general: {
+            message: "Failed to update project and reload data.",
+          },
+        },
       });
     }
   }
@@ -452,7 +491,10 @@ router.post("/:projectId/delete", checkProjectAccess, async (req, res) => {
       logger.time(`[PROJ][Delete ${projectId}] Collection ${collectionName}`);
       do {
         try {
-          itemsToDelete = { items: [], totalPages: 0 };
+          itemsToDelete = {
+            items: [],
+            totalPages: 0,
+          };
           logger.trace(`[PROJ][Delete ${projectId}] Fetching batch ${page} from ${collectionName}`);
 
           if (collectionName === "entries_previews") {
@@ -683,7 +725,9 @@ router.get("/:projectId/new", checkProjectAccess, async (req, res) => {
     res.render("projects/new_entry", {
       pageTitle: `New Entry - ${req.project.name}`,
       project: req.project,
-      entry: { type: preselectType },
+      entry: {
+        type: preselectType,
+      },
       errors: null,
       templates: templates,
       documentationHeaders: documentationHeaders,
@@ -703,7 +747,9 @@ router.get("/:projectId/new", checkProjectAccess, async (req, res) => {
     res.render("projects/new_entry", {
       pageTitle: `New Entry - ${req.project.name}`,
       project: req.project,
-      entry: { type: preselectType },
+      entry: {
+        type: preselectType,
+      },
       errors: {
         general: "Could not load page data (templates/headers/footers).",
       },
@@ -732,12 +778,26 @@ router.post("/:projectId/new", checkProjectAccess, async (req, res) => {
     pbErrors.url = {
       message: "URL (ID) must be exactly 15 characters long if provided.",
     };
-  if (!title || title.trim() === "") pbErrors.title = { message: "Title is required." };
-  if (!type) pbErrors.type = { message: "Type is required." };
-  if (type !== "roadmap" && type !== "knowledge_base" && (!content || content.trim() === "")) pbErrors.content = { message: "Content is required." };
-  if (type === "knowledge_base" && (!content || content.trim() === "")) pbErrors.content = { message: "Answer content is required." };
+  if (!title || title.trim() === "")
+    pbErrors.title = {
+      message: "Title is required.",
+    };
+  if (!type)
+    pbErrors.type = {
+      message: "Type is required.",
+    };
+  if (type !== "roadmap" && type !== "knowledge_base" && (!content || content.trim() === ""))
+    pbErrors.content = {
+      message: "Content is required.",
+    };
+  if (type === "knowledge_base" && (!content || content.trim() === ""))
+    pbErrors.content = {
+      message: "Answer content is required.",
+    };
   if (type === "roadmap" && (!roadmap_stage || roadmap_stage.trim() === "")) {
-    pbErrors.roadmap_stage = { message: "Roadmap Stage is required." };
+    pbErrors.roadmap_stage = {
+      message: "Roadmap Stage is required.",
+    };
   }
 
   if (Object.keys(pbErrors).length > 0) {
@@ -798,7 +858,10 @@ router.post("/:projectId/new", checkProjectAccess, async (req, res) => {
         pageTitle: `New Entry - ${req.project.name}`,
         project: req.project,
         entry: submittedData,
-        errors: { ...pbErrors, general: "Could not load page data." },
+        errors: {
+          ...pbErrors,
+          general: "Could not load page data.",
+        },
         templates: [],
         documentationHeaders: [],
         documentationFooters: [],
@@ -874,7 +937,11 @@ router.post("/:projectId/new", checkProjectAccess, async (req, res) => {
     logAuditEvent(req, "ENTRY_CREATE_FAILURE", "entries_main", null, {
       projectId: projectId,
       error: error?.message,
-      data: { title: data.title, type: data.type, status: data.status },
+      data: {
+        title: data.title,
+        type: data.type,
+        status: data.status,
+      },
       providedId: url,
     });
     const creationErrors = error?.data?.data || error?.originalError?.data?.data || {};
@@ -954,7 +1021,10 @@ router.post("/:projectId/new", checkProjectAccess, async (req, res) => {
         pageTitle: `New Entry - ${req.project.name}`,
         project: req.project,
         entry: submittedData,
-        errors: { ...creationErrors, general: "Could not load page data." },
+        errors: {
+          ...creationErrors,
+          general: "Could not load page data.",
+        },
         templates: [],
         documentationHeaders: [],
         documentationFooters: [],
@@ -980,7 +1050,9 @@ router.get("/:projectId/edit/:entryId", checkProjectAccess, async (req, res, nex
     logger.timeEnd(`[PROJ] FetchEditEntryAssets ${entryId}`);
     logger.trace(`[PROJ] Fetched entry ${entryId} and assets for edit page.`);
 
-    const entryDataForForm = { ...record };
+    const entryDataForForm = {
+      ...record,
+    };
     let isEditingStaged = false;
 
     if (record.status === "published" && record.has_staged_changes) {
@@ -1073,13 +1145,19 @@ router.post("/:projectId/edit/:entryId", checkProjectAccess, async (req, res, ne
 
     const pbErrors = {};
     if (submittedType === "roadmap" && (!roadmap_stage || roadmap_stage.trim() === "")) {
-      pbErrors.roadmap_stage = { message: "Roadmap Stage is required." };
+      pbErrors.roadmap_stage = {
+        message: "Roadmap Stage is required.",
+      };
     }
     if (submittedType !== "roadmap" && submittedType !== "knowledge_base" && (!content || content.trim() === "")) {
-      pbErrors.content = { message: "Content is required." };
+      pbErrors.content = {
+        message: "Content is required.",
+      };
     }
     if (submittedType === "knowledge_base" && (!content || content.trim() === "")) {
-      pbErrors.content = { message: "Answer content is required." };
+      pbErrors.content = {
+        message: "Answer content is required.",
+      };
     }
 
     if (Object.keys(pbErrors).length > 0) {
@@ -1308,7 +1386,10 @@ router.post("/:projectId/delete/:entryId", checkProjectAccess, async (req, res, 
 
     try {
       logger.debug(`[PROJ] Cleaning preview tokens for deleted entry ${entryId}.`);
-      const previewTokens = await pbAdmin.collection("entries_previews").getFullList({ filter: `entry = '${entryId}'`, fields: "id" });
+      const previewTokens = await pbAdmin.collection("entries_previews").getFullList({
+        filter: `entry = '${entryId}'`,
+        fields: "id",
+      });
       for (const tokenRecord of previewTokens) {
         await pbAdmin.collection("entries_previews").delete(tokenRecord.id);
       }
@@ -1395,7 +1476,10 @@ router.post("/:projectId/archive/:entryId", checkProjectAccess, async (req, res,
 
     try {
       logger.debug(`[PROJ] Cleaning preview tokens for archived entry ${entryId}.`);
-      const previewTokens = await pbAdmin.collection("entries_previews").getFullList({ filter: `entry = '${entryId}'`, fields: "id" });
+      const previewTokens = await pbAdmin.collection("entries_previews").getFullList({
+        filter: `entry = '${entryId}'`,
+        fields: "id",
+      });
       for (const tokenRecord of previewTokens) {
         await pbAdmin.collection("entries_previews").delete(tokenRecord.id);
       }
@@ -1769,8 +1853,15 @@ router.post("/:projectId/templates/new", checkProjectAccess, async (req, res) =>
     return res.status(400).render("projects/new_template", {
       pageTitle: `New Template - ${req.project.name}`,
       project: req.project,
-      template: { name, content },
-      errors: { name: { message: "Template name is required." } },
+      template: {
+        name,
+        content,
+      },
+      errors: {
+        name: {
+          message: "Template name is required.",
+        },
+      },
     });
   }
 
@@ -1801,8 +1892,15 @@ router.post("/:projectId/templates/new", checkProjectAccess, async (req, res) =>
     res.status(500).render("projects/new_template", {
       pageTitle: `New Template - ${req.project.name}`,
       project: req.project,
-      template: { name, content },
-      errors: { general: { message: "Failed to create template." } },
+      template: {
+        name,
+        content,
+      },
+      errors: {
+        general: {
+          message: "Failed to create template.",
+        },
+      },
     });
   }
 });
@@ -1855,8 +1953,16 @@ router.post("/:projectId/templates/edit/:templateId", checkProjectAccess, async 
       return res.status(400).render("projects/edit_template", {
         pageTitle: `Edit Template - ${req.project.name}`,
         project: req.project,
-        template: { ...template, name, content },
-        errors: { name: { message: "Template name is required." } },
+        template: {
+          ...template,
+          name,
+          content,
+        },
+        errors: {
+          name: {
+            message: "Template name is required.",
+          },
+        },
       });
     } catch (fetchError) {
       logger.error(`[PROJ] Failed to fetch template ${templateId} after edit validation error: ${fetchError.message}`);
@@ -1895,8 +2001,16 @@ router.post("/:projectId/templates/edit/:templateId", checkProjectAccess, async 
       res.status(500).render("projects/edit_template", {
         pageTitle: `Edit Template - ${req.project.name}`,
         project: req.project,
-        template: { ...template, name, content },
-        errors: { general: { message: "Failed to update template." } },
+        template: {
+          ...template,
+          name,
+          content,
+        },
+        errors: {
+          general: {
+            message: "Failed to update template.",
+          },
+        },
       });
     } catch (fetchError) {
       logger.error(`[PROJ] Failed to fetch template ${templateId} after update error: ${fetchError.message}`);
@@ -1984,7 +2098,9 @@ router.post("/:projectId/sidebar-order", checkProjectAccess, async (req, res, ne
   if (!Array.isArray(entryOrder)) {
     logger.warn(`[PROJ] Invalid sidebar order data format for project ${projectId}. Expected array.`);
     logger.timeEnd(`[PROJ] POST /projects/${projectId}/sidebar-order ${userId}`);
-    return res.status(400).json({ error: "Invalid data format. Expected 'entryOrder' array." });
+    return res.status(400).json({
+      error: "Invalid data format. Expected 'entryOrder' array.",
+    });
   }
 
   try {
@@ -1992,7 +2108,15 @@ router.post("/:projectId/sidebar-order", checkProjectAccess, async (req, res, ne
       logger.trace(`[PROJ] Updating sidebar order for entry ${entryId} to ${index}`);
       return pb
         .collection("entries_main")
-        .update(entryId, { sidebar_order: index }, { $autoCancel: false })
+        .update(
+          entryId,
+          {
+            sidebar_order: index,
+          },
+          {
+            $autoCancel: false,
+          },
+        )
         .catch((err) => {
           logger.error(`[PROJ] Failed to update sidebar order for entry ${entryId}: Status ${err?.status || "N/A"}`, err?.message || err);
           return {
@@ -2026,7 +2150,9 @@ router.post("/:projectId/sidebar-order", checkProjectAccess, async (req, res, ne
       count: entryOrder.length,
     });
     logger.timeEnd(`[PROJ] POST /projects/${projectId}/sidebar-order ${userId}`);
-    res.status(200).json({ message: "Sidebar order updated successfully." });
+    res.status(200).json({
+      message: "Sidebar order updated successfully.",
+    });
   } catch (error) {
     logger.timeEnd(`[PROJ] POST /projects/${projectId}/sidebar-order ${userId}`);
     logger.error(`[PROJ] Error updating sidebar order for project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
@@ -2034,7 +2160,9 @@ router.post("/:projectId/sidebar-order", checkProjectAccess, async (req, res, ne
       projectId: projectId,
       error: error?.message,
     });
-    res.status(500).json({ error: "An unexpected error occurred while updating sidebar order." });
+    res.status(500).json({
+      error: "An unexpected error occurred while updating sidebar order.",
+    });
   }
 });
 
@@ -2136,9 +2264,16 @@ async function handleNewAssetPost(req, res, assetType, collectionName, redirectP
     return res.status(400).render(viewName, {
       pageTitle: `New ${assetType} - ${req.project.name}`,
       project: req.project,
-      asset: { name, content },
+      asset: {
+        name,
+        content,
+      },
       assetType: assetType,
-      errors: { name: { message: "Name is required." } },
+      errors: {
+        name: {
+          message: "Name is required.",
+        },
+      },
     });
   }
 
@@ -2170,9 +2305,16 @@ async function handleNewAssetPost(req, res, assetType, collectionName, redirectP
     res.status(500).render(viewName, {
       pageTitle: `New ${assetType} - ${req.project.name}`,
       project: req.project,
-      asset: { name, content },
+      asset: {
+        name,
+        content,
+      },
       assetType: assetType,
-      errors: { general: { message: `Failed to create ${assetType}.` } },
+      errors: {
+        general: {
+          message: `Failed to create ${assetType}.`,
+        },
+      },
     });
   }
 }
@@ -2227,9 +2369,17 @@ async function handleEditAssetPost(req, res, next, assetType, collectionName, re
       return res.status(400).render(viewName, {
         pageTitle: `Edit ${assetType} - ${req.project.name}`,
         project: req.project,
-        asset: { ...asset, name, content },
+        asset: {
+          ...asset,
+          name,
+          content,
+        },
         assetType: assetType,
-        errors: { name: { message: "Name is required." } },
+        errors: {
+          name: {
+            message: "Name is required.",
+          },
+        },
       });
     } catch (fetchError) {
       logger.error(`[PROJ][ASSET] Failed to fetch ${assetType} ${assetId} after edit validation error: ${fetchError.message}`);
@@ -2269,9 +2419,17 @@ async function handleEditAssetPost(req, res, next, assetType, collectionName, re
       res.status(500).render(viewName, {
         pageTitle: `Edit ${assetType} - ${req.project.name}`,
         project: req.project,
-        asset: { ...asset, name, content },
+        asset: {
+          ...asset,
+          name,
+          content,
+        },
         assetType: assetType,
-        errors: { general: { message: `Failed to update ${assetType}.` } },
+        errors: {
+          general: {
+            message: `Failed to update ${assetType}.`,
+          },
+        },
       });
     } catch (fetchError) {
       logger.error(`[PROJ][ASSET] Failed to fetch ${assetType} ${assetId} after update error: ${fetchError.message}`);
@@ -2410,7 +2568,9 @@ router.get("/:projectId/audit-log", checkProjectAccess, async (req, res, next) =
 
     const formattedLogs = [];
     for (const log of resultList.items) {
-      formattedLogs.push({ ...log });
+      formattedLogs.push({
+        ...log,
+      });
     }
 
     logger.timeEnd(`[PROJ][AUDIT] GET /projects/${projectId}/audit-log ${userId}`);

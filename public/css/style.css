@@ -130,7 +130,15 @@
 }
 
 :not(i) {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif !important;
 }
 
 html {
@@ -288,7 +296,9 @@ input[type="button"],
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  transition: margin-left 0.3s ease, width 0.3s ease;
+  transition:
+    margin-left 0.3s ease,
+    width 0.3s ease;
 }
 
 .top-bar {
@@ -301,7 +311,9 @@ input[type="button"],
   position: sticky;
   top: 0;
   z-index: 999;
-  transition: height 0.3s ease, padding 0.3s ease;
+  transition:
+    height 0.3s ease,
+    padding 0.3s ease;
   gap: 8px;
   overflow: visible;
 }
@@ -323,7 +335,9 @@ input[type="button"],
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
   white-space: nowrap;
 }
 
@@ -363,14 +377,18 @@ input[type="button"],
   min-width: 200px;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease-in-out, visibility 0s linear 0.2s;
+  transition:
+    opacity 0.2s ease-in-out,
+    visibility 0s linear 0.2s;
   overflow-y: auto;
 }
 
 .top-bar .collapsible-content.is-expanded {
   opacity: 1;
   visibility: visible;
-  transition: opacity 0.2s ease-in-out, visibility 0s linear 0s;
+  transition:
+    opacity 0.2s ease-in-out,
+    visibility 0s linear 0s;
 }
 
 .top-bar .collapsible-content .nav-link {
@@ -425,7 +443,11 @@ input[type="button"],
   border-radius: var(--radius-md);
   background-color: var(--input-bg);
   color: var(--text-primary);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, width 0.35s ease, background-color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    width 0.35s ease,
+    background-color 0.2s ease;
   width: 260px;
   height: 34px;
   appearance: none;
@@ -469,7 +491,9 @@ input[type="button"],
   font-size: 0.9rem;
   line-height: 1;
   z-index: 1;
-  transition: color 0.2s ease, transform 0.2s ease;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .global-search-input:focus + .global-search-button {
@@ -542,7 +566,9 @@ input[type="button"],
   z-index: 999;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+  transition:
+    opacity 0.3s ease,
+    visibility 0s linear 0.3s;
 }
 
 .btn {
@@ -847,7 +873,9 @@ input[type="button"],
   border: 1px solid var(--input-border);
   appearance: none;
   border-radius: var(--radius-sm);
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition:
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
 }
 
 .form-control:hover {
@@ -921,7 +949,10 @@ textarea.form-control {
   border: 1px solid var(--input-border);
   appearance: none;
   print-color-adjust: exact;
-  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition:
+    background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -988,7 +1019,9 @@ textarea.form-control {
   cursor: pointer;
   background-color: var(--border-color);
   border-color: var(--border-color);
-  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  transition:
+    background-color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out;
 }
 
 .form-switch .form-check-input::before {
@@ -1028,7 +1061,9 @@ textarea.form-control {
   border: 1px solid var(--input-border);
   border-radius: var(--radius-sm);
   background-color: var(--input-bg);
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition:
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
   font-size: 0.875rem;
   line-height: 1.5;
   overflow: hidden;
@@ -1234,7 +1269,9 @@ textarea.form-control {
   justify-content: center;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease-in-out, visibility 0s linear 0.2s;
+  transition:
+    opacity 0.2s ease-in-out,
+    visibility 0s linear 0.2s;
   z-index: 1050;
   padding: 16px;
 }
@@ -1794,7 +1831,9 @@ textarea.markdown-input {
   border-radius: var(--radius-sm);
   background-color: var(--input-bg);
   color: var(--text-primary);
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition:
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
 }
 
 textarea.markdown-input:focus {
@@ -1806,7 +1845,9 @@ textarea.markdown-input:focus {
 .EasyMDEContainer {
   border-radius: var(--radius-sm);
   border: 1px solid var(--input-border);
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition:
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
   background-color: var(--input-bg);
   overflow: visible;
 }

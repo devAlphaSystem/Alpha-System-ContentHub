@@ -24,7 +24,9 @@ document.addEventListener("DOMContentLoaded", () => {
         chart: {
           type: "donut",
           height: 280,
-          theme: { mode: chartTheme },
+          theme: {
+            mode: chartTheme,
+          },
         },
         series: [dashboardMetrics.documentationCount || 0, dashboardMetrics.changelogCount || 0],
         labels: ["Documentation", "Changelog"],
@@ -53,7 +55,9 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         legend: {
           position: "bottom",
-          labels: { colors: labelColor },
+          labels: {
+            colors: labelColor,
+          },
         },
         tooltip: {
           theme: tooltipTheme,
@@ -91,7 +95,9 @@ document.addEventListener("DOMContentLoaded", () => {
         chart: {
           type: "donut",
           height: 280,
-          theme: { mode: chartTheme },
+          theme: {
+            mode: chartTheme,
+          },
         },
         series: [dashboardMetrics.publishedCount || 0, dashboardMetrics.draftCount || 0, dashboardMetrics.stagedCount || 0],
         labels: ["Published", "Draft", "Staged Changes"],
@@ -121,7 +127,9 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         legend: {
           position: "bottom",
-          labels: { colors: labelColor },
+          labels: {
+            colors: labelColor,
+          },
         },
         tooltip: {
           theme: tooltipTheme,
@@ -159,9 +167,15 @@ document.addEventListener("DOMContentLoaded", () => {
         chart: {
           height: 300,
           type: "area",
-          zoom: { enabled: false },
-          toolbar: { show: false },
-          theme: { mode: chartTheme },
+          zoom: {
+            enabled: false,
+          },
+          toolbar: {
+            show: false,
+          },
+          theme: {
+            mode: chartTheme,
+          },
         },
         series: [
           {
@@ -169,20 +183,36 @@ document.addEventListener("DOMContentLoaded", () => {
             data: dashboardMetrics.activityData,
           },
         ],
-        dataLabels: { enabled: false },
-        stroke: { curve: "smooth", width: 2 },
+        dataLabels: {
+          enabled: false,
+        },
+        stroke: {
+          curve: "smooth",
+          width: 2,
+        },
         xaxis: {
           type: "datetime",
           labels: {
-            style: { colors: labelColor },
+            style: {
+              colors: labelColor,
+            },
             datetimeUTC: false,
           },
-          tooltip: { enabled: false },
+          tooltip: {
+            enabled: false,
+          },
         },
         yaxis: {
-          title: { text: "Count", style: { color: labelColor } },
+          title: {
+            text: "Count",
+            style: {
+              color: labelColor,
+            },
+          },
           labels: {
-            style: { colors: labelColor },
+            style: {
+              colors: labelColor,
+            },
             formatter: (val) => Number.parseInt(val),
           },
           min: 0,
@@ -191,12 +221,22 @@ document.addEventListener("DOMContentLoaded", () => {
         grid: {
           borderColor: gridColor,
           strokeDashArray: 4,
-          yaxis: { lines: { show: true } },
-          xaxis: { lines: { show: false } },
+          yaxis: {
+            lines: {
+              show: true,
+            },
+          },
+          xaxis: {
+            lines: {
+              show: false,
+            },
+          },
         },
         tooltip: {
           theme: tooltipTheme,
-          x: { format: "dd MMM yyyy" },
+          x: {
+            format: "dd MMM yyyy",
+          },
         },
         fill: {
           type: "gradient",

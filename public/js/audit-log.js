@@ -210,7 +210,9 @@ document.addEventListener("DOMContentLoaded", () => {
         showDetailsModal(detailsData);
       } catch (e) {
         console.error("Failed to parse details JSON:", e);
-        showDetailsModal({ error: "Could not parse details." });
+        showDetailsModal({
+          error: "Could not parse details.",
+        });
       }
     }
   }
@@ -326,7 +328,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const csvData = await response.text();
-      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob([csvData], {
+        type: "text/csv;charset=utf-8;",
+      });
       const link = document.createElement("a");
 
       if (link.download !== undefined) {

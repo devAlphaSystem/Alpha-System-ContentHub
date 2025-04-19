@@ -76,7 +76,15 @@ html {
 }
 
 body.public-view {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
   background-color: var(--bg-secondary);
   color: var(--text-primary);
   line-height: 1.7;
@@ -134,7 +142,9 @@ body.dark-mode {
   min-width: 0;
   padding: 24px 16px;
   background-color: var(--bg-primary);
-  transition: background-color 0.3s ease, padding 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    padding 0.3s ease;
   width: 100%;
   max-width: var(--content-max-width);
   margin: 0 auto;
@@ -147,7 +157,10 @@ body.dark-mode {
   position: sticky;
   top: 0;
   background-color: var(--bg-toc);
-  transition: transform 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    border-color 0.3s ease,
+    background-color 0.3s ease;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   display: flex;
@@ -207,7 +220,9 @@ body.dark-mode {
   text-decoration: none;
   padding: 8px 12px;
   border-radius: var(--radius-md);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -263,7 +278,10 @@ body.dark-mode {
   padding: 6px 12px;
   border-radius: var(--radius-md);
   border-left: 3px solid transparent;
-  transition: background-color 0.2s ease, color 0.2s ease, border-left-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-left-color 0.2s ease;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -302,7 +320,9 @@ body.dark-mode {
   top: 0;
   z-index: 100;
   height: var(--header-height);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease;
 }
 
 .mobile-nav-toggle {
@@ -696,7 +716,9 @@ body.dark-mode .tag-badge {
   font-family: "Roboto Mono", monospace;
   font-size: 0.85rem;
   line-height: 1.6;
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
 }
@@ -731,7 +753,9 @@ body.dark-mode .tag-badge {
   font-family: "Inter", sans-serif;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s ease, background-color 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    background-color 0.2s ease;
   touch-action: manipulation;
 }
 
@@ -927,6 +951,31 @@ body:not(.dark-mode) .theme-toggle-btn .fa-moon {
 .custom-header-content > *:last-child,
 .custom-footer-content > *:last-child {
   margin-bottom: 0;
+}
+
+img.light-mode-image,
+img.dark-mode-image {
+  max-width: 100%;
+  height: auto;
+  margin: 1.5em 0;
+  border-radius: var(--radius-md);
+  display: block;
+}
+
+body:not(.dark-mode) img.dark-mode-image {
+  display: none;
+}
+
+body:not(.dark-mode) img.light-mode-image {
+  display: block;
+}
+
+body.dark-mode img.light-mode-image {
+  display: none;
+}
+
+body.dark-mode img.dark-mode-image {
+  display: block;
 }
 
 body.dark-mode .custom-header-content {
