@@ -6,6 +6,17 @@
 <div class="content-header">
   <h1>Documentation Entries: <span class="text-muted"><%= project.name %></span></h1>
   <div class="header-actions">
+    <div class="filter-group">
+      <label for="collection-filter-select" class="sr-only">Filter by Collection</label>
+      <select id="collection-filter-select" class="form-control filter-select">
+        <option value="">All Collections</option>
+        <% if (locals.collectionsList && collectionsList.length > 0) { %>
+          <% for (const collection of collectionsList) { %>
+            <option value="<%= collection %>"><%= collection %></option>
+          <% } %>
+        <% } %>
+      </select>
+    </div>
     <div class="search-group">
       <label for="search-input" class="sr-only">Search Documentation</label>
       <input type="search" id="search-input" class="form-control" placeholder="Search documentation..." title="Search by Title, Collection, Tags">
@@ -58,13 +69,33 @@
           <th data-sort-key="title" style="cursor: pointer;">Title <span class="sort-icon"><i class="fas fa-sort-up"></i></span></th>
           <th data-sort-key="status" style="cursor: pointer;">Status <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
           <th data-sort-key="collection" style="cursor: pointer;">Collection <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
-          <th data-sort-key="views" style="cursor: pointer;">Views <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <% if (project.view_tracking_enabled) { %>
+            <th data-sort-key="views" style="cursor: pointer;">Views <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <% } %>
+          <% if (project.view_time_tracking_enabled) { %>
+            <th data-sort-key="total_view_duration" style="cursor: pointer;">Avg. Time <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <% } %>
           <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
           <th class="actions-column">Actions</th>
         </tr>
       </thead>
       <tbody id="entries-table-body">
+        <%
+          const formatDuration = (totalSeconds) => {
+            if (isNaN(totalSeconds) || totalSeconds <= 0) return '0s';
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = Math.round(totalSeconds % 60);
+            if (minutes > 0) return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+            return `${seconds}s`;
+          };
+        %>
         <% for (const entry of entries) { %>
+          <%
+            const avgDurationSeconds = entry.view_duration_count > 0
+              ? (entry.total_view_duration / entry.view_duration_count)
+              : 0;
+            const formattedAvgDuration = formatDuration(avgDurationSeconds);
+          %>
           <tr data-entry-id="<%= entry.id %>" data-updated-timestamp="<%= new Date(entry.updated).getTime() %>" data-views-value="<%= entry.views || 0 %>">
             <td class="checkbox-column"><input type="checkbox" class="entry-checkbox" value="<%= entry.id %>"></td>
             <td data-label="Title"><%= entry.title %></td>
@@ -75,7 +106,12 @@
               <% } %>
             </td>
             <td data-label="Collection"><%= entry.collection || '-' %></td>
-            <td data-label="Views"><%= entry.views || 0 %></td>
+            <% if (project.view_tracking_enabled) { %>
+              <td data-label="Views"><%= entry.views || 0 %></td>
+            <% } %>
+            <% if (project.view_time_tracking_enabled) { %>
+              <td data-label="Avg. Time"><%= formattedAvgDuration %></td>
+            <% } %>
             <td data-label="Updated"><%= entry.formattedUpdated %></td>
             <td data-label="Actions" class="actions-cell">
               <% if (entry.has_staged_changes) { %>

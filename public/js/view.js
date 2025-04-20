@@ -216,4 +216,64 @@ document.addEventListener("DOMContentLoaded", () => {
   backdrop?.addEventListener("click", () => {
     closeSidebars();
   });
+
+  const entryId = contentArea?.dataset.entryId;
+  const viewTimeTrackingEnabled = contentArea?.dataset.viewTimeTrackingEnabled === "true";
+  const MIN_DURATION_SECONDS = 5;
+  const MAX_DURATION_SECONDS = 60 * 30;
+
+  if (entryId && viewTimeTrackingEnabled) {
+    const startTime = Date.now();
+    let hasSentBeacon = false;
+
+    const logDuration = () => {
+      if (hasSentBeacon) return;
+
+      const endTime = Date.now();
+      let durationSeconds = Math.round((endTime - startTime) / 1000);
+
+      if (durationSeconds < MIN_DURATION_SECONDS) {
+        console.log(`View duration (${durationSeconds}s) too short, skipping log.`);
+        return;
+      }
+      durationSeconds = Math.min(durationSeconds, MAX_DURATION_SECONDS);
+
+      const payload = JSON.stringify({
+        entryId: entryId,
+        duration: durationSeconds,
+      });
+
+      const beaconUrl = "/api/log-duration-pb";
+      if (navigator.sendBeacon) {
+        try {
+          const sent = navigator.sendBeacon(beaconUrl, payload);
+          if (sent) {
+            console.log(`Sent duration (${durationSeconds}s) for entry ${entryId} via sendBeacon.`);
+            hasSentBeacon = true;
+          } else {
+            console.warn("navigator.sendBeacon returned false.");
+          }
+        } catch (e) {
+          console.error("Error calling navigator.sendBeacon:", e);
+        }
+      } else {
+        console.warn("navigator.sendBeacon is not supported. Duration not logged.");
+      }
+    };
+
+    window.addEventListener("pagehide", logDuration);
+
+    window.addEventListener("beforeunload", () => {
+      if (!hasSentBeacon && navigator.sendBeacon) {
+        logDuration();
+      }
+    });
+  } else {
+    if (!entryId) {
+      console.warn("Could not find entry ID for duration tracking.");
+    }
+    if (!viewTimeTrackingEnabled) {
+      console.log("View time tracking is disabled for this project.");
+    }
+  }
 });

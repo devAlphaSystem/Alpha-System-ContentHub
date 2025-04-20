@@ -47,7 +47,7 @@
         <input class="form-check-input" type="checkbox" role="switch" id="is_publicly_viewable" name="is_publicly_viewable" value="true" <%= project.is_publicly_viewable ? 'checked' : '' %>>
         <label class="form-check-label" for="is_publicly_viewable">Enable Public View</label>
       </div>
-      <small class="form-text">If disabled, public `/view/:id` and `/roadmap/:projectId` links for this project will not work.</small>
+      <small class="form-text">If disabled, public `/view/:id`, `/roadmap/:projectId`, and `/kb/:projectId` links for this project will not work.</small>
     </div>
 
     <div class="form-group form-group-full" style="margin-bottom: 15px;">
@@ -55,8 +55,8 @@
         <input class="form-check-input" type="checkbox" role="switch" id="password_protected" name="password_protected" value="true" <%= project.password_protected ? 'checked' : '' %> aria-controls="project-password-group">
         <label class="form-check-label" for="password_protected">Require Password for Public View</label>
       </div>
-      <small class="form-text">If enabled, visitors will need a password to access any public `/view/:id` or `/roadmap/:projectId` page in this project.</small>
-       <% if (locals.errors?.password_protected) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.password_protected.message %></small> <% } %>
+      <small class="form-text">If enabled, visitors will need a password to access any public `/view/:id`, `/roadmap/:projectId`, or `/kb/:projectId` page in this project.</small>
+      <% if (locals.errors?.password_protected) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.password_protected.message %></small> <% } %>
     </div>
 
     <div id="project-password-group" class="form-group form-group-full" style="<%= project.password_protected ? '' : 'display: none;' %>">
@@ -76,6 +76,23 @@
       <small class="form-text">If enabled, the public `/roadmap/:projectId` page will be accessible (subject to overall Public View and Password settings).</small>
     </div>
 
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="view_tracking_enabled" name="view_tracking_enabled" value="true" <%= project.view_tracking_enabled ? 'checked' : '' %> aria-controls="view-time-tracking-group">
+        <label class="form-check-label" for="view_tracking_enabled">Enable View Tracking</label>
+      </div>
+      <small class="form-text">If enabled, page views for documentation and changelog entries will be counted.</small>
+    </div>
+
+    <div id="view-time-tracking-group" class="form-group form-group-full" style="margin-bottom: 15px; <%= project.view_tracking_enabled ? '' : 'display: none;' %>">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="view_time_tracking_enabled" name="view_time_tracking_enabled" value="true" <%= project.view_time_tracking_enabled ? 'checked' : '' %>>
+        <label class="form-check-label" for="view_time_tracking_enabled">Enable View Time Tracking</label>
+      </div>
+      <small class="form-text">If enabled, the approximate time spent on documentation and changelog pages will be logged.</small>
+      <% if (locals.errors?.view_time_tracking_enabled) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.view_time_tracking_enabled.message %></small> <% } %>
+    </div>
+
     <div class="form-actions">
       <button type="submit" class="btn btn-primary btn-lg">
         <i class="fas fa-save"></i> Save Changes
@@ -90,22 +107,36 @@
   const passwordGroup = document.getElementById('project-password-group');
   const passwordInput = document.getElementById('access_password');
   const publicViewToggle = document.getElementById('is_publicly_viewable');
+  const viewTrackingToggle = document.getElementById('view_tracking_enabled');
+  const viewTimeTrackingGroup = document.getElementById('view-time-tracking-group');
+  const viewTimeTrackingToggle = document.getElementById('view_time_tracking_enabled');
 
   function togglePasswordFields() {
-     if (passwordToggle.checked && publicViewToggle.checked) {
+    if (passwordToggle.checked && publicViewToggle.checked) {
       passwordGroup.style.display = '';
     } else {
       passwordGroup.style.display = 'none';
       if (!passwordToggle.checked) {
-         passwordInput.value = '';
+        passwordInput.value = '';
       }
+    }
+  }
+
+  function toggleViewTimeTrackingField() {
+    if (viewTrackingToggle.checked) {
+      viewTimeTrackingGroup.style.display = '';
+    } else {
+      viewTimeTrackingGroup.style.display = 'none';
+      viewTimeTrackingToggle.checked = false;
     }
   }
 
   passwordToggle?.addEventListener('change', togglePasswordFields);
   publicViewToggle?.addEventListener('change', togglePasswordFields);
+  viewTrackingToggle?.addEventListener('change', toggleViewTimeTrackingField);
 
   togglePasswordFields();
+  toggleViewTimeTrackingField();
 </script>
 
 <%- include('../partials/footer', { scriptPath: null }) %>

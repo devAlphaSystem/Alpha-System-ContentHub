@@ -117,8 +117,19 @@ export const viewDb = new sqlite3.Database(viewDbPath, (err) => {
       } else {
         logger.trace("view_logs table ensured.");
         viewDb.run("CREATE INDEX IF NOT EXISTS idx_view_logs_entry_ip_time ON view_logs (entry_id, ip_address, viewed_at)", (indexErr) => {
-          if (indexErr) logger.error("Error creating index:", indexErr.message);
+          if (indexErr) logger.error("Error creating view_logs index:", indexErr.message);
           else logger.trace("view_logs index ensured.");
+        });
+      }
+    });
+    viewDb.run("CREATE TABLE IF NOT EXISTS view_durations (id INTEGER PRIMARY KEY AUTOINCREMENT, entry_id TEXT NOT NULL, duration_seconds INTEGER NOT NULL, logged_at INTEGER NOT NULL, ip_address TEXT)", (createDurationTableErr) => {
+      if (createDurationTableErr) {
+        logger.error("Error creating view_durations table:", createDurationTableErr.message);
+      } else {
+        logger.trace("view_durations table ensured.");
+        viewDb.run("CREATE INDEX IF NOT EXISTS idx_view_durations_entry ON view_durations (entry_id)", (indexErr) => {
+          if (indexErr) logger.error("Error creating view_durations index:", indexErr.message);
+          else logger.trace("view_durations index ensured.");
         });
       }
     });

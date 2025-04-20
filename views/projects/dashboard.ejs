@@ -42,7 +42,7 @@
 
 <% if (metrics) { %>
   <div class="row">
-    <div class="col" style="margin-bottom: 25px; flex: 1 1 200px;">
+    <div class="col" style="margin-bottom: 25px; flex: 1 1 180px;">
       <div class="card">
         <div class="card-body text-center" style="padding: 20px;">
           <div style="font-size: 1.8rem; font-weight: 600; color: var(--primary-color); margin-bottom: 5px;"><%= metrics.totalEntries %></div>
@@ -50,15 +50,38 @@
         </div>
       </div>
     </div>
-    <div class="col" style="margin-bottom: 25px; flex: 1 1 200px;">
-      <div class="card">
-        <div class="card-body text-center" style="padding: 20px;">
-          <div style="font-size: 1.8rem; font-weight: 600; color: var(--success-color); margin-bottom: 5px;"><%= metrics.totalViews %></div>
-          <div style="font-size: 0.9rem; color: var(--text-secondary);">Total Views (Docs & CL)</div>
+    <% if (project.view_tracking_enabled) { %>
+      <div class="col" style="margin-bottom: 25px; flex: 1 1 180px;">
+        <div class="card">
+          <div class="card-body text-center" style="padding: 20px;">
+            <div style="font-size: 1.8rem; font-weight: 600; color: var(--success-color); margin-bottom: 5px;"><%= metrics.totalViews %></div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary);">Total Views (Docs & CL)</div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="col" style="margin-bottom: 25px; flex: 1 1 200px;">
+    <% } %>
+    <% if (project.view_time_tracking_enabled) { %>
+      <div class="col" style="margin-bottom: 25px; flex: 1 1 180px;">
+        <div class="card">
+          <div class="card-body text-center" style="padding: 20px;">
+            <%
+              const formatDuration = (totalSeconds) => {
+                if (isNaN(totalSeconds) || totalSeconds <= 0) return '0s';
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = Math.round(totalSeconds % 60);
+                if (minutes > 0) return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+                return `${seconds}s`;
+              };
+              const overallAvgDuration = metrics.totalDurationCountSum > 0 ? (metrics.totalDurationSum / metrics.totalDurationCountSum) : 0;
+              const formattedOverallAvg = formatDuration(overallAvgDuration);
+            %>
+            <div style="font-size: 1.8rem; font-weight: 600; color: var(--info-color); margin-bottom: 5px;"><%= formattedOverallAvg %></div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary);">Avg. View Time (Docs & CL)</div>
+          </div>
+        </div>
+      </div>
+    <% } %>
+    <div class="col" style="margin-bottom: 25px; flex: 1 1 180px;">
       <div class="card">
         <div class="card-body text-center" style="padding: 20px;">
           <div style="font-size: 1.8rem; font-weight: 600; color: var(--badge-docs-text); margin-bottom: 5px;"><%= metrics.entriesByType.documentation %></div>
@@ -66,7 +89,7 @@
         </div>
       </div>
     </div>
-    <div class="col" style="margin-bottom: 25px; flex: 1 1 200px;">
+    <div class="col" style="margin-bottom: 25px; flex: 1 1 180px;">
       <div class="card">
         <div class="card-body text-center" style="padding: 20px;">
           <div style="font-size: 1.8rem; font-weight: 600; color: var(--badge-changelog-text); margin-bottom: 5px;"><%= metrics.entriesByType.changelog %></div>

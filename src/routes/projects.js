@@ -120,6 +120,8 @@ router.post("/new", async (req, res) => {
       name: name.trim(),
       description: description || "",
       owner: userId,
+      view_tracking_enabled: true,
+      view_time_tracking_enabled: true,
     };
     logger.debug("[PROJ] Creating project with data:", data);
     const newProject = await pb.collection("projects").create(data);
@@ -205,10 +207,12 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
       knowledge_base: 0,
     };
     let activityData = [];
+    let totalDurationSum = 0;
+    let totalDurationCountSum = 0;
 
     const projectEntries = await pbAdmin.collection("entries_main").getFullList({
       filter: `project = '${projectId}' && type != 'roadmap'`,
-      fields: "id, views, type, created",
+      fields: "id, views, type, created, total_view_duration, view_duration_count",
       $autoCancel: false,
     });
     logger.timeEnd(`[PROJ] FetchProjectEntriesMetrics ${projectId}`);
@@ -223,8 +227,12 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
       totalViews += entry.views || 0;
       if (entry.type === "changelog") {
         entriesByType.changelog++;
+        totalDurationSum += entry.total_view_duration || 0;
+        totalDurationCountSum += entry.view_duration_count || 0;
       } else if (entry.type === "documentation") {
         entriesByType.documentation++;
+        totalDurationSum += entry.total_view_duration || 0;
+        totalDurationCountSum += entry.view_duration_count || 0;
       } else if (entry.type === "knowledge_base") {
         entriesByType.knowledge_base++;
       }
@@ -267,6 +275,8 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
         }),
       })),
       activityData: activityData,
+      totalDurationSum: totalDurationSum,
+      totalDurationCountSum: totalDurationCountSum,
     };
 
     logger.debug(`[PROJ] Rendering project dashboard for ${projectId}`);
@@ -319,7 +329,7 @@ router.get("/:projectId/edit", checkProjectAccess, async (req, res, next) => {
 });
 
 router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
-  const { name, description, is_publicly_viewable, password_protected, access_password, roadmap_enabled } = req.body;
+  const { name, description, is_publicly_viewable, password_protected, access_password, roadmap_enabled, view_tracking_enabled, view_time_tracking_enabled } = req.body;
   const projectId = req.params.projectId;
   const userId = req.session.user.id;
   logger.info(`[PROJ] POST /projects/${projectId}/edit attempt by user ${userId}. Name: ${name}`);
@@ -335,10 +345,18 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
   const isPublic = is_publicly_viewable === "true";
   const requirePassword = password_protected === "true";
   const isRoadmapEnabled = roadmap_enabled === "true";
+  const isViewTrackingEnabled = view_tracking_enabled === "true";
+  const isViewTimeTrackingEnabled = view_time_tracking_enabled === "true";
 
   if (requirePassword && !isPublic) {
     errors.password_protected = {
       message: "Cannot require password if Public View is disabled.",
+    };
+  }
+
+  if (isViewTimeTrackingEnabled && !isViewTrackingEnabled) {
+    errors.view_time_tracking_enabled = {
+      message: "View Time Tracking requires View Tracking to be enabled.",
     };
   }
 
@@ -356,6 +374,8 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
           is_publicly_viewable: isPublic,
           password_protected: requirePassword,
           roadmap_enabled: isRoadmapEnabled,
+          view_tracking_enabled: isViewTrackingEnabled,
+          view_time_tracking_enabled: isViewTimeTrackingEnabled,
         },
         errors: errors,
       });
@@ -371,6 +391,8 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
           is_publicly_viewable: isPublic,
           password_protected: requirePassword,
           roadmap_enabled: isRoadmapEnabled,
+          view_tracking_enabled: isViewTrackingEnabled,
+          view_time_tracking_enabled: isViewTimeTrackingEnabled,
         },
         errors: {
           ...errors,
@@ -389,6 +411,8 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
       is_publicly_viewable: isPublic,
       password_protected: requirePassword,
       roadmap_enabled: isRoadmapEnabled,
+      view_tracking_enabled: isViewTrackingEnabled,
+      view_time_tracking_enabled: isViewTimeTrackingEnabled,
     };
     logger.debug(`[PROJ] Updating project ${projectId} with data:`, data);
 
@@ -418,6 +442,8 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
       is_public: updatedProject.is_publicly_viewable,
       pw_protected: updatedProject.password_protected,
       roadmap_enabled: updatedProject.roadmap_enabled,
+      view_tracking: updatedProject.view_tracking_enabled,
+      view_time_tracking: updatedProject.view_time_tracking_enabled,
     });
     logger.timeEnd(`[PROJ] POST /projects/${projectId}/edit ${userId}`);
     res.redirect(`/projects/${projectId}/edit?message=updated`);
@@ -439,6 +465,8 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
           is_publicly_viewable: isPublic,
           password_protected: requirePassword,
           roadmap_enabled: isRoadmapEnabled,
+          view_tracking_enabled: isViewTrackingEnabled,
+          view_time_tracking_enabled: isViewTimeTrackingEnabled,
         },
         errors: {
           general: {
@@ -457,6 +485,8 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
           is_publicly_viewable: isPublic,
           password_protected: requirePassword,
           roadmap_enabled: isRoadmapEnabled,
+          view_tracking_enabled: isViewTrackingEnabled,
+          view_time_tracking_enabled: isViewTimeTrackingEnabled,
         },
         errors: {
           general: {
@@ -579,7 +609,7 @@ async function renderEntriesList(req, res, entryType) {
   logger.time(`[PROJ] renderEntriesList ${entryType} ${projectId}`);
   let pageTitle = "";
   let viewName = "";
-  let listFields = "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags";
+  let listFields = "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,total_view_duration,view_duration_count";
 
   switch (entryType) {
     case "documentation":

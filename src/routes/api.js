@@ -171,7 +171,7 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
     const resultList = await pb.collection("entries_main").getList(page, perPage, {
       sort: sort,
       filter: combinedFilter,
-      fields: "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,roadmap_stage",
+      fields: "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,roadmap_stage,total_view_duration,view_duration_count",
     });
     logger.debug(`[API] Fetched ${resultList.items.length} ${entryType} entries (page ${page}/${resultList.totalPages}) for project ${projectId}`);
 
@@ -1359,6 +1359,35 @@ router.post("/projects/:projectId/entries/:entryId/duplicate", requireLogin, che
     res.status(500).json({
       error: "Failed to duplicate entry.",
     });
+  }
+});
+
+router.post("/log-duration-pb", express.json({ type: "*/*" }), async (req, res) => {
+  const { entryId, duration } = req.body;
+
+  if (!entryId || typeof entryId !== "string" || !duration || typeof duration !== "number" || duration <= 0) {
+    logger.warn("[API] Invalid duration log data received for PB update:", req.body);
+    return res.status(400).send("Invalid data");
+  }
+
+  const durationSeconds = Math.round(duration);
+  logger.debug(`[API] Received duration log for PB: Entry=${entryId}, Duration=${durationSeconds}s`);
+
+  try {
+    await pbAdmin.collection("entries_main").update(entryId, {
+      "total_view_duration+": durationSeconds,
+      "view_duration_count+": 1,
+    });
+
+    logger.trace(`[API] Updated duration stats for entry ${entryId} in PocketBase.`);
+    res.status(204).send();
+  } catch (error) {
+    if (error?.status !== 404) {
+      logger.error(`[API] Error updating duration stats for entry ${entryId} in PocketBase: Status ${error?.status || "N/A"}`, error?.message || error);
+    } else {
+      logger.warn(`[API] Attempted to log duration for non-existent entry ${entryId}.`);
+    }
+    res.status(error?.status === 404 ? 404 : 500).send("Error updating duration");
   }
 });
 

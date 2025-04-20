@@ -1110,6 +1110,30 @@
       },
       {
         "hidden": false,
+        "id": "number2024926992",
+        "max": null,
+        "min": null,
+        "name": "total_view_duration",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "number1469408111",
+        "max": null,
+        "min": null,
+        "name": "view_duration_count",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
         "onCreate": true,
@@ -1333,6 +1357,24 @@
         "hidden": false,
         "id": "bool1327822237",
         "name": "roadmap_enabled",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "bool2048495742",
+        "name": "view_tracking_enabled",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "bool4044210776",
+        "name": "view_time_tracking_enabled",
         "presentable": false,
         "required": false,
         "system": false,

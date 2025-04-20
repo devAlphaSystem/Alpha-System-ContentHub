@@ -60,7 +60,9 @@ function parseMarkdownWithThemeImages(markdownContent) {
   if (!markdownContent) {
     return "";
   }
-  const unsafeHtml = marked.parse(markdownContent, { renderer: customRenderer });
+  const unsafeHtml = marked.parse(markdownContent, {
+    renderer: customRenderer,
+  });
   return sanitizeHtml(unsafeHtml);
 }
 
@@ -209,7 +211,11 @@ router.get("/view/:id", async (req, res, next) => {
       logger.trace(`[PUBLIC] Project password verified for project ${project.id} (session).`);
     }
 
-    logEntryView(req, entryId);
+    if (project.view_tracking_enabled) {
+      logEntryView(req, entryId);
+    } else {
+      logger.trace(`[PUBLIC] View tracking disabled for project ${project.id}. Skipping view log for entry ${entryId}.`);
+    }
 
     const cleanMainHtml = parseMarkdownWithThemeImages(entry.content);
     const readingTime = calculateReadingTime(entry.content);
@@ -235,6 +241,7 @@ router.get("/view/:id", async (req, res, next) => {
     }
 
     let sidebarEntries = [];
+    let hasPublishedKbEntries = false;
     if (project) {
       try {
         logger.time(`[PUBLIC] FetchSidebar /view/${entryId}`);
@@ -249,6 +256,18 @@ router.get("/view/:id", async (req, res, next) => {
         logger.timeEnd(`[PUBLIC] FetchSidebar /view/${entryId}`);
         logger.error(`[PUBLIC] Failed to fetch sidebar entries for project ${project.id}: Status ${sidebarError?.status || "N/A"}`, sidebarError?.message || sidebarError);
       }
+      try {
+        await pbAdmin.collection("entries_main").getFirstListItem(`project = '${project.id}' && type = 'knowledge_base' && status = 'published'`, {
+          fields: "id",
+          $autoCancel: false,
+        });
+        hasPublishedKbEntries = true;
+      } catch (kbError) {
+        if (kbError.status !== 404) {
+          logger.warn(`[PUBLIC] Error checking for published KB entries for project ${project.id}: Status ${kbError?.status || "N/A"}`, kbError.message);
+        }
+        hasPublishedKbEntries = false;
+      }
     }
 
     logger.debug(`[PUBLIC] Rendering view for entry ${entryId}`);
@@ -261,6 +280,7 @@ router.get("/view/:id", async (req, res, next) => {
       customHeaderHtml: customHeaderHtml,
       customFooterHtml: customFooterHtml,
       pageTitle: `${entry.title} - ${project ? project.name : entry.type === "changelog" ? "Changelog" : "Documentation"}`,
+      hasPublishedKbEntries: hasPublishedKbEntries,
     });
     logger.timeEnd(`[PUBLIC] /view/${entryId}`);
   } catch (error) {
