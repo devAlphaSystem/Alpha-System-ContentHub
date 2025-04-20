@@ -1,7 +1,7 @@
 import express from "express";
 import { pb, pbAdmin } from "../config.js";
 import { requireLogin } from "../middleware.js";
-import { logAuditEvent } from "../utils.js";
+import { logAuditEvent, checkAppVersion } from "../utils.js";
 import { logger } from "../logger.js";
 
 const router = express.Router();
@@ -125,12 +125,19 @@ router.get("/", requireLogin, async (req, res) => {
       activityData: activityData,
     };
 
+    logger.time(`[DASH] CheckAppVersion ${userId}`);
+    const versionInfo = await checkAppVersion(req.app.locals.appVersion);
+    logger.timeEnd(`[DASH] CheckAppVersion ${userId}`);
+
     logger.debug(`[DASH] Rendering global dashboard for user ${userId}.`);
     logger.timeEnd(`[DASH] GET / ${userId}`);
     res.render("index", {
       pageTitle: pageTitle,
       metrics: metrics,
       error: null,
+      updateAvailable: versionInfo.updateAvailable,
+      latestVersion: versionInfo.latestVersion,
+      currentVersion: versionInfo.currentVersion,
     });
   } catch (error) {
     logger.timeEnd(`[DASH] GET / ${userId}`);
@@ -142,6 +149,9 @@ router.get("/", requireLogin, async (req, res) => {
       pageTitle: pageTitle,
       metrics: null,
       error: "Could not load dashboard data.",
+      updateAvailable: false,
+      latestVersion: null,
+      currentVersion: req.app.locals.appVersion || "unknown",
     });
   }
 });

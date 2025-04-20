@@ -3,6 +3,7 @@ import DOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
 import { pb, pbAdmin, viewDb, IP_HASH_SALT, VIEW_TIMEFRAME_HOURS, AVERAGE_WPM } from "./config.js";
 import { logger } from "./logger.js";
+import fetch from "node-fetch";
 
 const window = new JSDOM("").window;
 const purify = DOMPurify(window);
@@ -437,4 +438,123 @@ export function calculateReadingTime(text, wpm = AVERAGE_WPM) {
   const readingTime = Math.max(1, Math.ceil(minutes));
   logger.trace(`Calculated reading time: ${readingTime} min for ${words} words.`);
   return readingTime;
+}
+
+const GITHUB_REPO_URL = "https://api.github.com/repos/devAlphaSystem/Alpha-System-ContentHub/commits";
+let latestVersionCache = {
+  version: null,
+  code: null,
+  timestamp: 0,
+};
+const CACHE_DURATION_MS = 60 * 60 * 1000;
+
+async function fetchLatestCommitVersion() {
+  const now = Date.now();
+  if (latestVersionCache.version && now - latestVersionCache.timestamp < CACHE_DURATION_MS) {
+    logger.trace("[UTIL] Using cached latest version from GitHub.");
+    return {
+      version: latestVersionCache.version,
+      code: latestVersionCache.code,
+    };
+  }
+
+  logger.debug("[UTIL] Fetching latest commit version from GitHub...");
+  logger.time("[UTIL] fetchLatestCommitVersion");
+  try {
+    const response = await fetch(GITHUB_REPO_URL, {
+      headers: {
+        Accept: "application/vnd.github.v3+json",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`GitHub API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const commits = await response.json();
+    if (!Array.isArray(commits) || commits.length === 0) {
+      throw new Error("No commits found in the repository.");
+    }
+
+    const versionRegex = /Version\s+(\d+\.\d+)(?:\s+Code\s+(\d+))?/i;
+    for (const commitData of commits) {
+      const message = commitData?.commit?.message;
+      if (message) {
+        const match = message.match(versionRegex);
+        if (match) {
+          const version = match[1];
+          const code = match[2] ? Number.parseInt(match[2], 10) : null;
+          logger.info(`[UTIL] Found latest version in commit: Version ${version}${code ? ` Code ${code}` : ""}`);
+          latestVersionCache = { version, code, timestamp: now };
+          logger.timeEnd("[UTIL] fetchLatestCommitVersion");
+          return { version, code };
+        }
+      }
+    }
+
+    logger.warn("[UTIL] No commit message found matching the version pattern.");
+    logger.timeEnd("[UTIL] fetchLatestCommitVersion");
+    return { version: null, code: null };
+  } catch (error) {
+    logger.error(`[UTIL] Failed to fetch or parse latest commit version: ${error.message}`);
+    logger.timeEnd("[UTIL] fetchLatestCommitVersion");
+    return { version: null, code: null };
+  }
+}
+
+function parseVersionString(versionStr) {
+  if (!versionStr) return null;
+  const mainParts = versionStr.split("-");
+  const versionParts = mainParts[0].split(".");
+  const codePart = mainParts.length > 1 ? mainParts[1] : null;
+
+  return {
+    major: Number.parseInt(versionParts[0], 10) || 0,
+    minor: Number.parseInt(versionParts[1], 10) || 0,
+    code: codePart !== null ? Number.parseInt(codePart, 10) : 0,
+  };
+}
+
+export async function checkAppVersion(currentVersionStr) {
+  logger.debug("[UTIL] Checking application version against latest commit.");
+
+  if (!currentVersionStr || currentVersionStr === "unknown") {
+    logger.warn("[UTIL] Current version string not provided to checkAppVersion. Cannot compare.");
+    return { updateAvailable: false };
+  }
+
+  const currentVersion = parseVersionString(currentVersionStr);
+
+  const latestCommitInfo = await fetchLatestCommitVersion();
+  const latestVersionStr = latestCommitInfo.version;
+  const latestCode = latestCommitInfo.code;
+
+  if (!latestVersionStr || !currentVersion || latestCode === null) {
+    logger.warn("[UTIL] Could not compare versions - missing data (current, latest version string, or latest code).");
+    return { updateAvailable: false };
+  }
+
+  const latestVersionParts = latestVersionStr.split(".");
+  const latestMajor = Number.parseInt(latestVersionParts[0], 10) || 0;
+  const latestMinor = Number.parseInt(latestVersionParts[1], 10) || 0;
+
+  let updateAvailable = false;
+  const latestVersionDisplay = `Version ${latestVersionStr}${latestCode !== null ? ` Code ${latestCode}` : ""}`;
+  const currentVersionDisplay = `Version ${currentVersion.major}.${currentVersion.minor}${currentVersion.code !== 0 ? ` Code ${currentVersion.code}` : ""}`;
+
+  if (latestMajor > currentVersion.major) {
+    updateAvailable = true;
+  } else if (latestMajor === currentVersion.major && latestMinor > currentVersion.minor) {
+    updateAvailable = true;
+  } else if (latestMajor === currentVersion.major && latestMinor === currentVersion.minor && latestCode > currentVersion.code) {
+    updateAvailable = true;
+  }
+
+  logger.debug(`[UTIL] Version check: Current=${currentVersionDisplay}, Latest=${latestVersionDisplay}, Update Available=${updateAvailable}`);
+  return {
+    updateAvailable,
+    latestVersion: latestVersionDisplay,
+    currentVersion: currentVersionDisplay,
+  };
 }

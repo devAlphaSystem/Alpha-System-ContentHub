@@ -45,6 +45,7 @@ export function setLocals(req, res, next) {
   res.locals.pocketbaseUrl = POCKETBASE_URL;
   res.locals.theme = req.session.theme || "light";
   res.locals.currentPath = req.path;
+  res.locals.appVersion = req.app.locals.appVersion;
 
   const protocol = req.protocol;
   const host = req.get("host");

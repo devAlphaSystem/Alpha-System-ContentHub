@@ -48,11 +48,34 @@
     <!-- Alpha System - Disable Dev Tools -->
     <script src="/js/vendors/disable-dev-tools.js"></script>
 
+    <!-- Alpha System - Easy Notification System -->
+    <script src="/js/vendors/notification-system.js"></script>
+
     <!-- Default JS -->
     <script src="/js/default.js"></script>
 
     <!-- Admin JS -->
     <script src="<%= locals.scriptPath || '/js/main.js' %>"></script>
+
+    <!-- Update Notification -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        <% if (locals.updateAvailable && locals.currentVersion) { %>
+          const notifier = window.EasyNotificationInstance;
+
+          const latestVersion = "<%= locals.latestVersion %>";
+          const currentVersion = "<%= locals.currentVersion %>";
+          const message = `Update available: ${latestVersion}. You are running ${currentVersion}.`;
+
+          const notificationId = notifier.createNotification({
+            title: 'Update available!',
+            message: message,
+            type: 'info',
+            displayTime: 10000
+          });
+        <% } %>
+      });
+    </script>
   </body>
 
 </html>

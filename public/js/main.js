@@ -2,6 +2,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const dataCardElement = document.querySelector(".data-card[data-entry-type]");
   const entryType = dataCardElement?.dataset.entryType;
 
+  if (entryType !== "documentation" && entryType !== "changelog" && entryType !== "knowledge_base" && entryType !== "roadmap") {
+    console.warn("Main JS loaded on unexpected page type or type missing:", entryType);
+  }
+
   const entriesTableBody = document.getElementById("entries-table-body");
   const selectAllCheckbox = document.getElementById("select-all-checkbox");
   const refreshButton = document.getElementById("refresh-entries-btn");
@@ -39,6 +43,14 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  function formatDuration(totalSeconds) {
+    if (Number.isNaN(totalSeconds) || totalSeconds <= 0) return "0s";
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = Math.round(totalSeconds % 60);
+    if (minutes > 0) return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+    return `${seconds}s`;
+  }
+
   function renderTableRow(entry) {
     const formattedUpdated =
       entry.formattedUpdated ||
@@ -68,6 +80,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const collectionDisplay = entry.collection ? escapeHtml(entry.collection) : "-";
 
+    const avgDurationSeconds = entry.view_duration_count > 0 ? entry.total_view_duration / entry.view_duration_count : 0;
+    const formattedAvgDuration = formatDuration(avgDurationSeconds);
+
+    const avgTimeHeaderExists = tableElement?.querySelector('thead th[data-sort-key="total_view_duration"]');
+    const viewsHeaderExists = tableElement?.querySelector('thead th[data-sort-key="views"]');
+
+    const viewsCell = viewsHeaderExists ? `<td data-label="Views">${entry.views || 0}</td>` : "";
+    const avgTimeCell = avgTimeHeaderExists ? `<td data-label="Avg. Time">${formattedAvgDuration}</td>` : "";
+
     return `
       <tr data-entry-id="${escapeHtml(entry.id)}" data-updated-timestamp="${updatedTimestamp}" data-views-value="${entry.views || 0}">
         <td class="checkbox-column"><input type="checkbox" class="entry-checkbox" value="${escapeHtml(entry.id)}"></td>
@@ -77,7 +98,8 @@ document.addEventListener("DOMContentLoaded", () => {
           ${stagedBadge}
         </td>
         <td data-label="Collection">${collectionDisplay}</td>
-        <td data-label="Views">${entry.views || 0}</td>
+        ${viewsCell}
+        ${avgTimeCell}
         <td data-label="Updated">${formattedUpdated}</td>
         <td data-label="Actions" class="actions-cell">
           ${publishStagedButton}
@@ -130,7 +152,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const noMatchRow = entriesTableBody.querySelector(".no-match-row");
       if (noMatchRow) noMatchRow.remove();
     } else {
-      const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 7;
+      const colCountElement = tableElement.querySelector("thead tr");
+      const colSpan = colCountElement ? colCountElement.childElementCount : 7;
       const message = currentSearchTerm ? `No ${entryType} entries match your search.` : currentCollectionFilter ? `No ${entryType} entries found in this collection.` : `No ${entryType} entries found.`;
       entriesTableBody.innerHTML = `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">${message}</td></tr>`;
 
@@ -208,7 +231,8 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Failed to fetch entries:", error);
       window.showAlertModal(`Error loading entries: ${error.message}`, "Loading Error");
       if (entriesTableBody && tableElement) {
-        const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 7;
+        const colCountElement = tableElement.querySelector("thead tr");
+        const colSpan = colCountElement ? colCountElement.childElementCount : 7;
         entriesTableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading entries.</td></tr>`;
       }
       currentPage = 1;
