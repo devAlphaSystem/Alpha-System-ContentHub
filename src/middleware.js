@@ -1,4 +1,4 @@
-import { pb, POCKETBASE_URL, NODE_ENV, PORT } from "./config.js";
+import { pb, POCKETBASE_URL, NODE_ENV, PORT, getSettings } from "./config.js";
 import { logger } from "./logger.js";
 
 export function requireLogin(req, res, next) {
@@ -41,11 +41,14 @@ export function requireLogin(req, res, next) {
 
 export function setLocals(req, res, next) {
   logger.trace(`setLocals middleware for path: ${req.path}`);
+  const settings = getSettings();
   res.locals.user = req.session.user || null;
   res.locals.pocketbaseUrl = POCKETBASE_URL;
   res.locals.theme = req.session.theme || "light";
   res.locals.currentPath = req.path;
   res.locals.appVersion = req.app.locals.appVersion;
+  res.locals.enableAuditLog = settings.enableAuditLog;
+  res.locals.enableGlobalSearch = settings.enableGlobalSearch;
 
   const protocol = req.protocol;
   const host = req.get("host");

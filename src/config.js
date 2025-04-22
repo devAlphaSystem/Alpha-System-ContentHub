@@ -10,7 +10,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { logger } from "./logger.js";
 
-const requiredEnvVars = ["SESSION_SECRET", "IP_HASH_SALT", "POCKETBASE_ADMIN_EMAIL", "POCKETBASE_ADMIN_PASSWORD", "POCKETBASE_URL"];
+const requiredEnvVars = ["SESSION_SECRET", "IP_HASH_SALT", "POCKETBASE_ADMIN_EMAIL", "POCKETBASE_ADMIN_PASSWORD", "POCKETBASE_URL", "APP_SETTINGS_RECORD_ID"];
 
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
@@ -26,11 +26,26 @@ export const POCKETBASE_ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD;
 export const POCKETBASE_URL = process.env.POCKETBASE_URL;
 export const NODE_ENV = process.env.NODE_ENV || "development";
 export const PORT = process.env.PORT || 3000;
+export const APP_SETTINGS_RECORD_ID = process.env.APP_SETTINGS_RECORD_ID;
 
-export const ITEMS_PER_PAGE = 10;
-export const PREVIEW_TOKEN_EXPIRY_HOURS = 6;
-export const VIEW_TIMEFRAME_HOURS = 24;
-export const AVERAGE_WPM = 225;
+export const ITEMS_PER_PAGE = Number.parseInt(process.env.ITEMS_PER_PAGE || "10", 10);
+export const SESSION_MAX_AGE_DAYS = Number.parseInt(process.env.SESSION_MAX_AGE_DAYS || "7", 10);
+const DEFAULT_PREVIEW_TOKEN_EXPIRY_HOURS = Number.parseInt(process.env.PREVIEW_TOKEN_EXPIRY_HOURS || "6", 10);
+const DEFAULT_ENABLE_GLOBAL_SEARCH = process.env.ENABLE_GLOBAL_SEARCH !== "false";
+const DEFAULT_ENABLE_AUDIT_LOG = process.env.ENABLE_AUDIT_LOG !== "false";
+const DEFAULT_ENABLE_PROJECT_VIEW_TRACKING_DEFAULT = process.env.ENABLE_PROJECT_VIEW_TRACKING_DEFAULT !== "false";
+const DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT = process.env.ENABLE_PROJECT_TIME_TRACKING_DEFAULT !== "false";
+
+let currentSettings = {
+  previewTokenExpiryHours: DEFAULT_PREVIEW_TOKEN_EXPIRY_HOURS,
+  enableGlobalSearch: DEFAULT_ENABLE_GLOBAL_SEARCH,
+  enableAuditLog: DEFAULT_ENABLE_AUDIT_LOG,
+  enableProjectViewTrackingDefault: DEFAULT_ENABLE_PROJECT_VIEW_TRACKING_DEFAULT,
+  enableProjectTimeTrackingDefault: DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT,
+};
+
+export const VIEW_TIMEFRAME_HOURS = Number.parseInt(process.env.VIEW_TIMEFRAME_HOURS || "24", 10);
+export const AVERAGE_WPM = Number.parseInt(process.env.AVERAGE_WPM || "225", 10);
 const ADMIN_AUTH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 export const __filename = fileURLToPath(import.meta.url);
@@ -72,10 +87,48 @@ async function ensureAdminAuth() {
   }
 }
 
+export async function loadAppSettings() {
+  logger.info("Attempting to load application settings from PocketBase...");
+  if (!APP_SETTINGS_RECORD_ID) {
+    logger.error("APP_SETTINGS_RECORD_ID is not defined in .env. Cannot load dynamic settings.");
+    logger.warn("Using default settings based on environment variables.");
+    return;
+  }
+  try {
+    if (!pbAdmin.authStore.isValid) {
+      logger.warn("Admin client not authenticated during settings load. Attempting auth...");
+      await ensureAdminAuth();
+      if (!pbAdmin.authStore.isValid) {
+        throw new Error("Admin client authentication failed.");
+      }
+    }
+    const settingsRecord = await pbAdmin.collection("app_settings").getOne(APP_SETTINGS_RECORD_ID);
+
+    currentSettings = {
+      previewTokenExpiryHours: settingsRecord.preview_token_expiry_hours ?? DEFAULT_PREVIEW_TOKEN_EXPIRY_HOURS,
+      enableGlobalSearch: settingsRecord.enable_global_search ?? DEFAULT_ENABLE_GLOBAL_SEARCH,
+      enableAuditLog: settingsRecord.enable_audit_log ?? DEFAULT_ENABLE_AUDIT_LOG,
+      enableProjectViewTrackingDefault: settingsRecord.enable_project_view_tracking_default ?? DEFAULT_ENABLE_PROJECT_VIEW_TRACKING_DEFAULT,
+      enableProjectTimeTrackingDefault: settingsRecord.enable_project_time_tracking_default ?? DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT,
+    };
+    logger.info("Successfully loaded application settings from PocketBase.");
+    logger.debug("Current runtime settings:", currentSettings);
+  } catch (error) {
+    logger.error(`Failed to load settings from PocketBase (Record ID: ${APP_SETTINGS_RECORD_ID}): ${error.message}`);
+    logger.warn("Using default settings based on environment variables.");
+  }
+}
+
+export function getSettings() {
+  return { ...currentSettings };
+}
+
 (async () => {
   try {
     await pbAdmin.collection("_superusers").authWithPassword(POCKETBASE_ADMIN_EMAIL, POCKETBASE_ADMIN_PASSWORD);
     logger.info("PocketBase Admin client authenticated successfully at startup.");
+
+    await loadAppSettings();
 
     if (adminAuthIntervalId) {
       clearInterval(adminAuthIntervalId);

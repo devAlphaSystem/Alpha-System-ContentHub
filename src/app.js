@@ -1,8 +1,9 @@
+import "dotenv/config";
 import express from "express";
 import path from "node:path";
 import session from "express-session";
 import fs from "node:fs";
-import { configuredHelmet, sessionStore, BASE_DIR, SESSION_SECRET, NODE_ENV } from "./config.js";
+import { configuredHelmet, sessionStore, BASE_DIR, SESSION_SECRET, NODE_ENV, getSettings, SESSION_MAX_AGE_DAYS } from "./config.js";
 import { setLocals, handle404, handleErrors } from "./middleware.js";
 import mainRouter from "./routes/index.js";
 import { logger } from "./logger.js";
@@ -49,12 +50,12 @@ app.use(
     cookie: {
       secure: NODE_ENV === "production",
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
       sameSite: "lax",
     },
   }),
 );
-logger.info(`Session middleware configured with secure cookie: ${NODE_ENV === "production"}.`);
+logger.info(`Session middleware configured with secure cookie: ${NODE_ENV === "production"} and maxAge: ${SESSION_MAX_AGE_DAYS} days.`);
 
 app.use(setLocals);
 logger.debug("setLocals middleware configured.");

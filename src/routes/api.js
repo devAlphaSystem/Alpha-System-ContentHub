@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import multer from "multer";
 import path from "node:path";
 import Papa from "papaparse";
-import { pb, pbAdmin, apiLimiter, ITEMS_PER_PAGE, PREVIEW_TOKEN_EXPIRY_HOURS } from "../config.js";
+import { pb, pbAdmin, apiLimiter, getSettings, APP_SETTINGS_RECORD_ID, ITEMS_PER_PAGE } from "../config.js";
 import { requireLogin } from "../middleware.js";
 import { getEntryForOwnerAndProject, getArchivedEntryForOwnerAndProject, getTemplateForEditAndProject, clearEntryViewLogs, hashPreviewPassword, logAuditEvent, getProjectForOwner, getDocumentationHeaderForEditAndProject, getDocumentationFooterForEditAndProject, getChangelogHeaderForEditAndProject, getChangelogFooterForEditAndProject } from "../utils.js";
 import { logger } from "../logger.js";
@@ -372,6 +372,8 @@ router.post("/projects/:projectId/entries/:id/generate-preview", requireLogin, c
   const userId = req.session.user.id;
   const { password } = req.body;
   const hasPassword = password && password.trim() !== "";
+  const settings = getSettings();
+  const previewTokenExpiryHours = settings.previewTokenExpiryHours;
   logger.info(`[API] Attempting to generate preview link for entry ${entryId} in project ${projectId} by user ${userId}. Has Password: ${hasPassword}`);
   logger.time(`[API] POST /generate-preview ${entryId}`);
 
@@ -392,7 +394,7 @@ router.post("/projects/:projectId/entries/:id/generate-preview", requireLogin, c
 
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + PREVIEW_TOKEN_EXPIRY_HOURS);
+    expiresAt.setHours(expiresAt.getHours() + previewTokenExpiryHours);
 
     let passwordHash = null;
     if (hasPassword) {

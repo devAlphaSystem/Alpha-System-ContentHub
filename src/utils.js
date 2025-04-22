@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import DOMPurify from "dompurify";
 import { JSDOM } from "jsdom";
-import { pb, pbAdmin, viewDb, IP_HASH_SALT, VIEW_TIMEFRAME_HOURS, AVERAGE_WPM } from "./config.js";
+import { pb, pbAdmin, viewDb, IP_HASH_SALT, VIEW_TIMEFRAME_HOURS, AVERAGE_WPM, getSettings } from "./config.js";
 import { logger } from "./logger.js";
 import fetch from "node-fetch";
 
@@ -379,6 +379,12 @@ export function clearEntryViewLogs(entryId) {
 }
 
 export async function logAuditEvent(req, action, targetCollection, targetRecord, details) {
+  const settings = getSettings();
+  if (!settings.enableAuditLog) {
+    logger.trace(`Audit logging disabled. Skipping log for action: ${action}`);
+    return;
+  }
+
   if (!action) {
     logger.error("Audit log attempt failed: Action is required.");
     return;

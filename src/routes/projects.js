@@ -1,5 +1,5 @@
 import express from "express";
-import { pb, pbAdmin, ITEMS_PER_PAGE } from "../config.js";
+import { pb, pbAdmin, getSettings, ITEMS_PER_PAGE } from "../config.js";
 import { getUserTemplates, getProjectForOwner, getEntryForOwnerAndProject, getArchivedEntryForOwnerAndProject, getTemplateForEditAndProject, clearEntryViewLogs, logAuditEvent, getUserDocumentationHeaders, getUserDocumentationFooters, getUserChangelogHeaders, getUserChangelogFooters, getDocumentationHeaderForEditAndProject, getDocumentationFooterForEditAndProject, getChangelogHeaderForEditAndProject, getChangelogFooterForEditAndProject, hashPreviewPassword } from "../utils.js";
 import { logger } from "../logger.js";
 
@@ -116,12 +116,16 @@ router.post("/new", async (req, res) => {
   }
 
   try {
+    const settings = getSettings();
     const data = {
       name: name.trim(),
       description: description || "",
       owner: userId,
-      view_tracking_enabled: true,
-      view_time_tracking_enabled: true,
+      view_tracking_enabled: settings.enableProjectViewTrackingDefault,
+      view_time_tracking_enabled: settings.enableProjectTimeTrackingDefault,
+      roadmap_enabled: false,
+      is_publicly_viewable: false,
+      password_protected: false,
     };
     logger.debug("[PROJ] Creating project with data:", data);
     const newProject = await pb.collection("projects").create(data);
@@ -2349,7 +2353,7 @@ async function handleNewAssetPost(req, res, assetType, collectionName, redirectP
   }
 }
 
-async function renderEditAssetForm(req, res, assetType, collectionName, viewName, getAssetFunction) {
+async function renderEditAssetForm(req, res, next, assetType, collectionName, viewName, getAssetFunction) {
   const assetId = req.params.assetId;
   const projectId = req.params.projectId;
   const userId = req.session.user.id;
@@ -2514,7 +2518,7 @@ router.post("/:projectId/documentation_headers/new", checkProjectAccess, (req, r
   handleNewAssetPost(req, res, "Documentation Header", "documentation_headers", `/projects/${req.params.projectId}/documentation_headers`);
 });
 router.get("/:projectId/documentation_headers/edit/:assetId", checkProjectAccess, (req, res, next) => {
-  renderEditAssetForm(req, res, "Documentation Header", "documentation_headers", "projects/edit_documentation_header", getDocumentationHeaderForEditAndProject);
+  renderEditAssetForm(req, res, next, "Documentation Header", "documentation_headers", "projects/edit_documentation_header", getDocumentationHeaderForEditAndProject);
 });
 router.post("/:projectId/documentation_headers/edit/:assetId", checkProjectAccess, (req, res, next) => {
   handleEditAssetPost(req, res, next, "Documentation Header", "documentation_headers", `/projects/${req.params.projectId}/documentation_headers`, getDocumentationHeaderForEditAndProject);
@@ -2533,7 +2537,7 @@ router.post("/:projectId/documentation_footers/new", checkProjectAccess, (req, r
   handleNewAssetPost(req, res, "Documentation Footer", "documentation_footers", `/projects/${req.params.projectId}/documentation_footers`);
 });
 router.get("/:projectId/documentation_footers/edit/:assetId", checkProjectAccess, (req, res, next) => {
-  renderEditAssetForm(req, res, "Documentation Footer", "documentation_footers", "projects/edit_documentation_footer", getDocumentationFooterForEditAndProject);
+  renderEditAssetForm(req, res, next, "Documentation Footer", "documentation_footers", "projects/edit_documentation_footer", getDocumentationFooterForEditAndProject);
 });
 router.post("/:projectId/documentation_footers/edit/:assetId", checkProjectAccess, (req, res, next) => {
   handleEditAssetPost(req, res, next, "Documentation Footer", "documentation_footers", `/projects/${req.params.projectId}/documentation_footers`, getDocumentationFooterForEditAndProject);
@@ -2552,7 +2556,7 @@ router.post("/:projectId/changelog_headers/new", checkProjectAccess, (req, res) 
   handleNewAssetPost(req, res, "Changelog Header", "changelog_headers", `/projects/${req.params.projectId}/changelog_headers`);
 });
 router.get("/:projectId/changelog_headers/edit/:assetId", checkProjectAccess, (req, res, next) => {
-  renderEditAssetForm(req, res, "Changelog Header", "changelog_headers", "projects/edit_changelog_header", getChangelogHeaderForEditAndProject);
+  renderEditAssetForm(req, res, next, "Changelog Header", "changelog_headers", "projects/edit_changelog_header", getChangelogHeaderForEditAndProject);
 });
 router.post("/:projectId/changelog_headers/edit/:assetId", checkProjectAccess, (req, res, next) => {
   handleEditAssetPost(req, res, next, "Changelog Header", "changelog_headers", `/projects/${req.params.projectId}/changelog_headers`, getChangelogHeaderForEditAndProject);
@@ -2571,7 +2575,7 @@ router.post("/:projectId/changelog_footers/new", checkProjectAccess, (req, res) 
   handleNewAssetPost(req, res, "Changelog Footer", "changelog_footers", `/projects/${req.params.projectId}/changelog_footers`);
 });
 router.get("/:projectId/changelog_footers/edit/:assetId", checkProjectAccess, (req, res, next) => {
-  renderEditAssetForm(req, res, "Changelog Footer", "changelog_footers", "projects/edit_changelog_footer", getChangelogFooterForEditAndProject);
+  renderEditAssetForm(req, res, next, "Changelog Footer", "changelog_footers", "projects/edit_changelog_footer", getChangelogFooterForEditAndProject);
 });
 router.post("/:projectId/changelog_footers/edit/:assetId", checkProjectAccess, (req, res, next) => {
   handleEditAssetPost(req, res, next, "Changelog Footer", "changelog_footers", `/projects/${req.params.projectId}/changelog_footers`, getChangelogFooterForEditAndProject);

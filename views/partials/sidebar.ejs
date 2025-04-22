@@ -40,9 +40,21 @@
     </nav>
 
     <div class="sidebar-bottom-links">
-      <a href="/audit-log" class="nav-link <% if (currentPath === '/audit-log') { %>active<% } %>" data-nav-id="audit-log">
-        <i class="fas fa-history fa-fw"></i>
-        <span>Global Log</span>
+      <a href="https://docs.alphasystem.dev/view/contenthubdcmnt" target="_blank" class="nav-link">
+        <i class="fas fa-book fa-fw"></i>
+        <span>Documentation</span>
+      </a>
+
+      <% if (locals.enableAuditLog) { %>
+        <a href="/audit-log" class="nav-link <% if (currentPath === '/audit-log') { %>active<% } %>" data-nav-id="audit-log">
+          <i class="fas fa-history fa-fw"></i>
+          <span>Global Log</span>
+        </a>
+      <% } %>
+
+      <a href="/settings" class="nav-link <% if (currentPath === '/settings') { %>active<% } %>" data-nav-id="settings">
+        <i class="fas fa-cog fa-fw"></i>
+        <span>Settings</span>
       </a>
 
       <a href="/logout" class="nav-link logout-link">

@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
         year: "numeric",
       });
     const updatedTimestamp = new Date(project.updated).getTime();
-    const viewUrl = `/projects/${escapeHtml(project.id)}/`;
+    const viewUrl = `/projects/${escapeHtml(project.id)}`;
     const editUrl = `/projects/${escapeHtml(project.id)}/edit`;
     const deleteUrl = `/projects/${escapeHtml(project.id)}/delete`;
 
@@ -48,7 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <td data-label="Description">${escapeHtml(project.description) || "-"}</td>
         <td data-label="Updated">${formattedUpdated}</td>
         <td data-label="Actions" class="actions-cell">
-          <a href="${viewUrl}" class="btn btn-icon btn-view" title="View Project Entries"><i class="fas fa-tachometer-alt"></i></a>
+          <a href="${viewUrl}" class="btn btn-icon btn-view" title="View Project Dashboard"><i class="fas fa-tachometer-alt"></i></a>
           <a href="${editUrl}" class="btn btn-icon btn-edit" title="Edit Project Settings"><i class="fas fa-cog"></i></a>
           <form action="${deleteUrl}" method="POST" class="delete-project-form" title="Delete Project" style="display: inline;">
             <button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button>
@@ -142,12 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const response = await fetch(url);
       if (!response.ok) {
-        let errorMsg = `HTTP error! status: ${response.status}`;
-        try {
-          const errData = await response.json();
-          errorMsg = errData.error || errorMsg;
-        } catch (_) {}
-        throw new Error(errorMsg);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
 
@@ -159,7 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updatePaginationControls();
     } catch (error) {
       console.error("Failed to fetch projects:", error);
-      window.showAlertModal(`Error loading projects: ${error.message}`, "Loading Error");
+      window.showAlertModal("Error loading projects. Please try refreshing.", "Loading Error");
       if (projectsTableBody && tableElement) {
         const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 4;
         projectsTableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading projects.</td></tr>`;
@@ -185,13 +180,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const form = event.target;
     if (form.classList.contains("delete-project-form")) {
       event.preventDefault();
-      const projectName = form.closest("tr")?.querySelector("td[data-label='Name'] a")?.textContent || "this project";
+      const projectName = form.closest("tr")?.querySelector("td[data-label='Name']")?.textContent || "this project";
       window.showConfirmModal({
         form: form,
         title: "Confirm Project Deletion",
-        message: `Are you sure you want to delete the project "<strong>${escapeHtml(projectName)}</strong>"?<br><strong>Warning:</strong> This will permanently delete the project and ALL associated entries, templates, headers, and footers. This action cannot be undone.`,
+        message: `Are you sure you want to delete the project "<strong>${escapeHtml(projectName)}</strong>"?<br><strong>This will permanently delete the project and ALL associated entries, templates, headers, and footers. This action cannot be undone.</strong>`,
         action: "delete",
-        confirmText: "Delete Project Permanently",
+        confirmText: "Delete Project",
       });
     }
   }
@@ -269,17 +264,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   searchInput?.addEventListener("input", debouncedSearch);
 
-  function initializeProjectsPage() {
+  function initializeProjects() {
     const initialSortHeader = document.querySelector(`.data-table th[data-sort-key="${currentSortKey}"]`);
     if (initialSortHeader) {
       const icon = initialSortHeader.querySelector(".sort-icon i");
       if (icon) {
         icon.className = currentSortDir === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
       }
-    }
-    const otherHeaders = document.querySelectorAll(`.data-table th[data-sort-key]:not([data-sort-key="${currentSortKey}"]) .sort-icon i`);
-    for (const icon of otherHeaders) {
-      icon.className = "fas fa-sort";
     }
 
     attachActionListeners();
@@ -300,41 +291,27 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       } catch (e) {
         console.warn("Could not parse initial pagination state from EJS.");
-        currentPage = 1;
-        totalPages = 1;
-        totalItems = 0;
       }
     }
 
     updatePaginationControls();
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const message = urlParams.get("message");
-    const error = urlParams.get("error");
-
-    if (message || error) {
-      if (message) {
-        window.showAlertModal(message, "Success");
-      } else if (error) {
-        window.showAlertModal(error, "Error");
-      }
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-    }
-
     const needsInitialFetch = (projectsTableBody && projectsTableBody.children.length === 0 && (!emptyStateCard || emptyStateCard.style.display === "none")) || totalPages > 1;
 
-    if (needsInitialFetch && !message && !error) {
-      fetchProjects();
+    if (needsInitialFetch) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const message = urlParams.get("message");
+      const error = urlParams.get("error");
+      if (!message && !error) {
+        fetchProjects();
+      } else {
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
     } else if (projectsTableBody && projectsTableBody.children.length > 0) {
       attachActionListeners();
     }
-
-    if (searchInput) {
-      searchInput.value = "";
-      currentSearchTerm = "";
-    }
   }
 
-  initializeProjectsPage();
+  initializeProjects();
 });

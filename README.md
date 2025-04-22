@@ -1,28 +1,30 @@
-![](https://docs.alphasystem.dev/img/logo.png)
-
 # Alpha System - Content Hub (v2.0)
 
-A simple NodeJS application for creating and managing documentation, changelogs, and roadmaps within distinct projects, using Markdown and powered by PocketBase.
+A simple NodeJS application for creating and managing documentation, changelogs, roadmaps, and knowledge base articles within distinct projects, using Markdown and powered by PocketBase.
 
 ## Features
 
 - **🏢 Project Organization:** Group your content (entries, templates, assets) into separate projects.
-- **📝 Markdown Editing:** Create and manage content using a familiar Markdown editor (EasyMDE) with toolbar assistance and Ctrl+S saving.
-- **🖥️ Admin Dashboard:** Central dashboards for global overview and per-project management. View, create, edit, archive, and manage entries within their projects.
+- **📝 Markdown Editing:** Create and manage content using a familiar Markdown editor (EasyMDE) with toolbar assistance, image uploads, diagram support (Mermaid), grammar checking (LanguageTool), and Ctrl+S saving.
+- **🖥️ Admin Dashboard:** Central dashboards for global overview and per-project management. View, create, edit, archive, and manage entries within their projects. Includes activity charts.
 - **🎨 Custom Headers & Footers (Per-Project, Per-Type):** Create reusable HTML headers/footers specific to each project and entry type (Documentation, Changelog) for customized public view pages.
 - **📄 Templates (Per-Project):** Define reusable Markdown templates within each project for consistent entry structure.
 - **🗺️ Roadmap Management:** Create and manage roadmap items with distinct stages (Planned, Next Up, In Progress, Done) per project.
 - **📊 Public Roadmap Board:** Automatically generated public Kanban-style board view for each project's roadmap.
+- **🧠 Knowledge Base Management:** Create and manage question/answer pairs within projects.
+- **💡 Public Knowledge Base View:** Automatically generated, searchable public view for each project's knowledge base.
 - **🔒 Secure Access:** Dashboard access is protected by PocketBase user authentication. Project access is controlled per user.
 - **🔑 Project Access Control:** Projects can be made public or private, with optional password protection for public projects.
-- **⚙️ Project Settings:** Configure project name, description, visibility, password, and roadmap feature enablement.
+- **⚙️ Project Settings:** Configure project name, description, visibility, password, and feature enablement (Roadmap, View Tracking, Time Tracking).
 - **↔️ Sidebar Ordering (Per-Project):** Drag-and-drop interface to control the order of entries shown in the public project sidebar.
 - **🌗 Light & Dark Themes:** Choose your preferred viewing mode for the admin interface.
 - **👁️ View Tracking:** Basic view counts are recorded for each public entry page using SQLite and privacy-preserving IP hashing.
+- **⏱️ View Time Tracking:** Optionally track approximate time spent on public documentation and changelog pages.
 - **🚀 Pocketbase Backend:** Leveraging the speed and simplicity of Pocketbase for data storage.
-- **📄 Public View Pages:** Automatically generated, styled pages for customers to view published entries (`/view/:id`) and roadmaps (`/roadmap/:projectId`), respecting project visibility and password settings.
-- **⚙️ Configurable:** Uses environment variables for easy setup.
-- **🔍 Audit Log:** Tracks key actions performed within the application globally.
+- **📄 Public View Pages:** Automatically generated, styled pages for customers to view published entries (`/view/:id`), roadmaps (`/roadmap/:projectId`), and knowledge bases (`/kb/:projectId`), respecting project visibility and password settings.
+- **⚙️ Configurable:** Uses environment variables and dynamic app settings stored in PocketBase.
+- **🔍 Global Search:** Search across all entries (title, collection, tags) accessible to the logged-in user.
+- **📜 Audit Log:** Tracks key actions performed within the application globally. Exportable to CSV.
 - **🔄 Staging:** Make changes to published entries without affecting the live version until you explicitly publish the staged changes.
 - **🔗 Preview Links:** Generate shareable, optionally password-protected preview links for draft entries.
 - **🖼️ Image Uploads:** Directly upload images within the Markdown editor for entries.
@@ -41,8 +43,8 @@ You can see the changelog [here](https://docs.alphasystem.dev/view/changelogsyst
 - **Backend:** NodeJS, Express
 - **Templating:** EJS
 - **Database:** PocketBase
-- **Session Store:** SQLite (`connect-sqlite3`)
-- **View Tracking Store:** SQLite (`sqlite3`)
+- **Session Store:** SQLite
+- **View Tracking Store:** SQLite
 - **Markdown Editor:** EasyMDE
 - **Styling:** Vanilla CSS
 
@@ -82,7 +84,7 @@ Configuration is managed through a `.env` file in the project root.
       # PocketBase instance URL
       POCKETBASE_URL=http://127.0.0.1:8090
 
-      # Credentials for an ADMIN/SUPERUSER account in PocketBase (used for setup script)
+      # Credentials for an ADMIN/SUPERUSER account in PocketBase (used for setup script & admin tasks)
       POCKETBASE_ADMIN_EMAIL=your_admin_email@example.com
       POCKETBASE_ADMIN_PASSWORD=your_admin_password
 
@@ -96,8 +98,30 @@ Configuration is managed through a `.env` file in the project root.
       SESSION_SECRET=your-very-strong-random-secret-key-here
       IP_HASH_SALT=another-very-strong-random-secret-for-hashing-ips
 
+      # Record ID of the single record in the 'app_settings' collection in PocketBase
+      APP_SETTINGS_RECORD_ID=YOUR_APP_SETTINGS_RECORD_ID_HERE
+
+      # --- Optional Overrides / Defaults ---
       # Can be: NONE < ERROR < WARN < INFO < DEBUG < TRACE
-      LOG_LEVEL=INFO # Default if not present
+      LOG_LEVEL=INFO
+      # Default items per page in tables
+      ITEMS_PER_PAGE=10
+      # Session duration in days
+      SESSION_MAX_AGE_DAYS=7
+      # Default expiry for preview links (hours) - Can be overridden in App Settings UI
+      PREVIEW_TOKEN_EXPIRY_HOURS=6
+      # Default for Global Search feature - Can be overridden in App Settings UI
+      ENABLE_GLOBAL_SEARCH=true
+      # Default for Audit Log feature - Can be overridden in App Settings UI
+      ENABLE_AUDIT_LOG=true
+      # Default for View Tracking on new projects - Can be overridden in App Settings UI
+      ENABLE_PROJECT_VIEW_TRACKING_DEFAULT=true
+      # Default for View Time Tracking on new projects - Can be overridden in App Settings UI
+      ENABLE_PROJECT_TIME_TRACKING_DEFAULT=true
+      # How long (hours) before a view from the same IP is counted again
+      VIEW_TIMEFRAME_HOURS=24
+      # Average words per minute used for reading time calculation
+      AVERAGE_WPM=225
     ```
 
 2.  **Configure PocketBase Collections (Automated Setup):**
@@ -119,6 +143,7 @@ Configuration is managed through a `.env` file in the project root.
         node build_pb.js
       ```
     - The script will connect to your PocketBase instance, authenticate as the admin user, and attempt to import the collections defined in `pb_schema.json`. It will skip collections that already exist by name.
+    - **Crucially**, after the script runs successfully, **note the Record ID** printed for the `app_settings` collection. You **must** copy this ID and paste it into your `.env` file as the value for `APP_SETTINGS_RECORD_ID`.
     - Review the script's output for any errors. If errors occur, ensure PocketBase is running and accessible, and admin credentials are correct. If collections were partially created, you might need to manually delete them from the PocketBase Admin UI (`http://YOUR_POCKETBASE_URL/_/`) before re-running the script.
 
 3.  **Configure `users` Collection (Manual Step):**
@@ -133,7 +158,7 @@ Configuration is managed through a `.env` file in the project root.
 
 ## Running the Application
 
-1.  **Ensure PocketBase is running** and the collections have been configured (using `node build_pb.js`).
+1.  **Ensure PocketBase is running** and the collections have been configured (using `node build_pb.js`) and the `APP_SETTINGS_RECORD_ID` is set in `.env`.
 2.  **Start the Node.js application:**
 
     - **Development Mode (with automatic restarts using `nodemon`):**
@@ -157,25 +182,29 @@ Configuration is managed through a `.env` file in the project root.
 2.  **Global Dashboard (`/`):** View an overview across all your projects.
 3.  **Projects (`/projects`):** View, search, and manage your projects. Create new projects.
 4.  **Project Dashboard (`/projects/:projectId`):** View project-specific metrics and recently updated entries. Access project settings.
-5.  **Project Entries (`/projects/:projectId/documentation`, `/changelogs`, `/roadmaps`):** View, filter, sort, and manage entries (Docs, Changelogs, Roadmap items) for the specific project. Perform actions like Archive, Delete, or Publish Staged Changes. Initiate bulk actions.
-6.  **Create New Entry (`/projects/:projectId/new`):** Create a new entry within a project. Select type (Doc, Changelog, Roadmap), use the Markdown editor, apply optional project templates, and select optional custom headers/footers (type-specific). Assign Roadmap stage if applicable.
-7.  **Edit Entry (`/projects/:projectId/edit/:entryId`):** Modify an existing entry. If the entry is published, changes are staged by default. Select optional custom headers/footers. Generate preview links for drafts.
+5.  **Project Entries (`/projects/:projectId/documentation`, `/changelogs`, `/roadmaps`, `/knowledge_base`):** View, filter, sort, and manage entries (Docs, Changelogs, Roadmap items, KB articles) for the specific project. Perform actions like Archive, Delete, or Publish Staged Changes. Initiate bulk actions.
+6.  **Create New Entry (`/projects/:projectId/new`):** Create a new entry within a project. Select type (Doc, Changelog, Roadmap, KB), use the Markdown editor, apply optional project templates, and select optional custom headers/footers (type-specific). Assign Roadmap stage if applicable.
+7.  **Edit Entry (`/projects/:projectId/edit/:entryId`):** Modify an existing entry. If the entry is published, changes are staged by default. Select optional custom headers/footers. Generate preview links for drafts. Use the grammar check tool.
 8.  **Archived Entries (Per-Project, Per-Type):** View archived entries for the project/type. Unarchive or permanently delete them.
 9.  **Templates (Per-Project) (`/projects/:projectId/templates`):** Create, view, edit, and delete reusable Markdown templates specific to the project.
 10. **Headers/Footers (Per-Project, Per-Type):** Create, view, edit, and delete reusable HTML headers/footers for Documentation and Changelog entries within the project.
 11. **Sidebar Order (Per-Project) (`/projects/:projectId/sidebar-order`):** Drag and drop to reorder entries shown in the public project sidebar.
-12. **Global Audit Log (`/audit-log`):** View a log of system and user actions across all projects. Export or clear logs.
-13. **Public View (`/view/:id`):** Access the public page for a published entry (respects project visibility/password).
-14. **Public Roadmap (`/roadmap/:projectId`):** Access the public roadmap board for a project (respects project visibility/password and roadmap feature enablement).
-15. **Preview (`/preview/:token`):** Access a draft entry using a generated preview link (may require a password).
-16. **Theme Toggle:** Use the toggle in the sidebar to switch between light and dark modes for the admin interface.
-17. **Save Shortcut:** Use `Ctrl+S` (or `Cmd+S`) on Create/Edit pages (Entries, Templates, Headers, Footers) to save the form.
+12. **Global Audit Log (`/audit-log`):** View a log of system and user actions across all projects. Export or clear logs (if enabled in settings).
+13. **System Settings (`/settings`):** Configure global application settings like Audit Log enablement, Global Search, and default project settings.
+14. **Global Search (`/search?q=...` or via top bar):** Search across all entries you have access to.
+15. **Public View (`/view/:id`):** Access the public page for a published entry (respects project visibility/password).
+16. **Public Roadmap (`/roadmap/:projectId`):** Access the public roadmap board for a project (respects project visibility/password and roadmap feature enablement).
+17. **Public Knowledge Base (`/kb/:projectId`):** Access the public knowledge base for a project (respects project visibility/password).
+18. **Preview (`/preview/:token`):** Access a draft entry using a generated preview link (may require a password).
+19. **Theme Toggle:** Use the toggle in the sidebar footer to switch between light and dark modes for the admin interface.
+20. **Save Shortcut:** Use `Ctrl+S` (or `Cmd+S`) on Create/Edit pages (Entries, Templates, Headers, Footers) to save the form.
 
 ## Notes
 
 - **Session Storage:** Uses `connect-sqlite3` storing sessions in `db/sessions.db`. Consider alternatives (Redis, PostgreSQL) for high-traffic production.
-- **View Tracking:** Uses `sqlite3` storing view logs in `db/view_tracking.db`. Hashing IPs enhances privacy but review GDPR/LGPD compliance if applicable.
+- **View Tracking:** Uses `sqlite3` storing view logs and duration data in `db/view_tracking.db`. Hashing IPs enhances privacy but review GDPR/LGPD compliance if applicable.
 - **Error Handling:** Basic error pages (403, 404, 500) are included. Check server logs for detailed errors.
+- **Admin Client:** The application uses a PocketBase admin client internally for certain operations (like setup, cleanup, some lookups). Ensure the admin credentials in `.env` are kept secure.
 
 ## Contributing
 

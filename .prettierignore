@@ -21,3 +21,11 @@ public/js/vendors/*
 
 # Markdown
 *.md
+
+# Minified files
+*-min.js
+*-min.css
+*_min.js
+*_min.css
+*.min.js
+*.min.css

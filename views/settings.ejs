@@ -1,0 +1,68 @@
+<% locals.pageTitle='System Settings' %>
+
+<%- include('partials/header', { pageTitle: locals.pageTitle, currentProjectId: null }) %>
+
+<div class="content-header">
+  <h1><%= locals.pageTitle %></h1>
+</div>
+
+<% if (locals.message) { %>
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle alert-icon"></i>
+    <span><%= message %></span>
+  </div>
+<% } %>
+
+<% if (locals.errors && locals.errors.general) { %>
+  <div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle alert-icon"></i>
+    <span><%= errors.general.message %></span>
+  </div>
+<% } %>
+
+<div class="card form-card">
+  <form action="/settings" method="POST" novalidate autocomplete="off" id="settings-form">
+    <div class="form-grid">
+      <div class="form-group form-group-full">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="enable_global_search" name="enable_global_search" value="true" <%= settings.enableGlobalSearch ? 'checked' : '' %>>
+          <label class="form-check-label" for="enable_global_search">Enable Global Search Bar</label>
+        </div>
+        <small class="form-text">Show the search bar in the top navigation.</small>
+      </div>
+
+      <div class="form-group form-group-full">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="enable_audit_log" name="enable_audit_log" value="true" <%= settings.enableAuditLog ? 'checked' : '' %>>
+          <label class="form-check-label" for="enable_audit_log">Enable Audit Logging</label>
+        </div>
+        <small class="form-text">Record detailed system and user actions.</small>
+      </div>
+
+      <div class="form-group form-group-full">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="enable_project_view_tracking_default" name="enable_project_view_tracking_default" value="true" <%= settings.enableProjectViewTrackingDefault ? 'checked' : '' %>>
+          <label class="form-check-label" for="enable_project_view_tracking_default">Default: Enable View Tracking</label>
+        </div>
+        <small class="form-text">Default setting for new projects.</small>
+      </div>
+
+      <div class="form-group">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="enable_project_time_tracking_default" name="enable_project_time_tracking_default" value="true" <%= settings.enableProjectTimeTrackingDefault ? 'checked' : '' %>>
+          <label class="form-check-label" for="enable_project_time_tracking_default">Default: Enable Time Tracking</label>
+        </div>
+        <small class="form-text">Default setting for new projects.</small>
+      </div>
+
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-lg">
+        <i class="fas fa-save"></i> Save Settings
+      </button>
+    </div>
+  </form>
+</div>
+
+<%- include('partials/footer', { scriptPath: null }) %>
