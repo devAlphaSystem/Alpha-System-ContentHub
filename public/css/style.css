@@ -251,7 +251,7 @@ input[type="button"],
 .sidebar-logo img {
   max-width: 100%;
   height: auto;
-  max-height: calc(var(--topbar-height) - 20px);
+  max-height: var(--topbar-height);
   object-fit: contain;
   display: block;
   margin-left: auto;

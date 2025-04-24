@@ -130,7 +130,7 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
   logger.debug(`[API] GET /projects/${projectId}/entries requested by user ${userId}, type: ${entryType}`);
   logger.time(`[API] GET /projects/${projectId}/entries ${userId} ${entryType}`);
 
-  if (!entryType || !["documentation", "changelog", "roadmap", "knowledge_base"].includes(entryType)) {
+  if (!entryType || !["documentation", "changelog", "roadmap", "knowledge_base", "sidebar_header"].includes(entryType)) {
     logger.warn(`[API] Invalid or missing entry type filter for project ${projectId}: ${entryType}`);
     logger.timeEnd(`[API] GET /projects/${projectId}/entries ${userId} ${entryType}`);
     return res.status(400).json({
@@ -183,7 +183,7 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
       }
       entriesWithDetails.push({
         ...entry,
-        viewUrl: entryType !== "roadmap" && entryType !== "knowledge_base" ? `/view/${entry.id}` : null,
+        viewUrl: entryType !== "roadmap" && entryType !== "knowledge_base" && entryType !== "sidebar_header" ? `/view/${entry.id}` : null,
         formattedUpdated: new Date(entry.updated).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -979,7 +979,7 @@ router.get("/projects/:projectId/archived-entries", requireLogin, checkProjectAc
   logger.debug(`[API] GET /projects/${projectId}/archived-entries requested by user ${userId}, type: ${entryType}`);
   logger.time(`[API] GET /projects/${projectId}/archived-entries ${userId} ${entryType}`);
 
-  if (!entryType || !["documentation", "changelog", "roadmap", "knowledge_base"].includes(entryType)) {
+  if (!entryType || !["documentation", "changelog", "roadmap", "knowledge_base", "sidebar_header"].includes(entryType)) {
     logger.warn(`[API] Invalid or missing entry type filter for archived entries, project ${projectId}: ${entryType}`);
     logger.timeEnd(`[API] GET /projects/${projectId}/archived-entries ${userId} ${entryType}`);
     return res.status(400).json({
@@ -1268,7 +1268,7 @@ router.post("/projects/:projectId/entries/:entryId/duplicate", requireLogin, che
         error: "Title cannot be empty.",
       });
     }
-    if (dataToDuplicate.type !== "roadmap" && dataToDuplicate.type !== "knowledge_base" && (!dataToDuplicate.content || dataToDuplicate.content.trim() === "")) {
+    if (dataToDuplicate.type !== "roadmap" && dataToDuplicate.type !== "knowledge_base" && dataToDuplicate.type !== "sidebar_header" && (!dataToDuplicate.content || dataToDuplicate.content.trim() === "")) {
       logger.warn(`[API] Duplicate failed for ${entryId}: Content cannot be empty for type ${dataToDuplicate.type}.`);
       return res.status(400).json({
         error: "Content cannot be empty.",
@@ -1310,7 +1310,7 @@ router.post("/projects/:projectId/entries/:entryId/duplicate", requireLogin, che
       custom_changelog_header: dataToDuplicate.custom_changelog_header || null,
       custom_changelog_footer: dataToDuplicate.custom_changelog_footer || null,
       roadmap_stage: dataToDuplicate.roadmap_stage || null,
-      content: dataToDuplicate.type === "roadmap" ? "" : dataToDuplicate.content,
+      content: dataToDuplicate.type === "roadmap" || dataToDuplicate.type === "sidebar_header" ? "" : dataToDuplicate.content,
     };
 
     newData.id = undefined;
@@ -1390,6 +1390,145 @@ router.post("/log-duration-pb", express.json({ type: "*/*" }), async (req, res) 
       logger.warn(`[API] Attempted to log duration for non-existent entry ${entryId}.`);
     }
     res.status(error?.status === 404 ? 404 : 500).send("Error updating duration");
+  }
+});
+
+router.post("/projects/:projectId/sidebar-headers", requireLogin, checkProjectAccessApi, async (req, res) => {
+  const projectId = req.params.projectId;
+  const userId = req.session.user.id;
+  const { title } = req.body;
+  logger.info(`[API] POST /projects/${projectId}/sidebar-headers requested by user ${userId}. Title: ${title}`);
+  logger.time(`[API] POST /sidebar-headers ${projectId}`);
+
+  if (!title || title.trim() === "") {
+    logger.warn(`[API] Sidebar header creation failed for project ${projectId}: Title required.`);
+    logger.timeEnd(`[API] POST /sidebar-headers ${projectId}`);
+    return res.status(400).json({
+      error: "Header title is required.",
+    });
+  }
+
+  try {
+    const maxOrderResult = await pbAdmin
+      .collection("entries_main")
+      .getFirstListItem(`project = '${projectId}' && show_in_project_sidebar = true`, {
+        sort: "-sidebar_order",
+        fields: "sidebar_order",
+        $autoCancel: false,
+      })
+      .catch((err) => {
+        if (err.status === 404) return { sidebar_order: -1 };
+        throw err;
+      });
+
+    const nextOrder = (maxOrderResult?.sidebar_order ?? -1) + 1;
+
+    const data = {
+      title: title.trim(),
+      type: "sidebar_header",
+      status: "published",
+      owner: userId,
+      project: projectId,
+      show_in_project_sidebar: true,
+      sidebar_order: nextOrder,
+      content: "",
+      tags: "",
+      collection: "",
+      views: 0,
+      has_staged_changes: false,
+    };
+    logger.debug(`[API] Creating sidebar header in project ${projectId} with data:`, data);
+
+    const newHeader = await pbAdmin.collection("entries_main").create(data);
+    logger.info(`[API] Sidebar header created successfully: ${newHeader.id} (${newHeader.title}) in project ${projectId} by user ${userId}`);
+    logAuditEvent(req, "SIDEBAR_HEADER_CREATE", "entries_main", newHeader.id, {
+      projectId: projectId,
+      title: newHeader.title,
+    });
+
+    logger.timeEnd(`[API] POST /sidebar-headers ${projectId}`);
+    res.status(201).json({
+      message: "Sidebar header created successfully.",
+      header: newHeader,
+    });
+  } catch (error) {
+    logger.timeEnd(`[API] POST /sidebar-headers ${projectId}`);
+    logger.error(`[API] Failed to create sidebar header '${title}' in project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    logAuditEvent(req, "SIDEBAR_HEADER_CREATE_FAILURE", "entries_main", null, {
+      projectId: projectId,
+      title: title,
+      error: error?.message,
+    });
+    res.status(500).json({
+      error: "Failed to create sidebar header.",
+    });
+  }
+});
+
+router.post("/projects/:projectId/sidebar-headers/:headerId", requireLogin, checkProjectAccessApi, async (req, res) => {
+  const headerId = req.params.headerId;
+  const projectId = req.params.projectId;
+  const userId = req.session.user.id;
+  const { title } = req.body;
+  logger.info(`[API] POST /projects/${projectId}/sidebar-headers/${headerId} (update) requested by user ${userId}. New Title: ${title}`);
+  logger.time(`[API] POST /update-sidebar-header ${headerId}`);
+
+  if (!title || title.trim() === "") {
+    logger.warn(`[API] Sidebar header update failed for ${headerId}: Title required.`);
+    logger.timeEnd(`[API] POST /update-sidebar-header ${headerId}`);
+    return res.status(400).json({
+      error: "Header title is required.",
+    });
+  }
+
+  try {
+    const record = await pbAdmin.collection("entries_main").getOne(headerId);
+
+    if (record.owner !== userId || record.project !== projectId || record.type !== "sidebar_header") {
+      logger.warn(`[API] Forbidden attempt to update sidebar header ${headerId} by user ${userId}.`);
+      logAuditEvent(req, "SIDEBAR_HEADER_UPDATE_FAILURE", "entries_main", headerId, {
+        projectId: projectId,
+        reason: "Forbidden or wrong type",
+      });
+      logger.timeEnd(`[API] POST /update-sidebar-header ${headerId}`);
+      return res.status(403).json({
+        error: "Forbidden or invalid header ID.",
+      });
+    }
+
+    const updateData = {
+      title: title.trim(),
+    };
+    logger.debug(`[API] Updating sidebar header ${headerId} with data:`, updateData);
+
+    const updatedHeader = await pbAdmin.collection("entries_main").update(headerId, updateData);
+    logger.info(`[API] Sidebar header ${headerId} updated successfully to "${updatedHeader.title}".`);
+    logAuditEvent(req, "SIDEBAR_HEADER_UPDATE", "entries_main", headerId, {
+      projectId: projectId,
+      newTitle: updatedHeader.title,
+    });
+
+    logger.timeEnd(`[API] POST /update-sidebar-header ${headerId}`);
+    res.status(200).json({
+      message: "Sidebar header updated successfully.",
+      header: updatedHeader,
+    });
+  } catch (error) {
+    logger.timeEnd(`[API] POST /update-sidebar-header ${headerId}`);
+    logger.error(`[API] Failed to update sidebar header ${headerId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    logAuditEvent(req, "SIDEBAR_HEADER_UPDATE_FAILURE", "entries_main", headerId, {
+      projectId: projectId,
+      title: title,
+      error: error?.message,
+    });
+    if (error.status === 404) {
+      return res.status(404).json({
+        error: "Sidebar header not found.",
+      });
+    }
+    res.status(500).json({
+      error: "Failed to update sidebar header.",
+    });
   }
 });
 

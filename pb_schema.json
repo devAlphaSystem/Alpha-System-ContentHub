@@ -60,6 +60,15 @@
         "type": "bool"
       },
       {
+        "hidden": false,
+        "id": "bool854079160",
+        "name": "enable_project_full_width_default",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
         "autogeneratePattern": "",
         "hidden": false,
         "id": "text2404160477",
@@ -671,7 +680,8 @@
           "changelog",
           "documentation",
           "roadmap",
-          "knowledge_base"
+          "knowledge_base",
+          "sidebar_header"
         ]
       },
       {
@@ -871,7 +881,8 @@
           "changelog",
           "documentation",
           "roadmap",
-          "knowledge_base"
+          "knowledge_base",
+          "sidebar_header"
         ]
       },
       {
@@ -1005,7 +1016,8 @@
           "changelog",
           "documentation",
           "roadmap",
-          "knowledge_base"
+          "knowledge_base",
+          "sidebar_header"
         ]
       },
       {
@@ -1473,6 +1485,15 @@
         "hidden": false,
         "id": "bool4044210776",
         "name": "view_time_tracking_enabled",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "bool3058925240",
+        "name": "use_full_width_content",
         "presentable": false,
         "required": false,
         "system": false,

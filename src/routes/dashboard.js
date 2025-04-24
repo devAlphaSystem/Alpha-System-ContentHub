@@ -34,14 +34,14 @@ router.get("/", requireLogin, async (req, res) => {
 
     logger.time(`[DASH] FetchAllEntries ${userId}`);
     const allEntries = await pb.collection("entries_main").getFullList({
-      filter: `owner = '${userId}'`,
+      filter: `owner = '${userId}' && type != 'sidebar_header'`,
       fields: "id, status, has_staged_changes, views, title, project, type, created",
       sort: "-views",
       expand: "project",
       $autoCancel: false,
     });
     logger.timeEnd(`[DASH] FetchAllEntries ${userId}`);
-    logger.debug(`[DASH] Found ${allEntries.length} total entries for user ${userId}.`);
+    logger.debug(`[DASH] Found ${allEntries.length} total entries (excluding headers) for user ${userId}.`);
 
     let totalEntriesDocsCl = 0;
     let publishedCountDocsCl = 0;

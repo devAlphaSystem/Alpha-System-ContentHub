@@ -34,7 +34,7 @@
         scrollbar-width: thin;
         scrollbar-color: var(--border-secondary) var(--bg-secondary);
       }
-      
+
       .roadmap-board::-webkit-scrollbar {
         height: 10px;
       }
@@ -65,7 +65,7 @@
         background-color: var(--bg-secondary);
         border-radius: var(--radius-lg);
         border: 1px solid var(--border-primary);
-        max-height: calc(100vh - var(--header-height) - 120px); 
+        max-height: calc(100vh - var(--header-height) - 120px);
         transition: background-color 0.3s ease, border-color 0.3s ease;
       }
 
@@ -255,7 +255,7 @@
 
     <script>
       const currentTheme = localStorage.getItem("theme") || "light";
-      
+
       if (currentTheme === "dark") {
         document.body.classList.add("dark-mode");
       }
@@ -284,22 +284,28 @@
               <ul>
                 <% if (sidebarEntries && sidebarEntries.length > 0) { %>
                   <% for(const item of sidebarEntries) { %>
-                    <li>
-                      <a href="/view/<%= item.id %>" class="project-entry-link">
-                        <% if (item.type === 'changelog') { %>
-                          <i class="fas fa-history fa-fw type-icon"></i>
-                        <% } else if (item.type === 'documentation') { %>
-                          <i class="fas fa-file-alt fa-fw type-icon"></i>
-                        <% } %>
+                    <% if (item.type === 'sidebar_header') { %>
+                      <li class="sidebar-header-item">
                         <span><%= item.title %></span>
-                      </a>
-                    </li>
+                      </li>
+                    <% } else { %>
+                      <li>
+                        <a href="/view/<%= item.id %>" class="project-entry-link">
+                          <% if (item.type === 'changelog') { %>
+                            <i class="fas fa-history fa-fw type-icon"></i>
+                          <% } else if (item.type === 'documentation') { %>
+                            <i class="fas fa-file-alt fa-fw type-icon"></i>
+                          <% } %>
+                          <span><%= item.title %></span>
+                        </a>
+                      </li>
+                    <% } %>
                   <% } %>
                 <% } %>
                 <% if (project.roadmap_enabled) { %>
                   <li>
                     <a href="/roadmap/<%= project.id %>" class="project-entry-link active">
-                      <i class="fas fa-columns fa-fw type-icon"></i>
+                      <i class="fas fa-route fa-fw type-icon"></i>
                       <span>Project Roadmap</span>
                     </a>
                   </li>

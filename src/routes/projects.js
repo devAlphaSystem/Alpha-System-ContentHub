@@ -126,6 +126,7 @@ router.post("/new", async (req, res) => {
       roadmap_enabled: false,
       is_publicly_viewable: false,
       password_protected: false,
+      use_full_width_content: settings.enableProjectFullWidthDefault,
     };
     logger.debug("[PROJ] Creating project with data:", data);
     const newProject = await pb.collection("projects").create(data);
@@ -134,7 +135,7 @@ router.post("/new", async (req, res) => {
       name: newProject.name,
     });
     logger.timeEnd(`[PROJ] POST /projects/new ${userId}`);
-    res.redirect(`/projects/${newProject.id}/documentation`);
+    res.redirect(`/projects/${newProject.id}/`);
   } catch (error) {
     logger.timeEnd(`[PROJ] POST /projects/new ${userId}`);
     logger.error(`[PROJ] Failed to create project '${name}' for user ${userId}: Status ${error?.status || "N/A"}`, error?.message || error);
@@ -186,7 +187,7 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
 
     try {
       logger.trace(`[PROJ] Fetching first sidebar entry for project ${projectId}`);
-      const firstEntryResult = await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && show_in_project_sidebar = true && status = 'published' && type != 'roadmap' && type != 'knowledge_base'`, {
+      const firstEntryResult = await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && show_in_project_sidebar = true && status = 'published' && type != 'roadmap' && type != 'knowledge_base' && type != 'sidebar_header'`, {
         sort: "+sidebar_order,+title",
         fields: "id",
         $autoCancel: false,
@@ -215,7 +216,7 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
     let totalDurationCountSum = 0;
 
     const projectEntries = await pbAdmin.collection("entries_main").getFullList({
-      filter: `project = '${projectId}' && type != 'roadmap'`,
+      filter: `project = '${projectId}' && type != 'roadmap' && type != 'sidebar_header'`,
       fields: "id, views, type, created, total_view_duration, view_duration_count",
       $autoCancel: false,
     });
@@ -259,7 +260,7 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
 
     logger.time(`[PROJ] FetchRecentEntries ${projectId}`);
     const recentEntriesResult = await pbAdmin.collection("entries_main").getList(1, 5, {
-      filter: `project = '${projectId}' && type != 'roadmap'`,
+      filter: `project = '${projectId}' && type != 'roadmap' && type != 'sidebar_header'`,
       sort: "-updated",
       fields: "id, title, updated, type",
       $autoCancel: false,
@@ -333,7 +334,7 @@ router.get("/:projectId/edit", checkProjectAccess, async (req, res, next) => {
 });
 
 router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
-  const { name, description, is_publicly_viewable, password_protected, access_password, roadmap_enabled, view_tracking_enabled, view_time_tracking_enabled } = req.body;
+  const { name, description, is_publicly_viewable, password_protected, access_password, roadmap_enabled, view_tracking_enabled, view_time_tracking_enabled, use_full_width_content } = req.body;
   const projectId = req.params.projectId;
   const userId = req.session.user.id;
   logger.info(`[PROJ] POST /projects/${projectId}/edit attempt by user ${userId}. Name: ${name}`);
@@ -351,6 +352,7 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
   const isRoadmapEnabled = roadmap_enabled === "true";
   const isViewTrackingEnabled = view_tracking_enabled === "true";
   const isViewTimeTrackingEnabled = view_time_tracking_enabled === "true";
+  const useFullWidth = use_full_width_content === "true";
 
   if (requirePassword && !isPublic) {
     errors.password_protected = {
@@ -380,6 +382,7 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
           roadmap_enabled: isRoadmapEnabled,
           view_tracking_enabled: isViewTrackingEnabled,
           view_time_tracking_enabled: isViewTimeTrackingEnabled,
+          use_full_width_content: useFullWidth,
         },
         errors: errors,
       });
@@ -397,6 +400,7 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
           roadmap_enabled: isRoadmapEnabled,
           view_tracking_enabled: isViewTrackingEnabled,
           view_time_tracking_enabled: isViewTimeTrackingEnabled,
+          use_full_width_content: useFullWidth,
         },
         errors: {
           ...errors,
@@ -417,6 +421,7 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
       roadmap_enabled: isRoadmapEnabled,
       view_tracking_enabled: isViewTrackingEnabled,
       view_time_tracking_enabled: isViewTimeTrackingEnabled,
+      use_full_width_content: useFullWidth,
     };
     logger.debug(`[PROJ] Updating project ${projectId} with data:`, data);
 
@@ -448,6 +453,7 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
       roadmap_enabled: updatedProject.roadmap_enabled,
       view_tracking: updatedProject.view_tracking_enabled,
       view_time_tracking: updatedProject.view_time_tracking_enabled,
+      use_full_width: updatedProject.use_full_width_content,
     });
     logger.timeEnd(`[PROJ] POST /projects/${projectId}/edit ${userId}`);
     res.redirect(`/projects/${projectId}/edit?message=updated`);
@@ -471,6 +477,7 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
           roadmap_enabled: isRoadmapEnabled,
           view_tracking_enabled: isViewTrackingEnabled,
           view_time_tracking_enabled: isViewTimeTrackingEnabled,
+          use_full_width_content: useFullWidth,
         },
         errors: {
           general: {
@@ -491,6 +498,7 @@ router.post("/:projectId/edit", checkProjectAccess, async (req, res) => {
           roadmap_enabled: isRoadmapEnabled,
           view_tracking_enabled: isViewTrackingEnabled,
           view_time_tracking_enabled: isViewTimeTrackingEnabled,
+          use_full_width_content: useFullWidth,
         },
         errors: {
           general: {
@@ -1183,7 +1191,7 @@ router.post("/:projectId/edit/:entryId", checkProjectAccess, async (req, res, ne
         message: "Roadmap Stage is required.",
       };
     }
-    if (submittedType !== "roadmap" && submittedType !== "knowledge_base" && (!content || content.trim() === "")) {
+    if (submittedType !== "roadmap" && submittedType !== "knowledge_base" && submittedType !== "sidebar_header" && (!content || content.trim() === "")) {
       pbErrors.content = {
         message: "Content is required.",
       };
@@ -1243,32 +1251,32 @@ router.post("/:projectId/edit/:entryId", checkProjectAccess, async (req, res, ne
       updateData = {
         staged_title: title,
         staged_type: submittedType,
-        staged_content: submittedType === "roadmap" ? "" : content,
-        staged_tags: tags || "",
+        staged_content: submittedType === "roadmap" || submittedType === "sidebar_header" ? "" : content,
+        staged_tags: submittedType === "sidebar_header" ? "" : tags || "",
         staged_documentation_header: submittedType === "documentation" ? custom_documentation_header || null : null,
         staged_documentation_footer: submittedType === "documentation" ? custom_documentation_footer || null : null,
         staged_changelog_header: submittedType === "changelog" ? custom_changelog_header || null : null,
         staged_changelog_footer: submittedType === "changelog" ? custom_changelog_footer || null : null,
         staged_roadmap_stage: submittedType === "roadmap" ? roadmap_stage || null : null,
         has_staged_changes: true,
-        collection: collection || "",
-        show_in_project_sidebar: showInSidebarValue,
+        collection: submittedType === "sidebar_header" ? "" : collection || "",
+        show_in_project_sidebar: submittedType === "sidebar_header" ? true : showInSidebarValue,
       };
     } else {
       logger.debug(`[PROJ] Updating entry ${entryId} directly (not staging).`);
       updateData = {
         title,
         type: submittedType,
-        content: submittedType === "roadmap" ? "" : content,
-        tags: tags || "",
-        collection: collection || "",
-        status: submittedStatus,
+        content: submittedType === "roadmap" || submittedType === "sidebar_header" ? "" : content,
+        tags: submittedType === "sidebar_header" ? "" : tags || "",
+        collection: submittedType === "sidebar_header" ? "" : collection || "",
+        status: submittedType === "sidebar_header" ? "published" : submittedStatus,
         custom_documentation_header: submittedType === "documentation" ? custom_documentation_header || null : null,
         custom_documentation_footer: submittedType === "documentation" ? custom_documentation_footer || null : null,
         custom_changelog_header: submittedType === "changelog" ? custom_changelog_header || null : null,
         custom_changelog_footer: submittedType === "changelog" ? custom_changelog_footer || null : null,
         roadmap_stage: submittedType === "roadmap" ? roadmap_stage || null : null,
-        show_in_project_sidebar: showInSidebarValue,
+        show_in_project_sidebar: submittedType === "sidebar_header" ? true : showInSidebarValue,
         has_staged_changes: false,
         staged_title: null,
         staged_type: null,
@@ -1303,6 +1311,7 @@ router.post("/:projectId/edit/:entryId", checkProjectAccess, async (req, res, ne
     if (updatedRecord.type === "changelog") redirectPath = `/projects/${projectId}/changelogs`;
     if (updatedRecord.type === "roadmap") redirectPath = `/projects/${projectId}/roadmaps`;
     if (updatedRecord.type === "knowledge_base") redirectPath = `/projects/${projectId}/knowledge_base`;
+    if (updatedRecord.type === "sidebar_header") redirectPath = `/projects/${projectId}/sidebar-order`;
     logger.debug(`[PROJ] Redirecting to ${redirectPath} after entry update.`);
     logger.timeEnd(`[PROJ] POST /projects/${projectId}/edit/${entryId} ${userId}`);
     res.redirect(redirectPath);
@@ -1435,6 +1444,7 @@ router.post("/:projectId/delete/:entryId", checkProjectAccess, async (req, res, 
     if (entryType === "changelog") redirectPath = `/projects/${projectId}/changelogs?action=deleted`;
     if (entryType === "roadmap") redirectPath = `/projects/${projectId}/roadmaps?action=deleted`;
     if (entryType === "knowledge_base") redirectPath = `/projects/${projectId}/knowledge_base?action=deleted`;
+    if (entryType === "sidebar_header") redirectPath = `/projects/${projectId}/sidebar-order?action=deleted`;
     logger.timeEnd(`[PROJ] POST /projects/${projectId}/delete/${entryId} ${userId}`);
     res.redirect(redirectPath);
   } catch (error) {
@@ -1453,6 +1463,7 @@ router.post("/:projectId/delete/:entryId", checkProjectAccess, async (req, res, 
     if (entryType === "changelog") errorRedirectPath = `/projects/${projectId}/changelogs?error=delete_failed`;
     if (entryType === "roadmap") errorRedirectPath = `/projects/${projectId}/roadmaps?error=delete_failed`;
     if (entryType === "knowledge_base") errorRedirectPath = `/projects/${projectId}/knowledge_base?error=delete_failed`;
+    if (entryType === "sidebar_header") errorRedirectPath = `/projects/${projectId}/sidebar-order?error=delete_failed`;
     res.redirect(errorRedirectPath);
   }
 });
@@ -1469,6 +1480,21 @@ router.post("/:projectId/archive/:entryId", checkProjectAccess, async (req, res,
   try {
     originalRecord = await getEntryForOwnerAndProject(entryId, userId, projectId);
     entryType = originalRecord.type;
+
+    if (entryType === "sidebar_header") {
+      logger.warn(`[PROJ] Attempt to archive a sidebar header (${entryId}), which is not allowed. Deleting instead.`);
+      await pbAdmin.collection("entries_main").delete(entryId);
+      logAuditEvent(req, "ENTRY_DELETE", "entries_main", entryId, {
+        projectId: projectId,
+        title: originalRecord.title,
+        type: entryType,
+        reason: "Attempted archive on sidebar header",
+      });
+      logger.info(`[PROJ] Sidebar header ${entryId} (${originalRecord.title}) deleted successfully instead of archiving.`);
+      logger.timeEnd(`[PROJ] POST /projects/${projectId}/archive/${entryId} ${userId}`);
+      return res.redirect(`/projects/${projectId}/sidebar-order?action=deleted`);
+    }
+
     logger.debug(`[PROJ] Archiving entry ${entryId} (${originalRecord.title}) in project ${projectId}`);
 
     const archiveData = {

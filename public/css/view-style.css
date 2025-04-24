@@ -29,8 +29,8 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
-  --project-sidebar-width: 260px;
-  --toc-sidebar-width: 240px;
+  --project-sidebar-width: 300px;
+  --toc-sidebar-width: 280px;
   --header-height: 60px;
   --content-max-width: 860px;
   --dark-bg-primary: #1a1a1a;
@@ -58,8 +58,8 @@
   --dark-copy-btn-bg: #3a3a3a;
   --dark-copy-btn-text: #adb5bd;
   --dark-copy-btn-hover-bg: #495057;
-  --dark-theme-icon-sun: #fcc419;
-  --dark-theme-icon-moon: #e9ecef;
+  --dark-theme-icon-sun: var(--dark-theme-icon-sun);
+  --dark-theme-icon-moon: var(--dark-theme-icon-moon);
 }
 
 *,
@@ -252,6 +252,15 @@ body.dark-mode {
   padding-left: 5px;
 }
 
+.sidebar-header-item {
+  padding: 10px 12px 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 15px;
+}
+
 .toc-title {
   font-size: 0.875rem;
   font-weight: 600;
@@ -415,13 +424,23 @@ body.toc-sidebar-open .toc-sidebar {
 }
 
 @media (min-width: 1400px) {
-  .page-wrapper {
+  .page-wrapper:not(.full-width-content) {
     max-width: 1600px;
   }
 
   .main-content {
     padding: 40px 64px;
   }
+}
+
+.page-wrapper.full-width-content {
+  max-width: none;
+}
+
+.page-wrapper.full-width-content .main-content {
+  max-width: none;
+  padding-left: 32px;
+  padding-right: 32px;
 }
 
 @media (max-width: 1023px) {
@@ -996,6 +1015,15 @@ pre.language-mermaid {
 pre.language-mermaid svg {
   max-width: 100%;
   height: auto;
+}
+
+.sidebar-header-item {
+  padding: 10px 12px 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 15px;
 }
 
 @media print {

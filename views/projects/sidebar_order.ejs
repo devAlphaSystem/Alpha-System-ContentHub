@@ -13,7 +13,7 @@
     padding: 0;
     margin: 0;
   }
-  
+
   .list-group-item {
     padding: 12px 16px !important;
     border: 1px solid var(--border-light);
@@ -43,6 +43,19 @@
     cursor: grabbing;
   }
 
+  .list-group-item.sidebar-header-item {
+    background-color: var(--page-bg);
+    font-weight: 600;
+    color: var(--text-primary);
+    border-style: dashed;
+  }
+
+  .sidebar-item-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 0px;
+  }
+
   body.dark-mode .list-group-item {
     background-color: var(--dark-content-bg);
     border-color: var(--dark-border-light);
@@ -55,11 +68,20 @@
   body.dark-mode .handle {
     color: var(--dark-text-muted);
   }
+
+  body.dark-mode .list-group-item.sidebar-header-item {
+    background-color: var(--dark-page-bg);
+    color: var(--dark-text-primary);
+    border-color: var(--dark-border-color);
+  }
 </style>
 
 <div class="content-header">
   <h1>Sidebar Order: <span class="text-muted"><%= project.name %></span></h1>
   <div class="header-actions">
+    <button id="add-header-btn" class="btn btn-secondary">
+      <i class="fas fa-heading"></i> Add Header
+    </button>
     <button id="save-order-btn" class="btn btn-primary">
       <i class="fas fa-save"></i> Save Order
     </button>
@@ -72,6 +94,10 @@
     <i class="fas fa-check-circle alert-icon"></i>
     <span>Sidebar order updated successfully.</span>
   </div>
+<% } else if (locals.action === 'deleted') { %>
+  <div class="alert alert-info">
+    <i class="fas fa-check-circle alert-icon"></i> <span>Sidebar header deleted successfully.</span>
+  </div>
 <% } %>
 
 <% if (locals.error) { %>
@@ -83,21 +109,39 @@
 
 <div class="card">
   <div class="card-body" style="padding: 20px;">
-    <p class="text-muted">Drag and drop the entries below to reorder how they appear in the public project sidebar. Only entries marked "Show in Project Sidebar?" will appear here. Roadmap items are excluded.</p>
+    <p class="text-muted">Drag and drop the entries and headers below to reorder how they appear in the public project sidebar. Only items marked "Show in Project Sidebar?" will appear here. Roadmap items are excluded.</p>
 
     <% if (entries && entries.length > 0) { %>
       <ul id="sortable-entries" class="list-group" style="margin-top: 20px;">
         <% for (const entry of entries) { %>
-          <li class="list-group-item" data-id="<%= entry.id %>">
+          <li class="list-group-item <%= entry.type === 'sidebar_header' ? 'sidebar-header-item' : '' %>" data-id="<%= entry.id %>">
             <i class="fas fa-grip-vertical handle" style="cursor: grab; margin-right: 10px; color: var(--text-muted);"></i>
-            <span style="margin-right: 10px;">
-              <% if (entry.type === 'documentation') { %>
-                <i class="fas fa-file-alt fa-fw" title="Documentation"></i>
-              <% } else if (entry.type === 'changelog') { %>
-                <i class="fas fa-history fa-fw" title="Changelog"></i>
-              <% } %>
-            </span>
-            <%= entry.title %>
+            <% if (entry.type !== 'sidebar_header') { %>
+              <span style="margin-right: 10px;">
+                <% if (entry.type === 'documentation') { %>
+                  <i class="fas fa-file-alt fa-fw" title="Documentation"></i>
+                <% } else if (entry.type === 'changelog') { %>
+                  <i class="fas fa-history fa-fw" title="Changelog"></i>
+                <% } %>
+              </span>
+            <% } else { %>
+              <span style="margin-right: 10px;">
+                <i class="fas fa-heading fa-fw" title="Sidebar Header"></i>
+              </span>
+            <% } %>
+            <span class="item-title"><%= entry.title %></span>
+            <% if (entry.type === 'sidebar_header') { %>
+              <div class="sidebar-item-actions">
+                <button type="button" class="btn btn-icon btn-edit edit-header-btn" title="Edit Header Text" data-header-id="<%= entry.id %>" data-current-title="<%= entry.title %>">
+                  <i class="fas fa-pencil-alt"></i>
+                </button>
+                <form action="/projects/<%= project.id %>/delete/<%= entry.id %>" method="POST" class="delete-sidebar-header-form" title="Delete Header">
+                  <button type="submit" class="btn btn-icon btn-delete">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </form>
+              </div>
+            <% } %>
           </li>
         <% } %>
       </ul>
@@ -108,8 +152,49 @@
 <% if (entries && entries.length <= 0) { %>
   <div class="card empty-state-card" style="margin-top: 25px;">
     <i class="fas fa-sort-amount-down empty-state-icon"></i>
-    <h2>No entries are currently set to show in the public sidebar for this project</h2>
+    <h2>No items are currently set to show in the public sidebar for this project</h2>
+    <p>Create entries or headers and mark them to show in the sidebar.</p>
   </div>
 <% } %>
+
+<div id="add-header-modal" class="modal-overlay" aria-hidden="true">
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="add-header-modal-title">
+    <div class="modal-header">
+      <h3 id="add-header-modal-title" class="modal-title-text">Add Sidebar Header</h3>
+      <button id="add-header-modal-close-btn" class="modal-close-btn" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="header-title-input">Header Title <span class="required">*</span></label>
+        <input type="text" id="header-title-input" class="form-control" required>
+        <small id="header-title-error" style="color: var(--danger-color); display: none; margin-top: 5px;">Header title cannot be empty.</small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="add-header-modal-cancel-btn" class="btn btn-secondary">Cancel</button>
+      <button id="add-header-modal-confirm-btn" class="btn btn-primary">Add Header</button>
+    </div>
+  </div>
+</div>
+
+<div id="edit-header-modal" class="modal-overlay" aria-hidden="true">
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="edit-header-modal-title">
+    <div class="modal-header">
+      <h3 id="edit-header-modal-title" class="modal-title-text">Edit Sidebar Header</h3>
+      <button id="edit-header-modal-close-btn" class="modal-close-btn" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="edit-header-title-input">Header Title <span class="required">*</span></label>
+        <input type="text" id="edit-header-title-input" class="form-control" required>
+        <small id="edit-header-title-error" style="color: var(--danger-color); display: none; margin-top: 5px;">Header title cannot be empty.</small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="edit-header-modal-cancel-btn" class="btn btn-secondary">Cancel</button>
+      <button id="edit-header-modal-confirm-btn" class="btn btn-primary" data-header-id="">Save Changes</button>
+    </div>
+  </div>
+</div>
 
 <%- include('../partials/footer', { scriptPath: '/js/sidebar_order.js' }) %>

@@ -36,7 +36,7 @@
       </button>
     </header>
 
-    <div class="page-wrapper">
+    <div class="page-wrapper <%= project?.use_full_width_content ? 'full-width-content' : '' %>">
       <% if (project && (sidebarEntries && sidebarEntries.length > 0 || project.roadmap_enabled || hasPublishedKbEntries)) { %>
         <aside class="project-sidebar" id="project-sidebar">
           <div class="sidebar-sticky-content">
@@ -49,16 +49,22 @@
               <ul>
                 <% if (sidebarEntries && sidebarEntries.length > 0) { %>
                   <% for(const item of sidebarEntries) { %>
-                    <li>
-                      <a href="/view/<%= item.id %>" class="project-entry-link <% if (item.id === entry.id) { %>active<% } %>">
-                        <% if (item.type === 'changelog') { %>
-                          <i class="fas fa-history fa-fw type-icon"></i>
-                        <% } else { %>
-                          <i class="fas fa-file-alt fa-fw type-icon"></i>
-                        <% } %>
+                    <% if (item.type === 'sidebar_header') { %>
+                      <li class="sidebar-header-item">
                         <span><%= item.title %></span>
-                      </a>
-                    </li>
+                      </li>
+                    <% } else { %>
+                      <li>
+                        <a href="/view/<%= item.id %>" class="project-entry-link <% if (item.id === entry.id) { %>active<% } %>">
+                          <% if (item.type === 'changelog') { %>
+                            <i class="fas fa-history fa-fw type-icon"></i>
+                          <% } else { %>
+                            <i class="fas fa-file-alt fa-fw type-icon"></i>
+                          <% } %>
+                          <span><%= item.title %></span>
+                        </a>
+                      </li>
+                    <% } %>
                   <% } %>
                 <% } %>
                  <% if (project.is_publicly_viewable && locals.hasPublishedKbEntries) { %>

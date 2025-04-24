@@ -26,10 +26,10 @@
       .kb-item {
         background-color: var(--bg-primary);
         border: 1px solid var(--border-primary);
-        border-radius: var(--radius-lg); 
-        margin-bottom: 16px; 
+        border-radius: var(--radius-lg);
+        margin-bottom: 16px;
         transition: box-shadow 0.2s ease, border-color 0.2s ease;
-        overflow: hidden; 
+        overflow: hidden;
       }
 
       .kb-item:hover {
@@ -38,11 +38,11 @@
 
       .kb-item[open] {
         box-shadow: 0 4px 12px var(--shadow-color);
-        border-color: var(--border-secondary); 
+        border-color: var(--border-secondary);
       }
 
       .kb-question {
-        padding: 16px 24px; 
+        padding: 16px 24px;
         font-weight: 600;
         font-size: 1.05rem;
         cursor: pointer;
@@ -76,7 +76,7 @@
         transition: transform 0.25s ease-out;
         flex-shrink: 0;
         color: var(--text-muted);
-        margin-left: 10px; 
+        margin-left: 10px;
       }
 
       .kb-item[open] > .kb-question::after {
@@ -90,7 +90,7 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 35%; 
+        max-width: 35%;
         text-align: right;
       }
 
@@ -103,7 +103,7 @@
       }
 
       .kb-answer {
-        padding: 20px 24px 24px 24px; 
+        padding: 20px 24px 24px 24px;
       }
 
       .kb-answer.markdown-body > *:first-child {
@@ -175,7 +175,7 @@
 
     <script>
       const currentTheme = localStorage.getItem("theme") || "light";
-      
+
       if (currentTheme === "dark") {
         document.body.classList.add("dark-mode");
       }
@@ -203,16 +203,22 @@
             <nav class="project-entries-nav">
               <ul>
                 <% for(const item of sidebarEntries) { %>
-                  <li>
-                    <a href="/view/<%= item.id %>" class="project-entry-link">
-                      <% if (item.type === 'changelog') { %>
-                        <i class="fas fa-history fa-fw type-icon"></i>
-                      <% } else { %>
-                        <i class="fas fa-file-alt fa-fw type-icon"></i>
-                      <% } %>
+                  <% if (item.type === 'sidebar_header') { %>
+                    <li class="sidebar-header-item">
                       <span><%= item.title %></span>
-                    </a>
-                  </li>
+                    </li>
+                  <% } else { %>
+                    <li>
+                      <a href="/view/<%= item.id %>" class="project-entry-link">
+                        <% if (item.type === 'changelog') { %>
+                          <i class="fas fa-history fa-fw type-icon"></i>
+                        <% } else { %>
+                          <i class="fas fa-file-alt fa-fw type-icon"></i>
+                        <% } %>
+                        <span><%= item.title %></span>
+                      </a>
+                    </li>
+                  <% } %>
                 <% } %>
                 <li>
                     <a href="/kb/<%= project.id %>" class="project-entry-link active">

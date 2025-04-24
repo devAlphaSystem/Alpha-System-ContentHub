@@ -93,6 +93,16 @@
       <% if (locals.errors?.view_time_tracking_enabled) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.view_time_tracking_enabled.message %></small> <% } %>
     </div>
 
+    <h3 style="margin: 15px 0; font-size: 1.1rem; font-weight: 600;">Appearance</h3>
+
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="use_full_width_content" name="use_full_width_content" value="true" <%= project.use_full_width_content ? 'checked' : '' %>>
+        <label class="form-check-label" for="use_full_width_content">Use Full Width Content Area</label>
+      </div>
+      <small class="form-text">If enabled, the main content area on public view pages will span the full width, removing side padding.</small>
+    </div>
+
     <div class="form-actions">
       <button type="submit" class="btn btn-primary btn-lg">
         <i class="fas fa-save"></i> Save Changes

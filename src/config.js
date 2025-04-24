@@ -35,6 +35,7 @@ const DEFAULT_ENABLE_GLOBAL_SEARCH = process.env.ENABLE_GLOBAL_SEARCH !== "false
 const DEFAULT_ENABLE_AUDIT_LOG = process.env.ENABLE_AUDIT_LOG !== "false";
 const DEFAULT_ENABLE_PROJECT_VIEW_TRACKING_DEFAULT = process.env.ENABLE_PROJECT_VIEW_TRACKING_DEFAULT !== "false";
 const DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT = process.env.ENABLE_PROJECT_TIME_TRACKING_DEFAULT !== "false";
+const DEFAULT_ENABLE_PROJECT_FULL_WIDTH_DEFAULT = process.env.ENABLE_PROJECT_FULL_WIDTH_DEFAULT === "true";
 
 let currentSettings = {
   previewTokenExpiryHours: DEFAULT_PREVIEW_TOKEN_EXPIRY_HOURS,
@@ -42,6 +43,7 @@ let currentSettings = {
   enableAuditLog: DEFAULT_ENABLE_AUDIT_LOG,
   enableProjectViewTrackingDefault: DEFAULT_ENABLE_PROJECT_VIEW_TRACKING_DEFAULT,
   enableProjectTimeTrackingDefault: DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT,
+  enableProjectFullWidthDefault: DEFAULT_ENABLE_PROJECT_FULL_WIDTH_DEFAULT,
 };
 
 export const VIEW_TIMEFRAME_HOURS = Number.parseInt(process.env.VIEW_TIMEFRAME_HOURS || "24", 10);
@@ -110,6 +112,7 @@ export async function loadAppSettings() {
       enableAuditLog: settingsRecord.enable_audit_log ?? DEFAULT_ENABLE_AUDIT_LOG,
       enableProjectViewTrackingDefault: settingsRecord.enable_project_view_tracking_default ?? DEFAULT_ENABLE_PROJECT_VIEW_TRACKING_DEFAULT,
       enableProjectTimeTrackingDefault: settingsRecord.enable_project_time_tracking_default ?? DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT,
+      enableProjectFullWidthDefault: settingsRecord.enable_project_full_width_default ?? DEFAULT_ENABLE_PROJECT_FULL_WIDTH_DEFAULT,
     };
     logger.info("Successfully loaded application settings from PocketBase.");
     logger.debug("Current runtime settings:", currentSettings);

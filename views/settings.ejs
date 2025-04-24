@@ -39,6 +39,8 @@
         <small class="form-text">Record detailed system and user actions.</small>
       </div>
 
+      <h3 style="font-size: 1.1rem; font-weight: 600;">New Project Defaults</h3>
+
       <div class="form-group form-group-full">
         <div class="form-check form-switch">
           <input class="form-check-input" type="checkbox" role="switch" id="enable_project_view_tracking_default" name="enable_project_view_tracking_default" value="true" <%= settings.enableProjectViewTrackingDefault ? 'checked' : '' %>>
@@ -47,10 +49,18 @@
         <small class="form-text">Default setting for new projects.</small>
       </div>
 
-      <div class="form-group">
+      <div class="form-group form-group-full">
         <div class="form-check form-switch">
           <input class="form-check-input" type="checkbox" role="switch" id="enable_project_time_tracking_default" name="enable_project_time_tracking_default" value="true" <%= settings.enableProjectTimeTrackingDefault ? 'checked' : '' %>>
           <label class="form-check-label" for="enable_project_time_tracking_default">Default: Enable Time Tracking</label>
+        </div>
+        <small class="form-text">Default setting for new projects.</small>
+      </div>
+
+      <div class="form-group form-group-full">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="enable_project_full_width_default" name="enable_project_full_width_default" value="true" <%= settings.enableProjectFullWidthDefault ? 'checked' : '' %>>
+          <label class="form-check-label" for="enable_project_full_width_default">Default: Use Full Width Content</label>
         </div>
         <small class="form-text">Default setting for new projects.</small>
       </div>

@@ -28,7 +28,7 @@ router.post("/", requireLogin, async (req, res) => {
   logger.info(`[SETTINGS] POST /settings attempt by user ${userId}`);
   logger.time(`[SETTINGS] POST /settings ${userId}`);
 
-  const { enable_global_search, enable_audit_log, enable_project_view_tracking_default, enable_project_time_tracking_default } = req.body;
+  const { enable_global_search, enable_audit_log, enable_project_view_tracking_default, enable_project_time_tracking_default, enable_project_full_width_default } = req.body;
 
   const errors = {};
   const dataToSave = {};
@@ -37,6 +37,7 @@ router.post("/", requireLogin, async (req, res) => {
   dataToSave.enable_audit_log = enable_audit_log === "true";
   dataToSave.enable_project_view_tracking_default = enable_project_view_tracking_default === "true";
   dataToSave.enable_project_time_tracking_default = enable_project_time_tracking_default === "true";
+  dataToSave.enable_project_full_width_default = enable_project_full_width_default === "true";
 
   if (Object.keys(errors).length > 0) {
     logger.warn("[SETTINGS] Settings update validation failed:", errors);
@@ -46,6 +47,11 @@ router.post("/", requireLogin, async (req, res) => {
       pageTitle: "System Settings",
       settings: {
         ...currentSettings,
+        enableGlobalSearch: dataToSave.enable_global_search,
+        enableAuditLog: dataToSave.enable_audit_log,
+        enableProjectViewTrackingDefault: dataToSave.enable_project_view_tracking_default,
+        enableProjectTimeTrackingDefault: dataToSave.enable_project_time_tracking_default,
+        enableProjectFullWidthDefault: dataToSave.enable_project_full_width_default,
       },
       errors: errors,
       message: null,
@@ -81,6 +87,11 @@ router.post("/", requireLogin, async (req, res) => {
       pageTitle: "System Settings",
       settings: {
         ...currentSettings,
+        enableGlobalSearch: dataToSave.enable_global_search,
+        enableAuditLog: dataToSave.enable_audit_log,
+        enableProjectViewTrackingDefault: dataToSave.enable_project_view_tracking_default,
+        enableProjectTimeTrackingDefault: dataToSave.enable_project_time_tracking_default,
+        enableProjectFullWidthDefault: dataToSave.enable_project_full_width_default,
       },
       errors: { general: { message: "Failed to save settings." } },
       message: null,

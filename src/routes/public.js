@@ -185,6 +185,11 @@ router.get("/view/:id", async (req, res, next) => {
       logger.timeEnd(`[PUBLIC] /view/${entryId}`);
       return next();
     }
+    if (entry.type === "sidebar_header") {
+      logger.warn(`[PUBLIC] Sidebar header entry ${entryId} accessed directly. Returning 404.`);
+      logger.timeEnd(`[PUBLIC] /view/${entryId}`);
+      return next();
+    }
 
     const project = entry.expand?.project;
 
