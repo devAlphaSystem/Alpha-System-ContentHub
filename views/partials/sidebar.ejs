@@ -17,6 +17,11 @@
         <span>Projects</span>
       </a>
 
+      <a href="/files" class="nav-link <% if (currentPath === '/files') { %>active<% } %>" data-nav-id="files">
+        <i class="fas fa-images fa-fw"></i>
+        <span>Files</span>
+      </a>
+
       <% if (locals.currentProjectId) { %>
         <span class="project-name">
           <%= locals.currentProjectName || 'Current Project' %>

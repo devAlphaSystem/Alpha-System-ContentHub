@@ -971,7 +971,13 @@
         "id": "file104153177",
         "maxSelect": 99,
         "maxSize": 0,
-        "mimeTypes": [],
+        "mimeTypes": [
+          "image/jpeg",
+          "image/png",
+          "image/svg+xml",
+          "image/gif",
+          "image/webp"
+        ],
         "name": "files",
         "presentable": false,
         "protected": false,

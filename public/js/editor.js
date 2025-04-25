@@ -502,10 +502,11 @@ document.addEventListener("DOMContentLoaded", () => {
               return response.json();
             })
             .then((result) => {
-              if (result.data?.filePath) {
+              if (result.data?.filePath && result.data.filePath.trim() !== "") {
                 onSuccess(result.data.filePath);
               } else {
-                throw new Error("Invalid response format from server.");
+                console.error("Image Upload Succeeded but API returned invalid/empty filePath:", result.data);
+                throw new Error("Server processed upload but did not return a valid file path.");
               }
             })
             .catch((error) => {

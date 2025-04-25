@@ -7,6 +7,7 @@ import auditLogRouter from "./audit_log.js";
 import settingsRouter from "./settings.js";
 import apiRouter from "./api.js";
 import searchRouter from "./search.js";
+import filesRouter from "./files.js";
 import { requireLogin } from "../middleware.js";
 import { logger } from "../logger.js";
 
@@ -22,6 +23,8 @@ router.use("/", requireLogin, dashboardRouter);
 logger.trace("Global dashboard routes configured (requires login).");
 router.use("/projects", requireLogin, projectsRouter);
 logger.trace("Project routes configured (requires login).");
+router.use("/files", requireLogin, filesRouter);
+logger.trace("Files routes configured (requires login).");
 router.use("/audit-log", requireLogin, auditLogRouter);
 logger.trace("Global audit log routes configured (requires login).");
 router.use("/settings", requireLogin, settingsRouter);

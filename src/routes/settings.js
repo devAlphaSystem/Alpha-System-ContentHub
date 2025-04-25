@@ -28,7 +28,7 @@ router.post("/", requireLogin, async (req, res) => {
   logger.info(`[SETTINGS] POST /settings attempt by user ${userId}`);
   logger.time(`[SETTINGS] POST /settings ${userId}`);
 
-  const { enable_global_search, enable_audit_log, enable_project_view_tracking_default, enable_project_time_tracking_default, enable_project_full_width_default } = req.body;
+  const { enable_global_search, enable_audit_log, enable_project_view_tracking_default, enable_project_time_tracking_default, enable_project_full_width_default, enable_file_size_calculation } = req.body;
 
   const errors = {};
   const dataToSave = {};
@@ -38,6 +38,7 @@ router.post("/", requireLogin, async (req, res) => {
   dataToSave.enable_project_view_tracking_default = enable_project_view_tracking_default === "true";
   dataToSave.enable_project_time_tracking_default = enable_project_time_tracking_default === "true";
   dataToSave.enable_project_full_width_default = enable_project_full_width_default === "true";
+  dataToSave.enable_file_size_calculation = enable_file_size_calculation === "true";
 
   if (Object.keys(errors).length > 0) {
     logger.warn("[SETTINGS] Settings update validation failed:", errors);
@@ -52,6 +53,7 @@ router.post("/", requireLogin, async (req, res) => {
         enableProjectViewTrackingDefault: dataToSave.enable_project_view_tracking_default,
         enableProjectTimeTrackingDefault: dataToSave.enable_project_time_tracking_default,
         enableProjectFullWidthDefault: dataToSave.enable_project_full_width_default,
+        enableFileSizeCalculation: dataToSave.enable_file_size_calculation,
       },
       errors: errors,
       message: null,
@@ -92,6 +94,7 @@ router.post("/", requireLogin, async (req, res) => {
         enableProjectViewTrackingDefault: dataToSave.enable_project_view_tracking_default,
         enableProjectTimeTrackingDefault: dataToSave.enable_project_time_tracking_default,
         enableProjectFullWidthDefault: dataToSave.enable_project_full_width_default,
+        enableFileSizeCalculation: dataToSave.enable_file_size_calculation,
       },
       errors: { general: { message: "Failed to save settings." } },
       message: null,

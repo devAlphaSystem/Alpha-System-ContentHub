@@ -3,12 +3,14 @@ import crypto from "node:crypto";
 import multer from "multer";
 import path from "node:path";
 import Papa from "papaparse";
-import { pb, pbAdmin, apiLimiter, getSettings, APP_SETTINGS_RECORD_ID, ITEMS_PER_PAGE } from "../config.js";
+import { pb, pbAdmin, apiLimiter, getSettings, APP_SETTINGS_RECORD_ID, ITEMS_PER_PAGE, POCKETBASE_URL } from "../config.js";
 import { requireLogin } from "../middleware.js";
 import { getEntryForOwnerAndProject, getArchivedEntryForOwnerAndProject, getTemplateForEditAndProject, clearEntryViewLogs, hashPreviewPassword, logAuditEvent, getProjectForOwner, getDocumentationHeaderForEditAndProject, getDocumentationFooterForEditAndProject, getChangelogHeaderForEditAndProject, getChangelogFooterForEditAndProject, getIP, hashIP } from "../utils.js";
 import { logger } from "../logger.js";
 
 const router = express.Router();
+const imageFieldName = "files";
+const collectionName = "entries_main";
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -938,12 +940,13 @@ router.post("/projects/:projectId/entries/:id/upload-image", requireLogin, check
   const userId = req.session.user.id;
   const imageFieldName = "files";
   const originalFilename = req.file?.originalname;
+  const collectionName = "entries_main";
   logger.info(`[API] Attempting image upload for entry ${entryId}, project ${projectId}, user ${userId}. File: ${originalFilename}`);
   logger.time(`[API] POST /upload-image ${entryId}`);
 
   if (!req.file) {
     logger.warn(`[API] Image upload failed for entry ${entryId}: No file provided.`);
-    logAuditEvent(req, "IMAGE_UPLOAD_FAILURE", "entries_main", entryId, {
+    logAuditEvent(req, "IMAGE_UPLOAD_FAILURE", collectionName, entryId, {
       projectId: projectId,
       reason: "No file uploaded",
     });
@@ -954,47 +957,36 @@ router.post("/projects/:projectId/entries/:id/upload-image", requireLogin, check
   }
 
   try {
-    const entry = await getEntryForOwnerAndProject(entryId, userId, projectId);
-    const existingFiles = entry[imageFieldName] || [];
-    logger.trace(`[API] Existing files for entry ${entryId}: ${existingFiles.join(", ")}`);
+    const entryBeforeUpdate = await getEntryForOwnerAndProject(entryId, userId, projectId);
+    const existingFileCount = (entryBeforeUpdate[imageFieldName] || []).length;
+    logger.trace(`[API] Existing file count for entry ${entryId}: ${existingFileCount}`);
 
     const form = new FormData();
-    const blob = new Blob([req.file.buffer], {
-      type: req.file.mimetype,
-    });
-    form.append(imageFieldName, blob, req.file.originalname);
-    logger.debug(`[API] Prepared FormData for upload to entry ${entryId}.`);
+    const blob = new Blob([req.file.buffer], { type: req.file.mimetype });
+    form.append(`${imageFieldName}+`, blob, req.file.originalname);
+    logger.debug(`[API] Prepared FormData for appending image to entry ${entryId}. Key: ${imageFieldName}+`);
 
-    const updatedRecord = await pb.collection("entries_main").update(entryId, form);
-    logger.debug(`[API] PocketBase update successful for entry ${entryId} image upload.`);
+    await pb.collection(collectionName).update(entryId, form);
+    logger.debug(`[API] PocketBase update successful for entry ${entryId} image append.`);
 
+    logger.trace(`[API] Re-fetching entry ${entryId} to confirm new file list.`);
+    const updatedRecord = await pb.collection(collectionName).getOne(entryId, { fields: `id,${imageFieldName}` });
     const newFiles = updatedRecord[imageFieldName] || [];
+    logger.trace(`[API] New file list after refetch for entry ${entryId}: ${newFiles.join(", ")}`);
+
     let actualFilename = null;
-
-    if (newFiles.length > existingFiles.length) {
-      actualFilename = newFiles.find((f) => !existingFiles.includes(f));
-    } else if (newFiles.length === 1 && existingFiles.length === 0) {
-      actualFilename = newFiles[0];
-    } else if (newFiles.length > 0) {
+    if (newFiles.length > existingFileCount && newFiles.length > 0) {
       actualFilename = newFiles[newFiles.length - 1];
-      logger.warn(`[API] Could not definitively determine new filename for entry ${entryId}, assuming last file: ${actualFilename}`);
-    }
-
-    if (!actualFilename) {
-      logger.error(`[API] Could not determine the actual filename after upload for entry ${entryId}. Original: ${originalFilename}. New file list: ${newFiles.join(", ")}`);
-      throw new Error("Failed to determine stored filename after upload.");
-    }
-    logger.trace(`[API] Determined actual filename: ${actualFilename}`);
-
-    const fileUrl = pb.files.getURL(updatedRecord, actualFilename);
-
-    if (!fileUrl) {
-      logger.warn(`[API] Could not get URL for uploaded file ${actualFilename} in entry ${entryId}. Check if file exists in record.`);
+      logger.trace(`[API] Determined appended filename (last in list): ${actualFilename}`);
     } else {
-      logger.trace(`[API] Generated file URL: ${fileUrl}`);
+      logger.error(`[API] Could not determine the actual filename after append for entry ${entryId}. Original: ${originalFilename}. File list size didn't increase as expected or list is empty. New list: ${newFiles.join(", ")}`);
+      throw new Error("Failed to confirm stored filename after upload append.");
     }
 
-    logAuditEvent(req, "IMAGE_UPLOAD_SUCCESS", "entries_main", entryId, {
+    const fileUrl = `${POCKETBASE_URL}/api/files/${collectionName}/${entryId}/${actualFilename}`;
+    logger.trace(`[API] Manually constructed file URL: ${fileUrl}`);
+
+    logAuditEvent(req, "IMAGE_UPLOAD_SUCCESS", collectionName, entryId, {
       projectId: projectId,
       field: imageFieldName,
       filename: actualFilename,
@@ -1005,14 +997,15 @@ router.post("/projects/:projectId/entries/:id/upload-image", requireLogin, check
     logger.timeEnd(`[API] POST /upload-image ${entryId}`);
     res.status(200).json({
       data: {
-        filePath: fileUrl || "",
+        filePath: fileUrl,
         filename: actualFilename,
       },
     });
   } catch (error) {
     logger.timeEnd(`[API] POST /upload-image ${entryId}`);
     logger.error(`[API] Error uploading image for entry ${entryId} in project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
-    logAuditEvent(req, "IMAGE_UPLOAD_FAILURE", "entries_main", entryId, {
+
+    logAuditEvent(req, "IMAGE_UPLOAD_FAILURE", collectionName, entryId, {
       projectId: projectId,
       field: imageFieldName,
       filename: originalFilename,
@@ -1039,6 +1032,217 @@ router.post("/projects/:projectId/entries/:id/upload-image", requireLogin, check
     res.status(500).json({
       error: errorMessage,
     });
+  }
+});
+
+router.get("/files", requireLogin, async (req, res) => {
+  const userId = req.session.user.id;
+  const settings = getSettings();
+  logger.debug(`[API] GET /files requested by user ${userId}. Size calc enabled: ${settings.enableFileSizeCalculation}`);
+  logger.time(`[API] GET /files ${userId}`);
+
+  try {
+    const page = Number.parseInt(req.query.page) || 1;
+    const perPage = Number.parseInt(req.query.perPage) || ITEMS_PER_PAGE;
+    const sortField = req.query.sort || "-created";
+
+    logger.time(`[API] FetchEntriesWithFiles ${userId}`);
+    const allEntriesWithFiles = await pb.collection(collectionName).getFullList({
+      filter: `owner = '${userId}' && files != null && files != ""`,
+      fields: "id, title, project, files, created, updated, expand",
+      expand: "project",
+      sort: sortField.startsWith("project.") ? "-created" : sortField.startsWith("entry.") ? "-created" : sortField,
+      $autoCancel: false,
+    });
+    logger.timeEnd(`[API] FetchEntriesWithFiles ${userId}`);
+    logger.debug(`[API] Found ${allEntriesWithFiles.length} entries with files for user ${userId}`);
+
+    let allFiles = [];
+    let totalSize = null;
+
+    if (settings.enableFileSizeCalculation) {
+      logger.debug("[API] File size calculation is ENABLED.");
+      const allFilesPromises = [];
+      for (const entry of allEntriesWithFiles) {
+        if (entry.files && Array.isArray(entry.files)) {
+          for (const filename of entry.files) {
+            const fileUrl = `${POCKETBASE_URL}/api/files/${collectionName}/${entry.id}/${filename}`;
+            allFilesPromises.push(
+              (async () => {
+                let size = 0;
+                try {
+                  const headResponse = await fetch(fileUrl, { method: "HEAD" });
+                  if (headResponse.ok) {
+                    size = Number.parseInt(headResponse.headers.get("content-length"), 10) || 0;
+                  } else {
+                    logger.warn(`[API] HEAD request failed for ${fileUrl}: Status ${headResponse.status}`);
+                  }
+                } catch (headError) {
+                  logger.warn(`[API] Error fetching HEAD for ${fileUrl}: ${headError.message}`);
+                }
+                return {
+                  entryId: entry.id,
+                  entryTitle: entry.title,
+                  projectId: entry.project,
+                  projectName: entry.expand?.project?.name || "Unknown Project",
+                  filename: filename,
+                  fileUrl: fileUrl,
+                  size: size,
+                  created: entry.updated || entry.created,
+                };
+              })(),
+            );
+          }
+        }
+      }
+      logger.time(`[API] FetchFileSizes ${userId}`);
+      allFiles = await Promise.all(allFilesPromises);
+      logger.timeEnd(`[API] FetchFileSizes ${userId}`);
+      totalSize = allFiles.reduce((sum, file) => sum + file.size, 0);
+      logger.debug(`[API] Calculated total file size: ${totalSize} bytes`);
+    } else {
+      logger.debug("[API] File size calculation is DISABLED.");
+      for (const entry of allEntriesWithFiles) {
+        if (entry.files && Array.isArray(entry.files)) {
+          for (const filename of entry.files) {
+            allFiles.push({
+              entryId: entry.id,
+              entryTitle: entry.title,
+              projectId: entry.project,
+              projectName: entry.expand?.project?.name || "Unknown Project",
+              filename: filename,
+              fileUrl: `${POCKETBASE_URL}/api/files/${collectionName}/${entry.id}/${filename}`,
+              size: 0,
+              created: entry.updated || entry.created,
+            });
+          }
+        }
+      }
+      logger.debug(`[API] Flattened ${allFiles.length} files (no size calc) for user ${userId}`);
+    }
+
+    if (sortField.startsWith("project.name") || sortField.startsWith("entry.title") || sortField.startsWith("filename")) {
+      const sortKey = sortField.startsWith("-") ? sortField.substring(1) : sortField;
+      const direction = sortField.startsWith("-") ? -1 : 1;
+
+      allFiles.sort((a, b) => {
+        let valA;
+        let valB;
+        if (sortKey === "project.name") {
+          valA = a.projectName?.toLowerCase() || "";
+          valB = b.projectName?.toLowerCase() || "";
+        } else if (sortKey === "entry.title") {
+          valA = a.entryTitle?.toLowerCase() || "";
+          valB = b.entryTitle?.toLowerCase() || "";
+        } else if (sortKey === "filename") {
+          valA = a.filename?.toLowerCase() || "";
+          valB = b.filename?.toLowerCase() || "";
+        } else {
+          return 0;
+        }
+        if (valA < valB) return -1 * direction;
+        if (valA > valB) return 1 * direction;
+        return 0;
+      });
+      logger.trace(`[API] Manually sorted files by ${sortField}`);
+    } else if (sortField.startsWith("created")) {
+      logger.trace("[API] Files sorted by entry date via PocketBase");
+    }
+
+    const totalItems = allFiles.length;
+    const totalPages = Math.ceil(totalItems / perPage);
+    const startIndex = (page - 1) * perPage;
+    const endIndex = startIndex + perPage;
+    const paginatedFiles = allFiles.slice(startIndex, endIndex);
+
+    logger.debug(`[API] Paginated files: Page ${page}/${totalPages}, Items ${paginatedFiles.length}/${totalItems}`);
+
+    logger.timeEnd(`[API] GET /files ${userId}`);
+    res.json({
+      page: page,
+      perPage: perPage,
+      totalItems: totalItems,
+      totalPages: totalPages,
+      totalSize: totalSize,
+      items: paginatedFiles.map((f) => ({
+        ...f,
+        formattedCreated: new Date(f.created).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+      })),
+    });
+  } catch (error) {
+    logger.timeEnd(`[API] GET /files ${userId}`);
+    logger.error(`[API] Error fetching files list for user ${userId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    res.status(500).json({
+      error: "Failed to fetch files list",
+    });
+  }
+});
+
+router.delete("/entries/:entryId/files/:filename", requireLogin, async (req, res) => {
+  const { entryId, filename } = req.params;
+  const userId = req.session.user.id;
+  logger.warn(`[API] DELETE /entries/${entryId}/files/${filename} requested by user ${userId}`);
+  logger.time(`[API] DELETE /entries/${entryId}/files/${filename}`);
+
+  if (!entryId || !filename) {
+    logger.warn("[API] Delete file request missing entryId or filename.");
+    logger.timeEnd(`[API] DELETE /entries/${entryId}/files/${filename}`);
+    return res.status(400).json({ error: "Missing entry or filename." });
+  }
+
+  try {
+    logger.debug(`[API] Fetching entry ${entryId} for ownership check.`);
+    const entry = await pb.collection(collectionName).getOne(entryId);
+
+    if (entry.owner !== userId) {
+      logger.warn(`[API] Forbidden attempt by user ${userId} to delete file ${filename} from entry ${entryId} owned by ${entry.owner}.`);
+      logAuditEvent(req, "IMAGE_DELETE_FAILURE", collectionName, entryId, {
+        projectId: entry.project,
+        filename: filename,
+        reason: "Forbidden - User does not own entry",
+      });
+      logger.timeEnd(`[API] DELETE /entries/${entryId}/files/${filename}`);
+      return res.status(403).json({ error: "Forbidden." });
+    }
+    logger.trace(`[API] Ownership verified for entry ${entryId}.`);
+
+    const currentFiles = entry.files || [];
+    if (!currentFiles.includes(filename)) {
+      logger.warn(`[API] File ${filename} not found in entry ${entryId} for deletion attempt by user ${userId}.`);
+      logger.timeEnd(`[API] DELETE /entries/${entryId}/files/${filename}`);
+      return res.status(404).json({ error: "File not found in this entry." });
+    }
+    const updatedFiles = currentFiles.filter((f) => f !== filename);
+    logger.debug(`[API] Updating entry ${entryId} to remove file ${filename}. New file count: ${updatedFiles.length}`);
+
+    await pb.collection(collectionName).update(entryId, { [imageFieldName]: updatedFiles });
+
+    logAuditEvent(req, "IMAGE_DELETE", collectionName, entryId, {
+      projectId: entry.project,
+      filename: filename,
+    });
+    logger.info(`[API] File ${filename} deleted successfully from entry ${entryId} by user ${userId}.`);
+
+    logger.timeEnd(`[API] DELETE /entries/${entryId}/files/${filename}`);
+    res.status(200).json({ message: "File deleted successfully." });
+  } catch (error) {
+    logger.timeEnd(`[API] DELETE /entries/${entryId}/files/${filename}`);
+    logger.error(`[API] Error deleting file ${filename} from entry ${entryId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    logAuditEvent(req, "IMAGE_DELETE_FAILURE", collectionName, entryId, {
+      filename: filename,
+      error: error?.message,
+    });
+    if (error.status === 404) {
+      return res.status(404).json({ error: "Entry not found." });
+    }
+    if (error.status === 403) {
+      return res.status(403).json({ error: "Forbidden." });
+    }
+    res.status(500).json({ error: "Failed to delete file." });
   }
 });
 

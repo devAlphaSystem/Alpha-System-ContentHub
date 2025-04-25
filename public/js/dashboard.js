@@ -251,7 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const activityChart = new ApexCharts(activityChartContainer, activityChartOptions);
       activityChart.render();
     } else if (activityChartContainer) {
-      // Handled by EJS now
+      // Content populated by EJS
     } else {
       console.warn("Chart container #chart-global-activity not found.");
     }
