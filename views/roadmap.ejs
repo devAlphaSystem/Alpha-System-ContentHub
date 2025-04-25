@@ -271,7 +271,7 @@
       </button>
     </header>
 
-    <div class="page-wrapper">
+    <div class="page-wrapper <%= project?.use_full_width_content ? 'full-width-content' : '' %>">
       <% if (project && (sidebarEntries && sidebarEntries.length > 0 || project.roadmap_enabled)) { %>
         <aside class="project-sidebar" id="project-sidebar">
           <div class="sidebar-sticky-content">
@@ -301,6 +301,14 @@
                       </li>
                     <% } %>
                   <% } %>
+                <% } %>
+                <% if (project.is_publicly_viewable && locals.hasPublishedKbEntries) { %>
+                  <li>
+                    <a href="/kb/<%= project.id %>" class="project-entry-link">
+                      <i class="fas fa-question-circle fa-fw type-icon"></i>
+                      <span>Knowledge Base</span>
+                    </a>
+                  </li>
                 <% } %>
                 <% if (project.roadmap_enabled) { %>
                   <li>
@@ -392,7 +400,6 @@
     </script>
 
     <script src="/js/vendors/highlight.min.js"></script>
-    <script src="/js/vendors/disable-dev-tools.js"></script>
     <script src="/js/view.js"></script>
   </body>
 </html>

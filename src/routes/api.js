@@ -5,7 +5,7 @@ import path from "node:path";
 import Papa from "papaparse";
 import { pb, pbAdmin, apiLimiter, getSettings, APP_SETTINGS_RECORD_ID, ITEMS_PER_PAGE } from "../config.js";
 import { requireLogin } from "../middleware.js";
-import { getEntryForOwnerAndProject, getArchivedEntryForOwnerAndProject, getTemplateForEditAndProject, clearEntryViewLogs, hashPreviewPassword, logAuditEvent, getProjectForOwner, getDocumentationHeaderForEditAndProject, getDocumentationFooterForEditAndProject, getChangelogHeaderForEditAndProject, getChangelogFooterForEditAndProject } from "../utils.js";
+import { getEntryForOwnerAndProject, getArchivedEntryForOwnerAndProject, getTemplateForEditAndProject, clearEntryViewLogs, hashPreviewPassword, logAuditEvent, getProjectForOwner, getDocumentationHeaderForEditAndProject, getDocumentationFooterForEditAndProject, getChangelogHeaderForEditAndProject, getChangelogFooterForEditAndProject, getIP, hashIP } from "../utils.js";
 import { logger } from "../logger.js";
 
 const router = express.Router();
@@ -171,7 +171,7 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
     const resultList = await pb.collection("entries_main").getList(page, perPage, {
       sort: sort,
       filter: combinedFilter,
-      fields: "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,roadmap_stage,total_view_duration,view_duration_count",
+      fields: "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,roadmap_stage,total_view_duration,view_duration_count,helpful_yes,helpful_no",
     });
     logger.debug(`[API] Fetched ${resultList.items.length} ${entryType} entries (page ${page}/${resultList.totalPages}) for project ${projectId}`);
 
@@ -859,6 +859,76 @@ router.post("/set-theme", requireLogin, (req, res) => {
     res.status(400).json({
       error: "Invalid theme value provided.",
     });
+  }
+});
+
+router.post("/feedback", apiLimiter, async (req, res) => {
+  const { entryId, voteType } = req.body;
+  logger.debug(`[API] Received feedback vote: Entry=${entryId}, Type=${voteType}`);
+  logger.time(`[API] POST /feedback ${entryId} ${voteType}`);
+  if (!entryId || !voteType || !["yes", "no"].includes(voteType)) {
+    logger.warn("[API] Invalid feedback request data:", req.body);
+    logger.timeEnd(`[API] POST /feedback ${entryId} ${voteType}`);
+    return res.status(400).json({ error: "Invalid data provided." });
+  }
+  const ipAddress = getIP(req);
+  const hashedIp = hashIP(ipAddress);
+  if (!hashedIp) {
+    logger.warn(`[API] Could not get/hash IP for feedback on entry ${entryId}. Rejecting.`);
+    logger.timeEnd(`[API] POST /feedback ${entryId} ${voteType}`);
+    return res.status(400).json({ error: "Could not process request." });
+  }
+  try {
+    const entry = await pbAdmin.collection("entries_main").getOne(entryId, { fields: "id, project" });
+    const projectId = entry.project;
+    logger.trace(`[API] Checking for existing vote for entry ${entryId}, hash ${hashedIp}`);
+    try {
+      await pbAdmin.collection("feedback_votes").getFirstListItem(`entry = '${entryId}' && voter_hash = '${hashedIp}'`, { $autoCancel: false });
+      logger.info(`[API] Duplicate feedback attempt detected for entry ${entryId}, hash ${hashedIp}.`);
+      logAuditEvent(req, "FEEDBACK_VOTE_DUPLICATE", "feedback_votes", null, {
+        entryId: entryId,
+        voteType: voteType,
+        projectId: projectId,
+      });
+      logger.timeEnd(`[API] POST /feedback ${entryId} ${voteType}`);
+      return res.status(409).json({ message: "Feedback already submitted." });
+    } catch (error) {
+      if (error.status !== 404) {
+        throw error;
+      }
+      logger.trace(`[API] No existing vote found for entry ${entryId}, hash ${hashedIp}. Proceeding.`);
+    }
+    const voteData = {
+      entry: entryId,
+      vote_type: voteType,
+      voter_hash: hashedIp,
+      project: projectId,
+    };
+    logger.debug("[API] Creating feedback vote record:", voteData);
+    const voteRecord = await pbAdmin.collection("feedback_votes").create(voteData);
+    const counterField = voteType === "yes" ? "helpful_yes" : "helpful_no";
+    logger.debug(`[API] Incrementing ${counterField} for entry ${entryId}`);
+    await pbAdmin.collection("entries_main").update(entryId, { [`${counterField}+`]: 1 });
+    logAuditEvent(req, "FEEDBACK_VOTE_SUCCESS", "feedback_votes", voteRecord.id, {
+      entryId: entryId,
+      voteType: voteType,
+      projectId: projectId,
+    });
+    logger.info(`[API] Feedback vote recorded successfully for entry ${entryId}, type ${voteType}.`);
+    logger.timeEnd(`[API] POST /feedback ${entryId} ${voteType}`);
+    res.status(201).json({ message: "Feedback submitted successfully." });
+  } catch (error) {
+    logger.timeEnd(`[API] POST /feedback ${entryId} ${voteType}`);
+    logger.error(`[API] Error processing feedback for entry ${entryId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    logAuditEvent(req, "FEEDBACK_VOTE_FAILURE", "feedback_votes", null, {
+      entryId: entryId,
+      voteType: voteType,
+      error: error?.message,
+    });
+    if (error.status === 404) {
+      return res.status(404).json({ error: "Entry not found." });
+    }
+    res.status(500).json({ error: "Failed to submit feedback." });
   }
 });
 

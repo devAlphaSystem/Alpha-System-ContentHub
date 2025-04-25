@@ -1,7 +1,7 @@
 import express from "express";
 import { marked } from "marked";
 import { pbAdmin, previewPasswordLimiter, apiLimiter } from "../config.js";
-import { getPublicEntryById, getDraftEntryForPreview, sanitizeHtml, hashPreviewPassword, logEntryView, logAuditEvent, calculateReadingTime } from "../utils.js";
+import { getPublicEntryById, getDraftEntryForPreview, sanitizeHtml, hashPreviewPassword, logEntryView, logAuditEvent, calculateReadingTime, getIP } from "../utils.js";
 import { logger } from "../logger.js";
 
 const router = express.Router();
@@ -307,9 +307,10 @@ router.get("/roadmap/:projectId", async (req, res, next) => {
   const projectId = req.params.projectId;
   logger.debug(`[PUBLIC] Requesting roadmap for project ${projectId}`);
   logger.time(`[PUBLIC] /roadmap/${projectId}`);
+  let hasPublishedKbEntries = false;
   try {
     const project = await pbAdmin.collection("projects").getOne(projectId, {
-      fields: "id, name, is_publicly_viewable, password_protected, access_password_hash, roadmap_enabled",
+      fields: "id, name, is_publicly_viewable, password_protected, access_password_hash, roadmap_enabled, use_full_width_content",
     });
 
     if (!project || !project.is_publicly_viewable || !project.roadmap_enabled) {
@@ -382,6 +383,19 @@ router.get("/roadmap/:projectId", async (req, res, next) => {
       logger.error(`[PUBLIC] Failed to fetch sidebar entries for project ${project.id}: Status ${sidebarError?.status || "N/A"}`, sidebarError?.message || sidebarError);
     }
 
+    try {
+      await pbAdmin.collection("entries_main").getFirstListItem(`project = '${project.id}' && type = 'knowledge_base' && status = 'published'`, {
+        fields: "id",
+        $autoCancel: false,
+      });
+      hasPublishedKbEntries = true;
+    } catch (kbError) {
+      if (kbError.status !== 404) {
+        logger.warn(`[PUBLIC] Error checking for published KB entries for project ${project.id} (roadmap view): Status ${kbError?.status || "N/A"}`, kbError.message);
+      }
+      hasPublishedKbEntries = false;
+    }
+
     logger.debug(`[PUBLIC] Rendering roadmap for project ${projectId}`);
     res.render("roadmap", {
       pageTitle: `Roadmap - ${project.name}`,
@@ -389,6 +403,7 @@ router.get("/roadmap/:projectId", async (req, res, next) => {
       stages: stages,
       entriesByStage: entriesByStage,
       sidebarEntries: sidebarEntries,
+      hasPublishedKbEntries: hasPublishedKbEntries,
     });
     logger.timeEnd(`[PUBLIC] /roadmap/${projectId}`);
   } catch (error) {
@@ -476,6 +491,7 @@ router.get("/preview/:token", async (req, res, next) => {
 
     let project = null;
     let sidebarEntries = [];
+    let hasPublishedKbEntries = false;
     if (entry.project && entry.expand?.project) {
       project = entry.expand.project;
       try {
@@ -490,6 +506,18 @@ router.get("/preview/:token", async (req, res, next) => {
       } catch (sidebarError) {
         logger.timeEnd(`[PUBLIC] FetchSidebar /preview/${token}`);
         logger.error(`[PUBLIC] Failed to fetch sidebar entries for preview project ${entry.project}: Status ${sidebarError?.status || "N/A"}`, sidebarError?.message || sidebarError);
+      }
+      try {
+        await pbAdmin.collection("entries_main").getFirstListItem(`project = '${project.id}' && type = 'knowledge_base' && status = 'published'`, {
+          fields: "id",
+          $autoCancel: false,
+        });
+        hasPublishedKbEntries = true;
+      } catch (kbError) {
+        if (kbError.status !== 404) {
+          logger.warn(`[PUBLIC] Error checking for published KB entries for project ${project.id} (preview view): Status ${kbError?.status || "N/A"}`, kbError.message);
+        }
+        hasPublishedKbEntries = false;
       }
     }
 
@@ -511,6 +539,7 @@ router.get("/preview/:token", async (req, res, next) => {
       customFooterHtml: customFooterHtml,
       pageTitle: `[PREVIEW] ${entryTitle}`,
       isPreview: true,
+      hasPublishedKbEntries: hasPublishedKbEntries,
     });
     logger.timeEnd(`[PUBLIC] /preview/${token}`);
   } catch (error) {
@@ -596,7 +625,7 @@ router.get("/kb/:projectId", async (req, res, next) => {
   logger.time(`[PUBLIC] /kb/${projectId}`);
   try {
     const project = await pbAdmin.collection("projects").getOne(projectId, {
-      fields: "id, name, is_publicly_viewable, password_protected, access_password_hash",
+      fields: "id, name, is_publicly_viewable, password_protected, access_password_hash, roadmap_enabled, use_full_width_content",
     });
 
     if (!project || !project.is_publicly_viewable) {
@@ -675,6 +704,7 @@ router.get("/kb/:projectId", async (req, res, next) => {
       project: project,
       kbEntries: kbEntries,
       sidebarEntries: sidebarEntries,
+      hasPublishedKbEntries: true,
     });
     logger.timeEnd(`[PUBLIC] /kb/${projectId}`);
   } catch (error) {

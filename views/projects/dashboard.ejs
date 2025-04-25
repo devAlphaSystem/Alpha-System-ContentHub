@@ -100,7 +100,7 @@
   </div>
 
   <div class="row">
-    <div class="col" style="flex: 2 1 60%;">
+    <div class="col" style="flex: 2 1 60%; margin-bottom: 25px;">
       <div class="card">
         <div class="card-body" style="padding: 20px;">
           <h5 class="card-title" style="text-align: center; margin-bottom: 15px; font-weight: 600;">Entry Creations (Last 30 Days - Docs & CL)</h5>
@@ -115,6 +115,25 @@
       </div>
     </div>
 
+    <div class="col" style="flex: 1 1 40%; margin-bottom: 25px;">
+      <div class="card">
+        <div class="card-body" style="padding: 20px;">
+          <h5 class="card-title" style="text-align: center; margin-bottom: 15px; font-weight: 600;">Page Helpfulness Feedback</h5>
+          <div id="chart-feedback" style="min-height: 300px;">
+            <% if (metrics && (metrics.helpfulYesCount > 0 || metrics.helpfulNoCount > 0)) { %>
+              <%# Chart will be rendered here by JS %>
+            <% } else { %>
+              <div style="min-height: 200px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); text-align: center;">
+                <i class="fas fa-comment-slash" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i> No feedback data collected yet.
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
     <div class="col" style="flex: 1 1 35%;">
       <div class="card">
         <div class="card-body" style="padding: 20px;">
@@ -138,7 +157,6 @@
       </div>
     </div>
   </div>
-
 <% } else if (!locals.error) { %>
   <div class="card">
     <div style="padding: 40px; text-align: center; color: var(--text-muted);">

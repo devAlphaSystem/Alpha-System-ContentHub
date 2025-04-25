@@ -18,6 +18,13 @@
   </div>
 <% } %>
 
+<% if (locals.updateAvailable) { %>
+  <div class="alert alert-info">
+    <i class="fas fa-arrow-alt-circle-up alert-icon"></i>
+    <span>A new version is available: <strong><%= locals.latestVersion %></strong>. You are currently running <%= locals.currentVersion %>.</span>
+  </div>
+<% } %>
+
 <% if (metrics) { %>
   <div class="row" style="margin-bottom: 25px;">
     <div class="col" style="flex: 1 1 150px;">

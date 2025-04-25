@@ -41,9 +41,7 @@
         <aside class="project-sidebar" id="project-sidebar">
           <div class="sidebar-sticky-content">
             <h3 class="project-sidebar-title">
-              <a href="/projects/<%= project.id %>/entries" title="Go to project admin page (requires login)">
-                <%= project.name %>
-              </a>
+              <%= project.name %>
             </h3>
             <nav class="project-entries-nav">
               <ul>
@@ -67,7 +65,7 @@
                     <% } %>
                   <% } %>
                 <% } %>
-                 <% if (project.is_publicly_viewable && locals.hasPublishedKbEntries) { %>
+                <% if (project.is_publicly_viewable && locals.hasPublishedKbEntries) { %>
                   <li>
                     <a href="/kb/<%= project.id %>" class="project-entry-link">
                       <i class="fas fa-question-circle fa-fw type-icon"></i>
@@ -79,7 +77,7 @@
                   <li>
                     <a href="/roadmap/<%= project.id %>" class="project-entry-link">
                       <i class="fas fa-route fa-fw type-icon"></i>
-                      <span>Roadmap</span>
+                      <span>Project Roadmap</span>
                     </a>
                   </li>
                 <% } %>
@@ -129,6 +127,19 @@
         <article id="markdown-content-area" class="markdown-body" data-entry-id="<%= entry.id %>" data-view-time-tracking-enabled="<%= project?.view_time_tracking_enabled ?? false %>">
           <%- contentHtml %>
         </article>
+
+        <div class="feedback-section" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-primary); text-align: center;">
+          <h4>Was this page helpful?</h4>
+          <div style="margin-top: 10px;">
+            <button class="btn btn-sm btn-success feedback-btn" data-entry-id="<%= entry.id %>" data-vote-type="yes" style="margin-right: 10px;">
+              <i class="fas fa-thumbs-up"></i> Yes
+            </button>
+            <button class="btn btn-sm btn-danger feedback-btn" data-entry-id="<%= entry.id %>" data-vote-type="no">
+              <i class="fas fa-thumbs-down"></i> No
+            </button>
+          </div>
+          <p class="feedback-message" style="display: none; margin-top: 15px; font-weight: 500;"></p>
+        </div>
 
         <% if (locals.customFooterHtml) { %>
           <div class="custom-footer-content">

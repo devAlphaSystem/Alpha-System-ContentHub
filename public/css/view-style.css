@@ -1026,6 +1026,61 @@ pre.language-mermaid svg {
   margin-top: 15px;
 }
 
+.feedback-section {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-primary);
+  text-align: center;
+}
+
+body.dark-mode .feedback-section {
+  border-top-color: var(--dark-border-primary);
+}
+
+.feedback-section h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 15px;
+}
+
+body.dark-mode .feedback-section h4 {
+  color: var(--dark-text-secondary);
+}
+
+.feedback-section .feedback-btn {
+  min-width: 80px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  transition:
+    transform 0.1s ease,
+    opacity 0.2s ease;
+}
+
+.feedback-section .feedback-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.feedback-section .feedback-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.feedback-section .feedback-btn i {
+  margin-right: 5px;
+}
+
+.feedback-message {
+  display: none;
+  margin-top: 15px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+body.dark-mode .feedback-message {
+  color: var(--dark-text-secondary);
+}
+
 @media print {
   .project-sidebar,
   .toc-sidebar,

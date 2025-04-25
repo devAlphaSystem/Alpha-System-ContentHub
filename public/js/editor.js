@@ -75,6 +75,30 @@ document.addEventListener("DOMContentLoaded", () => {
       className: "fas fa-spell-check",
       title: "Check Grammar & Style",
     },
+    "|",
+    {
+      name: "downloadMarkdown",
+      action: function downloadMarkdown(editor) {
+        const content = editor.value();
+        const titleElement = document.getElementById("title");
+        const title = titleElement ? titleElement.value.trim() : "untitled";
+        const safeTitle = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+        const filename = `${safeTitle || "download"}.md`;
+        const blob = new Blob([content], {
+          type: "text/markdown;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      },
+      className: "fa fa-download",
+      title: "Download as Markdown (.md)",
+    },
   ];
 
   function escapeHtml(unsafe) {

@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
         theme: mermaidTheme,
         themeVariables: {
           darkMode: theme === "dark",
-          background: theme === "dark" ? "#1f2937" : "#ffffff",
+          background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         },
       });
       mermaid.run({
@@ -279,6 +279,170 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (isAdminView) {
       console.log("View time tracking skipped due to 'from_admin=1'.");
+    }
+  }
+
+  const headingsToObserve = contentArea ? contentArea.querySelectorAll("h2[id], h3[id], h4[id]") : [];
+  const HOVER_DELAY = 2000;
+
+  const styleElement = document.createElement("style");
+  styleElement.textContent = `
+    .heading-copy-tooltip {
+      position: absolute;
+      background-color: #333;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      white-space: nowrap;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.2s ease-in-out;
+      pointer-events: none;
+      margin-left: 10px;
+      margin-top: -2px;
+    }
+    .heading-copy-tooltip.visible {
+      opacity: 1;
+    }
+    h2[id], h3[id], h4[id] {
+      cursor: pointer;
+      position: relative;
+    }
+  `;
+  document.head.appendChild(styleElement);
+
+  for (const heading of headingsToObserve) {
+    let hoverTimeoutId = null;
+    const tooltip = document.createElement("span");
+    tooltip.className = "heading-copy-tooltip";
+    tooltip.textContent = "Click to copy link";
+    heading.appendChild(tooltip);
+
+    heading.addEventListener("mouseenter", () => {
+      clearTimeout(hoverTimeoutId);
+      hoverTimeoutId = setTimeout(() => {
+        tooltip.classList.add("visible");
+      }, HOVER_DELAY);
+    });
+
+    heading.addEventListener("mouseleave", () => {
+      clearTimeout(hoverTimeoutId);
+      tooltip.classList.remove("visible");
+      setTimeout(() => {
+        if (!tooltip.classList.contains("visible")) {
+          tooltip.textContent = "Click to copy link";
+        }
+      }, 200);
+    });
+
+    heading.addEventListener("click", (event) => {
+      event.preventDefault();
+      const link = `${window.location.origin + window.location.pathname}#${heading.id}`;
+      navigator.clipboard
+        .writeText(link)
+        .then(() => {
+          tooltip.textContent = "Copied!";
+          tooltip.classList.add("visible");
+          clearTimeout(hoverTimeoutId);
+          setTimeout(() => {
+            tooltip.classList.remove("visible");
+            setTimeout(() => {
+              tooltip.textContent = "Click to copy link";
+            }, 200);
+          }, 1000);
+        })
+        .catch((err) => {
+          console.error("Failed to copy heading link: ", err);
+          tooltip.textContent = "Copy failed";
+          tooltip.classList.add("visible");
+          clearTimeout(hoverTimeoutId);
+          setTimeout(() => {
+            tooltip.classList.remove("visible");
+            setTimeout(() => {
+              tooltip.textContent = "Click to copy link";
+            }, 200);
+          }, 1000);
+        });
+    });
+  }
+
+  const feedbackSection = document.querySelector(".feedback-section");
+  if (feedbackSection) {
+    const feedbackButtons = feedbackSection.querySelectorAll(".feedback-btn");
+    const feedbackMessage = feedbackSection.querySelector(".feedback-message");
+    const entryIdForFeedback = feedbackButtons[0]?.dataset.entryId;
+
+    const disableFeedbackButtons = (message) => {
+      for (const button of feedbackButtons) {
+        button.disabled = true;
+      }
+      if (feedbackMessage) {
+        feedbackMessage.textContent = message;
+        feedbackMessage.style.display = "block";
+      }
+    };
+
+    if (entryIdForFeedback) {
+      const storageKey = `feedback_voted_${entryIdForFeedback}`;
+      if (localStorage.getItem(storageKey) === "true") {
+        console.log(`Feedback buttons disabled for entry ${entryIdForFeedback} due to localStorage flag.`);
+        disableFeedbackButtons("Thank you for your feedback!");
+      }
+    }
+
+    for (const button of feedbackButtons) {
+      button.addEventListener("click", async () => {
+        const entryId = button.dataset.entryId;
+        const voteType = button.dataset.voteType;
+
+        if (!entryId || !voteType) {
+          console.error("Missing data attributes on feedback button.");
+          return;
+        }
+
+        disableFeedbackButtons("Submitting...");
+
+        try {
+          const response = await fetch("/api/feedback", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({ entryId, voteType }),
+          });
+
+          const result = await response.json();
+
+          if (response.ok || response.status === 409) {
+            const message = response.status === 409 ? "You've already provided feedback for this page." : "Thank you for your feedback!";
+            disableFeedbackButtons(message);
+            const storageKey = `feedback_voted_${entryId}`;
+            localStorage.setItem(storageKey, "true");
+            console.log(`Feedback submitted or duplicate detected for ${entryId}. Setting localStorage flag.`);
+          } else {
+            throw new Error(result.error || "Failed to submit feedback.");
+          }
+        } catch (error) {
+          console.error("Feedback submission error:", error);
+          if (feedbackMessage) {
+            feedbackMessage.textContent = `Error: ${error.message || "Could not submit feedback."}`;
+            feedbackMessage.style.display = "block";
+            feedbackMessage.style.color = "var(--danger-color)";
+          }
+          for (const btn of feedbackButtons) {
+            btn.disabled = false;
+          }
+          if (feedbackMessage) {
+            setTimeout(() => {
+              feedbackMessage.style.display = "none";
+              feedbackMessage.style.color = "";
+              feedbackMessage.textContent = "";
+            }, 3000);
+          }
+        }
+      });
     }
   }
 });

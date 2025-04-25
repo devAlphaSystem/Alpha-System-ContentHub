@@ -214,10 +214,12 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
     let activityData = [];
     let totalDurationSum = 0;
     let totalDurationCountSum = 0;
+    let helpfulYesCount = 0;
+    let helpfulNoCount = 0;
 
     const projectEntries = await pbAdmin.collection("entries_main").getFullList({
       filter: `project = '${projectId}' && type != 'roadmap' && type != 'sidebar_header'`,
-      fields: "id, views, type, created, total_view_duration, view_duration_count",
+      fields: "id, views, type, created, total_view_duration, view_duration_count, helpful_yes, helpful_no",
       $autoCancel: false,
     });
     logger.timeEnd(`[PROJ] FetchProjectEntriesMetrics ${projectId}`);
@@ -230,6 +232,8 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
 
     for (const entry of projectEntries) {
       totalViews += entry.views || 0;
+      helpfulYesCount += entry.helpful_yes || 0;
+      helpfulNoCount += entry.helpful_no || 0;
       if (entry.type === "changelog") {
         entriesByType.changelog++;
         totalDurationSum += entry.total_view_duration || 0;
@@ -282,6 +286,8 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
       activityData: activityData,
       totalDurationSum: totalDurationSum,
       totalDurationCountSum: totalDurationCountSum,
+      helpfulYesCount: helpfulYesCount,
+      helpfulNoCount: helpfulNoCount,
     };
 
     logger.debug(`[PROJ] Rendering project dashboard for ${projectId}`);
@@ -621,7 +627,7 @@ async function renderEntriesList(req, res, entryType) {
   logger.time(`[PROJ] renderEntriesList ${entryType} ${projectId}`);
   let pageTitle = "";
   let viewName = "";
-  let listFields = "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,total_view_duration,view_duration_count";
+  let listFields = "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,total_view_duration,view_duration_count,helpful_yes,helpful_no";
 
   switch (entryType) {
     case "documentation":

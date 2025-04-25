@@ -89,6 +89,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const viewsCell = viewsHeaderExists ? `<td data-label="Views">${entry.views || 0}</td>` : "";
     const avgTimeCell = avgTimeHeaderExists ? `<td data-label="Avg. Time">${formattedAvgDuration}</td>` : "";
 
+    const helpfulYesCell = `<td data-label="Helpful Yes">${entry.helpful_yes || 0}</td>`;
+    const helpfulNoCell = `<td data-label="Helpful No">${entry.helpful_no || 0}</td>`;
+
     return `
       <tr data-entry-id="${escapeHtml(entry.id)}" data-updated-timestamp="${updatedTimestamp}" data-views-value="${entry.views || 0}">
         <td class="checkbox-column"><input type="checkbox" class="entry-checkbox" value="${escapeHtml(entry.id)}"></td>
@@ -98,6 +101,8 @@ document.addEventListener("DOMContentLoaded", () => {
           ${stagedBadge}
         </td>
         <td data-label="Collection">${collectionDisplay}</td>
+        ${helpfulYesCell}
+        ${helpfulNoCell}
         ${viewsCell}
         ${avgTimeCell}
         <td data-label="Updated">${formattedUpdated}</td>

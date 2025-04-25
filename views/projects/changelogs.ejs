@@ -69,6 +69,8 @@
           <th data-sort-key="title" style="cursor: pointer;">Title <span class="sort-icon"><i class="fas fa-sort-up"></i></span></th>
           <th data-sort-key="status" style="cursor: pointer;">Status <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
           <th data-sort-key="collection" style="cursor: pointer;">Collection <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="helpful_yes" style="cursor: pointer;">Helpful <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="helpful_no" style="cursor: pointer;">Not Helpful <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
           <% if (project.view_tracking_enabled) { %>
             <th data-sort-key="views" style="cursor: pointer;">Views <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
           <% } %>
@@ -106,6 +108,8 @@
               <% } %>
             </td>
             <td data-label="Collection"><%= entry.collection || '-' %></td>
+            <td data-label="Helpful"><%= entry.helpful_yes || '0' %></td>
+            <td data-label="Not Helpful"><%= entry.helpful_no || '0' %></td>
             <% if (project.view_tracking_enabled) { %>
               <td data-label="Views"><%= entry.views || 0 %></td>
             <% } %>
