@@ -37,6 +37,7 @@ const DEFAULT_ENABLE_PROJECT_VIEW_TRACKING_DEFAULT = process.env.ENABLE_PROJECT_
 const DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT = process.env.ENABLE_PROJECT_TIME_TRACKING_DEFAULT !== "false";
 const DEFAULT_ENABLE_PROJECT_FULL_WIDTH_DEFAULT = process.env.ENABLE_PROJECT_FULL_WIDTH_DEFAULT === "true";
 const DEFAULT_ENABLE_FILE_SIZE_CALCULATION = process.env.ENABLE_FILE_SIZE_CALCULATION === "true";
+const DEFAULT_BOT_USER_AGENTS = ["googleimageproxy", "googlebot", "adsbot-google", "mediapartners-google", "apis-google", "feedfetcher-google", "bingbot", "duckduckbot", "baiduspider", "yandexbot", "slurp", "facebookexternalhit", "facebot", "twitterbot", "linkedinbot", "pinterestbot", "slackbot", "discordbot", "applebot", "petalbot", "bytespider", "semrushbot", "ahrefsbot", "mj12bot", "dotbot", "uptimerobot", "pingdom", "statuscake", "curl", "wget", "postman", "python-requests", "headlesschrome", "puppeteer", "playwright", "selenium", "electron", "bot", "crawler", "spider", "probe", "scan"];
 
 let currentSettings = {
   previewTokenExpiryHours: DEFAULT_PREVIEW_TOKEN_EXPIRY_HOURS,
@@ -46,6 +47,7 @@ let currentSettings = {
   enableProjectTimeTrackingDefault: DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT,
   enableProjectFullWidthDefault: DEFAULT_ENABLE_PROJECT_FULL_WIDTH_DEFAULT,
   enableFileSizeCalculation: DEFAULT_ENABLE_FILE_SIZE_CALCULATION,
+  botUserAgents: DEFAULT_BOT_USER_AGENTS,
 };
 
 export const VIEW_TIMEFRAME_HOURS = Number.parseInt(process.env.VIEW_TIMEFRAME_HOURS || "24", 10);
@@ -108,6 +110,12 @@ export async function loadAppSettings() {
     }
     const settingsRecord = await pbAdmin.collection("app_settings").getOne(APP_SETTINGS_RECORD_ID);
 
+    const botUserAgentsString = settingsRecord.bot_user_agents || DEFAULT_BOT_USER_AGENTS.join("\n");
+    const botUserAgentsList = botUserAgentsString
+      .split("\n")
+      .map((ua) => ua.trim().toLowerCase())
+      .filter((ua) => ua.length > 0);
+
     currentSettings = {
       previewTokenExpiryHours: settingsRecord.preview_token_expiry_hours ?? DEFAULT_PREVIEW_TOKEN_EXPIRY_HOURS,
       enableGlobalSearch: settingsRecord.enable_global_search ?? DEFAULT_ENABLE_GLOBAL_SEARCH,
@@ -116,9 +124,13 @@ export async function loadAppSettings() {
       enableProjectTimeTrackingDefault: settingsRecord.enable_project_time_tracking_default ?? DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT,
       enableProjectFullWidthDefault: settingsRecord.enable_project_full_width_default ?? DEFAULT_ENABLE_PROJECT_FULL_WIDTH_DEFAULT,
       enableFileSizeCalculation: settingsRecord.enable_file_size_calculation ?? DEFAULT_ENABLE_FILE_SIZE_CALCULATION,
+      botUserAgents: botUserAgentsList,
     };
     logger.info("Successfully loaded application settings from PocketBase.");
-    logger.debug("Current runtime settings:", currentSettings);
+    logger.debug("Current runtime settings:", {
+      ...currentSettings,
+      botUserAgents: `[${currentSettings.botUserAgents.length} items]`,
+    });
   } catch (error) {
     logger.error(`Failed to load settings from PocketBase (Record ID: ${APP_SETTINGS_RECORD_ID}): ${error.message}`);
     logger.warn("Using default settings based on environment variables.");

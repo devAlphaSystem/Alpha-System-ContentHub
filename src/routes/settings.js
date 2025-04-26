@@ -12,11 +12,15 @@ router.get("/", requireLogin, (req, res) => {
   logger.time(`[SETTINGS] GET /settings ${userId}`);
 
   const currentSettings = getSettings();
+  const botUserAgentsString = currentSettings.botUserAgents.join("\n");
 
   logger.timeEnd(`[SETTINGS] GET /settings ${userId}`);
   res.render("settings", {
     pageTitle: "System Settings",
-    settings: currentSettings,
+    settings: {
+      ...currentSettings,
+      botUserAgents: botUserAgentsString,
+    },
     error: req.query.error,
     message: req.query.message,
     currentProjectId: null,
@@ -28,7 +32,7 @@ router.post("/", requireLogin, async (req, res) => {
   logger.info(`[SETTINGS] POST /settings attempt by user ${userId}`);
   logger.time(`[SETTINGS] POST /settings ${userId}`);
 
-  const { enable_global_search, enable_audit_log, enable_project_view_tracking_default, enable_project_time_tracking_default, enable_project_full_width_default, enable_file_size_calculation } = req.body;
+  const { enable_global_search, enable_audit_log, enable_project_view_tracking_default, enable_project_time_tracking_default, enable_project_full_width_default, enable_file_size_calculation, bot_user_agents } = req.body;
 
   const errors = {};
   const dataToSave = {};
@@ -39,6 +43,7 @@ router.post("/", requireLogin, async (req, res) => {
   dataToSave.enable_project_time_tracking_default = enable_project_time_tracking_default === "true";
   dataToSave.enable_project_full_width_default = enable_project_full_width_default === "true";
   dataToSave.enable_file_size_calculation = enable_file_size_calculation === "true";
+  dataToSave.bot_user_agents = bot_user_agents || "";
 
   if (Object.keys(errors).length > 0) {
     logger.warn("[SETTINGS] Settings update validation failed:", errors);
@@ -54,6 +59,7 @@ router.post("/", requireLogin, async (req, res) => {
         enableProjectTimeTrackingDefault: dataToSave.enable_project_time_tracking_default,
         enableProjectFullWidthDefault: dataToSave.enable_project_full_width_default,
         enableFileSizeCalculation: dataToSave.enable_file_size_calculation,
+        botUserAgents: dataToSave.bot_user_agents,
       },
       errors: errors,
       message: null,
@@ -67,9 +73,20 @@ router.post("/", requireLogin, async (req, res) => {
     }
 
     logger.debug(`[SETTINGS] Updating app_settings record ${APP_SETTINGS_RECORD_ID} with data:`, dataToSave);
-    await pbAdmin.collection("app_settings").update(APP_SETTINGS_RECORD_ID, dataToSave);
+    await pbAdmin.collection("app_settings").update(APP_SETTINGS_RECORD_ID, {
+      enable_global_search: dataToSave.enable_global_search,
+      enable_audit_log: dataToSave.enable_audit_log,
+      enable_project_view_tracking_default: dataToSave.enable_project_view_tracking_default,
+      enable_project_time_tracking_default: dataToSave.enable_project_time_tracking_default,
+      enable_project_full_width_default: dataToSave.enable_project_full_width_default,
+      enable_file_size_calculation: dataToSave.enable_file_size_calculation,
+      bot_user_agents: dataToSave.bot_user_agents,
+    });
 
-    logAuditEvent(req, "SETTINGS_UPDATE", "app_settings", APP_SETTINGS_RECORD_ID, dataToSave);
+    logAuditEvent(req, "SETTINGS_UPDATE", "app_settings", APP_SETTINGS_RECORD_ID, {
+      ...dataToSave,
+      bot_user_agents: "[REDACTED]",
+    });
     logger.info(`[SETTINGS] Settings updated successfully by user ${userId}.`);
 
     await loadAppSettings();
@@ -81,7 +98,10 @@ router.post("/", requireLogin, async (req, res) => {
     logger.error(`[SETTINGS] Failed to update settings: Status ${error?.status || "N/A"}`, error?.message || error);
     logAuditEvent(req, "SETTINGS_UPDATE_FAILURE", "app_settings", APP_SETTINGS_RECORD_ID, {
       error: error?.message,
-      dataAttempted: dataToSave,
+      dataAttempted: {
+        ...dataToSave,
+        bot_user_agents: "[REDACTED]",
+      },
     });
 
     const currentSettings = getSettings();
@@ -95,6 +115,7 @@ router.post("/", requireLogin, async (req, res) => {
         enableProjectTimeTrackingDefault: dataToSave.enable_project_time_tracking_default,
         enableProjectFullWidthDefault: dataToSave.enable_project_full_width_default,
         enableFileSizeCalculation: dataToSave.enable_file_size_calculation,
+        botUserAgents: dataToSave.bot_user_agents,
       },
       errors: { general: { message: "Failed to save settings." } },
       message: null,

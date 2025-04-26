@@ -28,7 +28,7 @@
   </div>
 <% } %>
 
-<div class="card data-card <% if (headers.length === 0 && !locals.error) { %>hidden<% } %>">
+<div class="card data-card <% if (assets.length === 0 && !locals.error) { %>hidden<% } %>">
   <div class="table-responsive">
     <table class="data-table">
       <thead>
@@ -39,7 +39,7 @@
         </tr>
       </thead>
       <tbody id="cl-headers-table-body">
-        <% for (const header of headers) { %>
+        <% for (const header of assets) { %>
           <tr data-header-id="<%= header.id %>" data-updated-timestamp="<%= new Date(header.updated).getTime() %>">
             <td data-label="Name"> <%= header.name %> </td>
             <td data-label="Updated"> <%= header.formattedUpdated %> </td>
@@ -68,7 +68,7 @@
   </div>
 </div>
 
-<% if (headers.length === 0 && !locals.error) { %>
+<% if (assets.length === 0 && !locals.error) { %>
   <div class="card empty-state-card">
     <i class="far fa-arrow-alt-circle-up empty-state-icon"></i>
     <h2>No custom changelog headers yet for this project</h2>

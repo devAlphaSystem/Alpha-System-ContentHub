@@ -69,6 +69,29 @@
         "type": "bool"
       },
       {
+        "hidden": false,
+        "id": "bool3086103371",
+        "name": "enable_file_size_calculation",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text1220746906",
+        "max": 0,
+        "min": 0,
+        "name": "bot_user_agents",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
         "autogeneratePattern": "",
         "hidden": false,
         "id": "text2404160477",

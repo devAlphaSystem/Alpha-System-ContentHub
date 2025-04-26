@@ -311,6 +311,18 @@ export function logEntryView(req, entryId) {
     return;
   }
 
+  const userAgent = req.headers["user-agent"] || "";
+  const settings = getSettings();
+  const botUserAgents = settings.botUserAgents || [];
+  const lowerCaseUserAgent = userAgent.toLowerCase();
+
+  for (const botIdentifier of botUserAgents) {
+    if (lowerCaseUserAgent.includes(botIdentifier)) {
+      logger.trace(`View log skipped for entry ${entryId} due to bot user agent match: ${botIdentifier}. UA: ${userAgent}`);
+      return;
+    }
+  }
+
   const ipAddress = getIP(req);
   const hashedIP = hashIP(ipAddress);
 

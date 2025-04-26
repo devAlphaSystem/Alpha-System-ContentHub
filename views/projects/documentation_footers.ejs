@@ -28,7 +28,7 @@
   </div>
 <% } %>
 
-<div class="card data-card <% if (footers.length === 0 && !locals.error) { %>hidden<% } %>">
+<div class="card data-card <% if (assets.length === 0 && !locals.error) { %>hidden<% } %>">
   <div class="table-responsive">
     <table class="data-table">
       <thead>
@@ -39,7 +39,7 @@
         </tr>
       </thead>
       <tbody id="doc-footers-table-body">
-        <% for (const footer of footers) { %>
+        <% for (const footer of assets) { %>
           <tr data-footer-id="<%= footer.id %>" data-updated-timestamp="<%= new Date(footer.updated).getTime() %>">
             <td data-label="Name"> <%= footer.name %> </td>
             <td data-label="Updated"> <%= footer.formattedUpdated %> </td>
@@ -68,7 +68,7 @@
   </div>
 </div>
 
-<% if (footers.length === 0 && !locals.error) { %>
+<% if (assets.length === 0 && !locals.error) { %>
   <div class="card empty-state-card">
     <i class="far fa-arrow-alt-circle-down empty-state-icon"></i>
     <h2>No custom documentation footers yet for this project</h2>
