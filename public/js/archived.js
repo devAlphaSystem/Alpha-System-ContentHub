@@ -15,19 +15,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let totalPages = 1;
   let totalItems = 0;
   const itemsPerPage = 10;
-  let currentSortKey = "updated";
+  let currentSortKey = "content_updated_at";
   let currentSortDir = "desc";
   let isLoading = false;
 
   function renderTableRow(entry) {
-    const formattedArchivedDate =
-      entry.formattedUpdated ||
-      new Date(entry.updated).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-    const updatedTimestamp = new Date(entry.updated).getTime();
+    const formattedArchivedDate = entry.formattedUpdated;
+    const updatedTimestamp = new Date(entry.content_updated_at || entry.updated).getTime();
     const unarchiveUrl = `/projects/${projectId}/unarchive/${escapeHtml(entry.id)}`;
     const deleteUrl = `/projects/${projectId}/delete-archived/${escapeHtml(entry.id)}`;
 
@@ -98,8 +92,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function fetchArchivedEntries() {
     if (isLoading || !projectId || !entryType) {
-      if (!projectId) console.warn("Project ID missing, cannot fetch archived entries.");
-      if (!entryType) console.warn("Entry Type missing, cannot fetch archived entries.");
+      if (!projectId) logger.warn("Project ID missing, cannot fetch archived entries.");
+      if (!entryType) logger.warn("Entry Type missing, cannot fetch archived entries.");
       return;
     }
     isLoading = true;
@@ -201,7 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (sortKey === currentSortKey) {
           newSortDir = currentSortDir === "asc" ? "desc" : "asc";
         } else {
-          newSortDir = sortKey === "updated" ? "desc" : "asc";
+          newSortDir = sortKey === "content_updated_at" ? "desc" : "asc";
         }
 
         currentSortKey = sortKey;

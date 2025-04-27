@@ -831,6 +831,17 @@
       },
       {
         "hidden": false,
+        "id": "date3663457133",
+        "max": "",
+        "min": "",
+        "name": "content_updated_at",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "date"
+      },
+      {
+        "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
         "onCreate": true,
@@ -1294,6 +1305,17 @@
         "required": false,
         "system": false,
         "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "date3663457133",
+        "max": "",
+        "min": "",
+        "name": "content_updated_at",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "date"
       },
       {
         "hidden": false,

@@ -184,9 +184,9 @@ document.addEventListener("DOMContentLoaded", () => {
       window.showConfirmModal({
         form: form,
         title: "Confirm Project Deletion",
-        message: `Are you sure you want to delete the project "<strong>${escapeHtml(projectName)}</strong>"?<br><strong>This will permanently delete the project and ALL associated entries, templates, headers, and footers. This action cannot be undone.</strong>`,
+        message: `Are you sure you want to delete the project "<strong>${escapeHtml(projectName)}</strong>"?<br><strong>Warning:</strong> This will permanently delete the project and ALL associated entries, templates, headers, and footers. This action cannot be undone.`,
         action: "delete",
-        confirmText: "Delete Project",
+        confirmText: "Delete Project Permanently",
       });
     }
   }
@@ -221,7 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const allHeaders = document.querySelectorAll(".data-table th[data-sort-key]");
         for (const h of allHeaders) {
           const icon = h.querySelector(".sort-icon i");
-          if (!icon) continue;
+          if (!icon) return;
           if (h.dataset.sortKey === currentSortKey) {
             icon.className = currentSortDir === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
           } else {

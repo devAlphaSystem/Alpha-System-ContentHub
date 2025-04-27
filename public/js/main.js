@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const entryType = dataCardElement?.dataset.entryType;
 
   if (entryType !== "documentation" && entryType !== "changelog" && entryType !== "knowledge_base" && entryType !== "roadmap") {
-    console.warn("Main JS loaded on unexpected page type or type missing:", entryType);
+    logger.warn("Main JS loaded on unexpected page type or type missing:", entryType);
   }
 
   const entriesTableBody = document.getElementById("entries-table-body");
@@ -52,16 +52,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderTableRow(entry) {
-    const formattedUpdated =
-      entry.formattedUpdated ||
-      new Date(entry.updated).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
+    const formattedUpdated = entry.formattedUpdated;
 
     const viewUrlWithParam = entry.viewUrl ? `${entry.viewUrl}?from_admin=1` : `/view/${escapeHtml(entry.id)}?from_admin=1`;
-    const updatedTimestamp = new Date(entry.updated).getTime();
+    const updatedTimestamp = new Date(entry.content_updated_at || entry.updated).getTime();
     const editUrl = `/projects/${projectId}/edit/${escapeHtml(entry.id)}`;
     const archiveUrl = `/projects/${projectId}/archive/${escapeHtml(entry.id)}`;
     const deleteUrl = `/projects/${projectId}/delete/${escapeHtml(entry.id)}`;
@@ -69,12 +63,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const editTitle = `Edit ${entry.has_staged_changes ? "Staged " : ""}Entry`;
 
     const stagedBadge = entry.has_staged_changes ? `<span class="badge status-badge status-staged" title="Unpublished changes exist">Staged</span>` : "";
+    const stagedPreviewUrl = `/projects/${projectId}/preview-staged/${escapeHtml(entry.id)}`;
 
     const publishStagedButton = entry.has_staged_changes
       ? `
         <button type="button" class="btn btn-icon btn-publish-staged js-publish-staged-btn" data-url="${publishStagedApiUrl}" data-entry-title="${escapeHtml(entry.title)}" title="Publish Staged Changes">
           <i class="fas fa-upload"></i>
         </button>
+        <a href="/projects/${projectId}/diff/${escapeHtml(entry.id)}" class="btn btn-icon btn-diff" title="View Staged Changes">
+          <i class="fas fa-exchange-alt"></i>
+        </a>
+        <a href="${stagedPreviewUrl}" target="_blank" class="btn btn-icon" title="Preview Staged Version">
+          <i class="fas fa-flask"></i>
+        </a>
       `
       : "";
 
@@ -177,8 +178,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function fetchEntries(isNewSearch = false) {
     if (isLoading || !projectId || !entryType || !["documentation", "changelog"].includes(entryType)) {
-      if (!projectId) console.warn("Project ID missing, cannot fetch entries.");
-      if (!entryType) console.warn("Entry Type missing or invalid, cannot fetch entries.");
+      if (!projectId) logger.warn("Project ID missing, cannot fetch entries.");
+      if (!entryType) logger.warn("Entry Type missing or invalid, cannot fetch entries.");
       return;
     }
     isLoading = true;
@@ -460,7 +461,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (sortKey === currentSortKey) {
           newSortDir = currentSortDir === "asc" ? "desc" : "asc";
         } else {
-          newSortDir = sortKey === "updated" || sortKey === "views" ? "desc" : "asc";
+          newSortDir = sortKey === "content_updated_at" || sortKey === "views" ? "desc" : "asc";
         }
 
         currentSortKey = sortKey;
@@ -532,16 +533,14 @@ document.addEventListener("DOMContentLoaded", () => {
         bulkActionsMenu.classList.remove("show");
 
         const isDelete = action === "delete" || action === "permanent-delete";
-        const isPublishStaged = action === "publish-staged";
         let message = `Are you sure you want to perform the action '<strong>${escapeHtml(action)}</strong>' on <strong>${selectedIds.length}</strong> item(s)?`;
         if (isDelete) message += "<br>This action cannot be undone.";
-        if (isPublishStaged) message += "<br>This will overwrite live content for published items with staged changes.";
 
         window.showConfirmModal({
           title: "Confirm Bulk Action",
           message: message,
           action: `bulk-${action}`,
-          confirmText: isDelete ? "Delete" : isPublishStaged ? "Publish" : "Confirm",
+          confirmText: isDelete ? "Delete" : "Confirm",
           onConfirm: () => handleBulkActionConfirm(action, selectedIds),
         });
       }

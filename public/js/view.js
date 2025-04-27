@@ -219,12 +219,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const entryId = contentArea?.dataset.entryId;
   const viewTimeTrackingEnabled = contentArea?.dataset.viewTimeTrackingEnabled === "true";
+  const isStagedPreview = contentArea?.dataset.isStagedPreview === "true";
   const urlParams = new URLSearchParams(window.location.search);
   const isAdminView = urlParams.get("from_admin") === "1";
   const MIN_DURATION_SECONDS = 5;
   const MAX_DURATION_SECONDS = 60 * 30;
 
-  if (entryId && viewTimeTrackingEnabled && !isAdminView) {
+  if (entryId && viewTimeTrackingEnabled && !isAdminView && !isStagedPreview) {
     const startTime = Date.now();
     let hasSentBeacon = false;
 
@@ -279,6 +280,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (isAdminView) {
       console.log("View time tracking skipped due to 'from_admin=1'.");
+    }
+    if (isStagedPreview) {
+      console.log("View time tracking skipped for staged preview page.");
     }
   }
 

@@ -33,6 +33,10 @@
           <i class="fas fa-chart-pie fa-fw"></i>
           <span>Project Overview</span>
         </a>
+        <a href="/projects/<%= project.id %>/edit" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/edit')) { %>active<% } %>" data-nav-id="project-settings">
+          <i class="fas fa-cog fa-fw"></i>
+          <span>Project Settings</span>
+        </a>
         <a href="<%= projectBasePath %>/sidebar-order" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/sidebar-order')) { %>active<% } %>" data-nav-id="project-sidebar-order">
           <i class="fas fa-sort-amount-down fa-fw"></i>
           <span>Sidebar Order</span>

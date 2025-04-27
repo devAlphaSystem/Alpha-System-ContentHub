@@ -144,7 +144,7 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
     const baseFilterParts = [`owner = '${userId}'`, `project = '${projectId}'`, `type = '${entryType}'`];
     const page = Number.parseInt(req.query.page) || 1;
     const perPage = Number.parseInt(req.query.perPage) || ITEMS_PER_PAGE;
-    const sort = req.query.sort || "-updated";
+    const sort = req.query.sort || "-content_updated_at";
     const statusFilter = req.query.status;
     const collectionFilter = req.query.collection;
     const searchTerm = req.query.search;
@@ -173,7 +173,7 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
     const resultList = await pb.collection("entries_main").getList(page, perPage, {
       sort: sort,
       filter: combinedFilter,
-      fields: "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,roadmap_stage,total_view_duration,view_duration_count,helpful_yes,helpful_no",
+      fields: "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,roadmap_stage,total_view_duration,view_duration_count,helpful_yes,helpful_no,content_updated_at",
     });
     logger.debug(`[API] Fetched ${resultList.items.length} ${entryType} entries (page ${page}/${resultList.totalPages}) for project ${projectId}`);
 
@@ -186,12 +186,13 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
       entriesWithDetails.push({
         ...entry,
         viewUrl: entryType !== "roadmap" && entryType !== "knowledge_base" && entryType !== "sidebar_header" ? `/view/${entry.id}` : null,
-        formattedUpdated: new Date(entry.updated).toLocaleDateString("en-US", {
+        formattedUpdated: new Date(entry.content_updated_at || entry.updated).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           year: "numeric",
         }),
         has_staged_changes: entry.has_staged_changes ?? false,
+        systemUpdatedAt: entry.updated,
       });
     }
 
@@ -327,6 +328,7 @@ router.post("/projects/:projectId/entries/:id/publish-staged", requireLogin, che
       staged_changelog_header: null,
       staged_changelog_footer: null,
       staged_roadmap_stage: null,
+      content_updated_at: new Date().toISOString(),
     };
     logger.debug(`[API] Publishing staged changes for entry ${entryId} with data:`, {
       title: updateData.title,
@@ -494,7 +496,7 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
     });
   }
 
-  const validActions = ["publish", "draft", "archive", "unarchive", "delete", "permanent-delete", "publish-staged"];
+  const validActions = ["archive", "unarchive", "delete", "permanent-delete"];
   if (!validActions.includes(action)) {
     logger.warn(`[API] Invalid bulk action specified: ${action}`);
     logger.timeEnd(`[API] POST /bulk-action ${action} ${projectId}`);
@@ -540,64 +542,6 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
       logDetails.stage = record.roadmap_stage;
 
       switch (action) {
-        case "publish":
-        case "draft": {
-          if (sourceCollectionName !== "entries_main") {
-            throw new Error(`Action '${action}' cannot apply to archived entries.`);
-          }
-          const statusUpdateData = {
-            status: action,
-          };
-          if (action === "draft") {
-            statusUpdateData.has_staged_changes = false;
-            statusUpdateData.staged_title = null;
-            statusUpdateData.staged_type = null;
-            statusUpdateData.staged_content = null;
-            statusUpdateData.staged_tags = null;
-            statusUpdateData.staged_collection = null;
-            statusUpdateData.staged_documentation_header = null;
-            statusUpdateData.staged_documentation_footer = null;
-            statusUpdateData.staged_changelog_header = null;
-            statusUpdateData.staged_changelog_footer = null;
-            statusUpdateData.staged_roadmap_stage = null;
-          }
-          logger.debug(`[API] Updating ${id} status to ${action}`);
-          await client.collection(sourceCollectionName).update(id, statusUpdateData);
-          break;
-        }
-        case "publish-staged": {
-          if (sourceCollectionName !== "entries_main") {
-            throw new Error("Cannot publish staged for archived entries.");
-          }
-          if (record.status !== "published" || !record.has_staged_changes) {
-            throw new Error("Entry not published or no staged changes.");
-          }
-          const publishUpdateData = {
-            title: record.staged_title,
-            type: record.staged_type,
-            content: record.staged_content,
-            tags: record.staged_tags,
-            custom_documentation_header: record.staged_type === "documentation" ? record.staged_documentation_header || null : record.custom_documentation_header,
-            custom_documentation_footer: record.staged_type === "documentation" ? record.staged_documentation_footer || null : record.custom_documentation_footer,
-            custom_changelog_header: record.staged_type === "changelog" ? record.staged_changelog_header || null : record.custom_changelog_header,
-            custom_changelog_footer: record.staged_type === "changelog" ? record.staged_changelog_footer || null : record.custom_changelog_footer,
-            roadmap_stage: record.staged_type === "roadmap" ? record.staged_roadmap_stage || null : record.roadmap_stage,
-            has_staged_changes: false,
-            staged_title: null,
-            staged_type: null,
-            staged_content: null,
-            staged_tags: null,
-            staged_collection: null,
-            staged_documentation_header: null,
-            staged_documentation_footer: null,
-            staged_changelog_header: null,
-            staged_changelog_footer: null,
-            staged_roadmap_stage: null,
-          };
-          logger.debug(`[API] Publishing staged changes for ${id}`);
-          await client.collection(sourceCollectionName).update(id, publishUpdateData);
-          break;
-        }
         case "archive": {
           if (sourceCollectionName !== "entries_main" || !targetCollectionName) {
             throw new Error("Invalid state for archive action.");
@@ -610,6 +554,7 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
             custom_changelog_header: record.custom_changelog_header || null,
             custom_changelog_footer: record.custom_changelog_footer || null,
             roadmap_stage: record.roadmap_stage || null,
+            content_updated_at: record.content_updated_at,
           };
           archiveData.id = undefined;
           archiveData.collectionId = undefined;
@@ -630,39 +575,6 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
           const archivedRecord = await client.collection(targetCollectionName).create(archiveData);
           await client.collection(sourceCollectionName).delete(id);
           logDetails.archivedId = archivedRecord.id;
-          break;
-        }
-        case "unarchive": {
-          if (sourceCollectionName !== "entries_archived" || !targetCollectionName) {
-            throw new Error("Invalid state for unarchive action.");
-          }
-          const mainData = {
-            ...record,
-            custom_documentation_header: record.custom_documentation_header || null,
-            custom_documentation_footer: record.custom_documentation_footer || null,
-            custom_changelog_header: record.custom_changelog_header || null,
-            custom_changelog_footer: record.custom_changelog_footer || null,
-            roadmap_stage: record.roadmap_stage || null,
-          };
-          mainData.id = record.original_id;
-          mainData.original_id = undefined;
-          mainData.collectionId = undefined;
-          mainData.collectionName = undefined;
-          mainData.has_staged_changes = false;
-          mainData.staged_title = null;
-          mainData.staged_type = null;
-          mainData.staged_content = null;
-          mainData.staged_tags = null;
-          mainData.staged_collection = null;
-          mainData.staged_documentation_header = null;
-          mainData.staged_documentation_footer = null;
-          mainData.staged_changelog_header = null;
-          mainData.staged_changelog_footer = null;
-          mainData.staged_roadmap_stage = null;
-          logger.debug(`[API] Unarchiving entry ${id} (original ID: ${mainData.id})`);
-          const newMainRecord = await client.collection(targetCollectionName).create(mainData);
-          await client.collection(sourceCollectionName).delete(id);
-          logDetails.newId = newMainRecord.id;
           break;
         }
         case "delete": {
@@ -715,55 +627,50 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
 
   const fulfilledCount = results.filter((r) => r.status === "fulfilled").length;
   const rejectedResults = results.filter((r) => r.status === "rejected");
+  const skippedCount = results.filter((r) => r.status === "skipped").length;
 
-  if (rejectedResults.length === 0) {
+  let message = "";
+  let status = 200;
+
+  if (rejectedResults.length === 0 && skippedCount === 0) {
+    message = `Successfully performed action '${action}' on ${fulfilledCount} entries.`;
     logger.info(`[API] Bulk action '${action}' completed successfully for ${fulfilledCount} entries in project ${projectId}.`);
     logAuditEvent(req, `BULK_${action.toUpperCase()}_COMPLETE`, null, null, {
       ...actionDetails,
       successCount: fulfilledCount,
       failureCount: 0,
+      skippedCount: 0,
     });
-    logger.timeEnd(`[API] POST /bulk-action ${action} ${projectId}`);
-    res.status(200).json({
-      message: `Successfully performed action '${action}' on ${fulfilledCount} entries.`,
-    });
-  } else if (fulfilledCount > 0) {
-    logger.warn(`[API] Bulk action '${action}' completed partially for project ${projectId}. Succeeded: ${fulfilledCount}, Failed: ${rejectedResults.length}.`);
+  } else {
+    status = 207;
+    message = `Bulk action '${action}' summary: ${fulfilledCount} succeeded`;
+    if (rejectedResults.length > 0) {
+      message += `, ${rejectedResults.length} failed`;
+    }
+    if (skippedCount > 0) {
+      message += `, ${skippedCount} skipped (inapplicable)`;
+    }
+    message += ".";
+    logger.warn(`[API] Bulk action '${action}' completed with issues for project ${projectId}. Succeeded: ${fulfilledCount}, Failed: ${rejectedResults.length}, Skipped: ${skippedCount}.`);
     logAuditEvent(req, `BULK_${action.toUpperCase()}_PARTIAL`, null, null, {
       ...actionDetails,
       successCount: fulfilledCount,
       failureCount: rejectedResults.length,
+      skippedCount: skippedCount,
       errors: rejectedResults,
-    });
-    logger.timeEnd(`[API] POST /bulk-action ${action} ${projectId}`);
-    res.status(207).json({
-      message: `Action '${action}' completed with some errors. ${fulfilledCount} succeeded, ${rejectedResults.length} failed.`,
-      errors: rejectedResults.map((r) => ({
-        id: r.id,
-        reason: r.reason,
-        status: r.statusCode,
-      })),
-    });
-  } else {
-    const firstErrorStatus = rejectedResults[0]?.statusCode || 500;
-    const overallStatus = rejectedResults.every((r) => r.statusCode === 403) ? 403 : firstErrorStatus;
-    logger.error(`[API] Bulk action '${action}' failed for all ${rejectedResults.length} entries in project ${projectId}. Status: ${overallStatus}`);
-    logAuditEvent(req, `BULK_${action.toUpperCase()}_FAILURE`, null, null, {
-      ...actionDetails,
-      successCount: 0,
-      failureCount: rejectedResults.length,
-      errors: rejectedResults,
-    });
-    logger.timeEnd(`[API] POST /bulk-action ${action} ${projectId}`);
-    res.status(overallStatus).json({
-      error: `Failed to perform action '${action}' on any selected entries.`,
-      errors: rejectedResults.map((r) => ({
-        id: r.id,
-        reason: r.reason,
-        status: r.statusCode,
-      })),
     });
   }
+
+  logger.timeEnd(`[API] POST /bulk-action ${action} ${projectId}`);
+  res.status(status).json({
+    message: message,
+    errors: rejectedResults.map((r) => ({
+      id: r.id,
+      reason: r.reason,
+      status: r.statusCode,
+    })),
+    skipped: results.filter((r) => r.status === "skipped").map((r) => ({ id: r.id, reason: r.reason })),
+  });
 });
 
 router.get("/projects/:projectId/templates", requireLogin, checkProjectAccessApi, async (req, res) => {
@@ -1049,9 +956,9 @@ router.get("/files", requireLogin, async (req, res) => {
     logger.time(`[API] FetchEntriesWithFiles ${userId}`);
     const allEntriesWithFiles = await pb.collection(collectionName).getFullList({
       filter: `owner = '${userId}' && files != null && files != ""`,
-      fields: "id, title, project, files, created, updated, expand",
+      fields: "id, title, project, files, created, updated, expand, content_updated_at",
       expand: "project",
-      sort: sortField.startsWith("project.") ? "-created" : sortField.startsWith("entry.") ? "-created" : sortField,
+      sort: sortField.startsWith("project.") ? "-created" : sortField.startsWith("entry.") ? "-created" : sortField.startsWith("created") ? "-content_updated_at" : sortField,
       $autoCancel: false,
     });
     logger.timeEnd(`[API] FetchEntriesWithFiles ${userId}`);
@@ -1088,7 +995,7 @@ router.get("/files", requireLogin, async (req, res) => {
                   filename: filename,
                   fileUrl: fileUrl,
                   size: size,
-                  created: entry.updated || entry.created,
+                  created: entry.content_updated_at || entry.updated,
                 };
               })(),
             );
@@ -1113,7 +1020,7 @@ router.get("/files", requireLogin, async (req, res) => {
               filename: filename,
               fileUrl: `${POCKETBASE_URL}/api/files/${collectionName}/${entry.id}/${filename}`,
               size: 0,
-              created: entry.updated || entry.created,
+              created: entry.content_updated_at || entry.updated,
             });
           }
         }
@@ -1265,7 +1172,7 @@ router.get("/projects/:projectId/archived-entries", requireLogin, checkProjectAc
     const baseFilterParts = [`owner = '${userId}'`, `project = '${projectId}'`, `type = '${entryType}'`];
     const page = Number.parseInt(req.query.page) || 1;
     const perPage = Number.parseInt(req.query.perPage) || ITEMS_PER_PAGE;
-    const sort = req.query.sort || "-updated";
+    const sort = req.query.sort || "-content_updated_at";
 
     const combinedFilter = baseFilterParts.join(" && ");
     logger.trace(`[API] Archived entries filter: ${combinedFilter}`);
@@ -1273,7 +1180,7 @@ router.get("/projects/:projectId/archived-entries", requireLogin, checkProjectAc
     const resultList = await pbAdmin.collection("entries_archived").getList(page, perPage, {
       sort: sort,
       filter: combinedFilter,
-      fields: "id,title,status,type,updated,original_id,roadmap_stage",
+      fields: "id,title,status,type,updated,original_id,roadmap_stage,content_updated_at",
     });
     logger.debug(`[API] Fetched ${resultList.items.length} archived ${entryType} entries (page ${page}/${resultList.totalPages}) for project ${projectId}`);
 
@@ -1281,11 +1188,12 @@ router.get("/projects/:projectId/archived-entries", requireLogin, checkProjectAc
     for (const entry of resultList.items) {
       entriesWithDetails.push({
         ...entry,
-        formattedUpdated: new Date(entry.updated).toLocaleDateString("en-US", {
+        formattedUpdated: new Date(entry.content_updated_at || entry.updated).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           year: "numeric",
         }),
+        systemUpdatedAt: entry.updated,
       });
     }
 
@@ -1585,6 +1493,7 @@ router.post("/projects/:projectId/entries/:entryId/duplicate", requireLogin, che
       custom_changelog_footer: dataToDuplicate.custom_changelog_footer || null,
       roadmap_stage: dataToDuplicate.roadmap_stage || null,
       content: dataToDuplicate.type === "roadmap" || dataToDuplicate.type === "sidebar_header" ? "" : dataToDuplicate.content,
+      content_updated_at: new Date().toISOString(),
     };
 
     newData.id = undefined;
@@ -1710,6 +1619,7 @@ router.post("/projects/:projectId/sidebar-headers", requireLogin, checkProjectAc
       collection: "",
       views: 0,
       has_staged_changes: false,
+      content_updated_at: new Date().toISOString(),
     };
     logger.debug(`[API] Creating sidebar header in project ${projectId} with data:`, data);
 
@@ -1772,6 +1682,7 @@ router.post("/projects/:projectId/sidebar-headers/:headerId", requireLogin, chec
 
     const updateData = {
       title: title.trim(),
+      content_updated_at: new Date().toISOString(),
     };
     logger.debug(`[API] Updating sidebar header ${headerId} with data:`, updateData);
 

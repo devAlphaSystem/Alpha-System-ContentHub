@@ -17,21 +17,37 @@
 
     <style>
       .preview-banner {
-        background-color: #f9ab00;
-        color: #fff;
+        background-color: #fdba74;
+        color: #7c2d12;
         padding: 10px 20px;
         text-align: center;
         font-weight: 600;
         position: sticky;
         top: 0;
         z-index: 1001;
-        border-bottom: 1px solid #e9710a;
+        border-bottom: 1px solid #f97316;
       }
 
       body.dark-mode .preview-banner {
-        background-color: #facc15;
-        color: #111827;
-        border-bottom-color: #fde047;
+        background-color: #b45309;
+        color: #fffbeb;
+        border-bottom-color: #92400e;
+      }
+
+      body:has(.preview-banner) .mobile-header {
+        top: 45px;
+      }
+
+      body:has(.preview-banner) .project-sidebar,
+      body:has(.preview-banner) .toc-sidebar {
+        top: 45px;
+        height: calc(100vh - 45px);
+      }
+
+      @media (max-width: 1023px) {
+        body:has(.preview-banner) .main-content {
+          padding-top: calc(var(--header-height) + 45px + 24px);
+        }
       }
     </style>
   </head>

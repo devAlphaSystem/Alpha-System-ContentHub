@@ -11,7 +11,7 @@ const SCHEMA_FILE = "pb_schema.json";
 
 const REQUIRED_ENV_VARS = ["POCKETBASE_URL", "POCKETBASE_ADMIN_EMAIL", "POCKETBASE_ADMIN_PASSWORD"];
 
-const IMPORT_ORDER = ["headers", "footers", "templates", "audit_logs", "entries_main", "entries_archived", "entries_previews"];
+const IMPORT_ORDER = ["app_settings", "projects", "changelog_headers", "changelog_footers", "documentation_headers", "documentation_footers", "templates", "audit_logs", "entries_main", "entries_archived", "entries_previews", "feedback_votes"];
 
 function validateEnv() {
   console.log("Validating environment variables...");
@@ -39,10 +39,10 @@ async function authenticateAdmin(pb) {
     console.log("✅ Admin authenticated successfully and SDK state verified.");
   } catch (error) {
     console.error("❌ FATAL ERROR: PocketBase Admin authentication failed.");
-    console.error("   - Ensure PocketBase is running at the specified URL.");
-    console.error("   - Verify the admin email and password in your .env file (must be a Superuser account).");
-    console.error("   - PocketBase Error:", error?.message || error);
-    if (error?.data) console.error("   - Details:", error.data);
+    console.error(" - Ensure PocketBase is running at the specified URL.");
+    console.error(" - Verify the admin email and password in your .env file (must be a Superuser account).");
+    console.error(" - PocketBase Error:", error?.message || error);
+    if (error?.data) console.error(" - Details:", error.data);
     process.exit(1);
   }
 }
@@ -83,11 +83,13 @@ async function buildSchema() {
   console.log("\nFetching existing collections...");
   let existingCollections = [];
   try {
-    existingCollections = await pb.collections.getFullList({ fields: "id,name" });
+    existingCollections = await pb.collections.getFullList({
+      fields: "id,name,type",
+    });
   } catch (error) {
     console.error("❌ ERROR: Could not fetch existing collections.", error);
     if (error?.status === 401 || error?.status === 403) {
-      console.error("   Received Unauthorized/Forbidden when fetching collections. Check PocketBase API rules for listing collections or admin permissions.");
+      console.error(" Received Unauthorized/Forbidden when fetching collections. Check PocketBase API rules for listing collections or admin permissions.");
     }
     process.exit(1);
   }
@@ -99,67 +101,90 @@ async function buildSchema() {
   let skippedCount = 0;
   let errorCount = 0;
   let notFoundInSchemaFile = 0;
+  let notInImportOrder = 0;
+
+  const processedCollections = new Set();
 
   for (const name of IMPORT_ORDER) {
+    processedCollections.add(name);
     const collectionData = importDataMap.get(name);
 
     if (!collectionData) {
-      console.warn(`   ⚠️ Collection '${name}' defined in IMPORT_ORDER but not found in ${SCHEMA_FILE}. Skipping.`);
+      console.warn(` ⚠️ Collection '${name}' defined in IMPORT_ORDER but not found in ${SCHEMA_FILE}. Skipping.`);
       notFoundInSchemaFile++;
       continue;
     }
 
     if (name === "users" || collectionData.type === "auth") {
-      console.log(`   Skipping import for '${name}' (Auth collection).`);
+      console.log(` Skipping import for '${name}' (Auth collection).`);
       skippedCount++;
       continue;
     }
 
     if (existingCollectionMap.has(name)) {
-      console.log(`   Collection '${name}' already exists. Skipping creation.`);
+      console.log(` Collection '${name}' already exists. Skipping creation.`);
       skippedCount++;
       continue;
     }
 
-    console.log(`   Attempting to import collection: ${name}...`);
+    console.log(` Attempting to import collection: ${name}...`);
     try {
       await pb.collections.import([collectionData], false);
-      console.log(`   ✅ Successfully imported collection: ${name}`);
+      console.log(` ✅ Successfully imported collection: ${name}`);
       createdCount++;
       const newCollection = await pb.collections.getOne(name);
       existingCollectionMap.set(name, newCollection.id);
     } catch (error) {
-      console.error(`   ❌ ERROR importing collection ${name}:`, error?.data || error);
+      const responseData = error?.response || {};
+      console.error(` ❌ ERROR importing collection ${name}:`, responseData);
       errorCount++;
-      if (error?.data) {
-        for (const fieldKey in error.data) {
-          const errorInfo = error.data[fieldKey];
-          console.error(`      - ${fieldKey}: ${errorInfo?.message || JSON.stringify(errorInfo)}`);
+      if (responseData?.data) {
+        const errors = responseData.data;
+        for (const key in errors) {
+          if (key === "collections" && typeof errors[key] === "object" && errors[key] !== null) {
+            console.error(` - collections: ${errors[key]?.message || JSON.stringify(errors[key])}`);
+            const collectionErrorData = errors[key]?.data;
+            if (typeof collectionErrorData === "object" && collectionErrorData !== null) {
+              const fieldErrors = collectionErrorData.fields;
+              if (typeof fieldErrors === "object" && fieldErrors !== null) {
+                for (const fieldIndex in fieldErrors) {
+                  const fieldErrorDetails = fieldErrors[fieldIndex];
+                  console.error(` - Field Index ${fieldIndex}: ${fieldErrorDetails?.message || JSON.stringify(fieldErrorDetails)}`);
+                  if (collectionData?.fields?.[fieldIndex]?.name) {
+                    console.error(` (Likely field: ${collectionData.fields[fieldIndex].name})`);
+                  }
+                }
+              }
+            }
+          } else {
+            console.error(` - ${key}: ${errors[key]?.message || JSON.stringify(errors[key])}`);
+          }
         }
+      } else if (error instanceof Error) {
+        console.error(` - Error Message: ${error.message}`);
       }
     }
   }
-
-  const orderedSet = new Set(IMPORT_ORDER);
   for (const collectionData of allCollectionsToImport) {
-    if (!orderedSet.has(collectionData.name) && collectionData.name !== "users") {
-      console.warn(`   ⚠️ Collection '${collectionData.name}' found in ${SCHEMA_FILE} but not listed in IMPORT_ORDER. It was not imported.`);
-      notFoundInSchemaFile++;
+    if (!processedCollections.has(collectionData.name) && collectionData.name !== "users" && collectionData.type !== "auth") {
+      console.warn(` ⚠️ Collection '${collectionData.name}' found in ${SCHEMA_FILE} but not listed in IMPORT_ORDER. It was not imported.`);
+      notInImportOrder++;
     }
   }
 
   console.log("\n--- Import Summary ---");
-  console.log(`   Collections Imported: ${createdCount}`);
-  console.log(`   Collections Skipped (Already Existed or Auth): ${skippedCount}`);
-  console.log(`   Collections Not Found/Not Ordered: ${notFoundInSchemaFile}`);
-  console.log(`   Errors Encountered: ${errorCount}`);
+  console.log(` Collections Imported: ${createdCount}`);
+  console.log(` Collections Skipped (Already Existed or Auth): ${skippedCount}`);
+  console.log(` Collections Not Found in Schema (but in Order): ${notFoundInSchemaFile}`);
+  console.log(` Collections Not in Import Order (but in Schema): ${notInImportOrder}`);
+  console.log(` Errors Encountered: ${errorCount}`);
 
   if (errorCount > 0) {
     console.warn("\n⚠️ Some collections failed to import. Please check the errors above.");
   }
 
-  if (notFoundInSchemaFile > 0) {
-    console.warn(`\n⚠️ Some collections were defined in ${SCHEMA_FILE} but missing from the IMPORT_ORDER list in the script, or vice-versa. Ensure the list is complete and correct.`);
+  if (notFoundInSchemaFile > 0 || notInImportOrder > 0) {
+    console.warn(`\n⚠️ Mismatch between collections in ${SCHEMA_FILE} and the IMPORT_ORDER list in the script. Ensure the list is complete and correct for the intended schema.`);
   }
 
   console.log("\n🚀 PocketBase schema import process finished.");

@@ -9,6 +9,9 @@
       <a href="/projects/<%= project.id %>/diff/<%= entry.id %>" class="btn btn-secondary" title="View changes between published and staged versions">
         <i class="fas fa-exchange-alt"></i> View Changes
       </a>
+      <a href="/projects/<%= project.id %>/preview-staged/<%= entry.id %>" class="btn btn-secondary" title="Preview staged version">
+        <i class="fas fa-flask"></i> Preview Staged
+      </a>
     <% } %>
     <% if (entry.status === 'draft') { %>
       <button id="share-preview-btn" class="btn btn-info" data-entry-id="<%= entry.id %>" data-project-id="<%= project.id %>">

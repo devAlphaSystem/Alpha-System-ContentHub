@@ -42,15 +42,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderTableRow(entry) {
-    const formattedUpdated =
-      entry.formattedUpdated ||
-      new Date(entry.updated).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
+    const formattedUpdated = entry.formattedUpdated;
 
-    const updatedTimestamp = new Date(entry.updated).getTime();
+    const updatedTimestamp = new Date(entry.content_updated_at || entry.updated).getTime();
     const editUrl = `/projects/${projectId}/edit/${escapeHtml(entry.id)}`;
     const archiveUrl = `/projects/${projectId}/archive/${escapeHtml(entry.id)}`;
     const deleteUrl = `/projects/${projectId}/delete/${escapeHtml(entry.id)}`;
@@ -65,6 +59,9 @@ document.addEventListener("DOMContentLoaded", () => {
         <button type="button" class="btn btn-icon btn-publish-staged js-publish-staged-btn" data-url="${publishStagedApiUrl}" data-entry-title="${escapeHtml(entry.title)}" title="Publish Staged Changes">
           <i class="fas fa-upload"></i>
         </button>
+        <a href="/projects/${projectId}/diff/${escapeHtml(entry.id)}" class="btn btn-icon btn-diff" title="View Staged Changes">
+          <i class="fas fa-exchange-alt"></i>
+        </a>
       `
       : "";
 
@@ -417,7 +414,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (sortKey === currentSortKey) {
           newSortDir = currentSortDir === "asc" ? "desc" : "asc";
         } else {
-          newSortDir = sortKey === "updated" ? "desc" : "asc";
+          newSortDir = sortKey === "content_updated_at" ? "desc" : "asc";
         }
 
         currentSortKey = sortKey;
@@ -489,16 +486,14 @@ document.addEventListener("DOMContentLoaded", () => {
         bulkActionsMenu.classList.remove("show");
 
         const isDelete = action === "delete" || action === "permanent-delete";
-        const isPublishStaged = action === "publish-staged";
         let message = `Are you sure you want to perform the action '<strong>${escapeHtml(action)}</strong>' on <strong>${selectedIds.length}</strong> item(s)?`;
         if (isDelete) message += "<br>This action cannot be undone.";
-        if (isPublishStaged) message += "<br>This will overwrite live content for published items with staged changes.";
 
         window.showConfirmModal({
           title: "Confirm Bulk Action",
           message: message,
           action: `bulk-${action}`,
-          confirmText: isDelete ? "Delete" : isPublishStaged ? "Publish" : "Confirm",
+          confirmText: isDelete ? "Delete" : "Confirm",
           onConfirm: () => handleBulkActionConfirm(action, selectedIds),
         });
       }

@@ -1,6 +1,7 @@
 import express from "express";
+import { marked } from "marked";
 import { pb, pbAdmin, getSettings, ITEMS_PER_PAGE } from "../config.js";
-import { getUserTemplates, getProjectForOwner, getEntryForOwnerAndProject, getArchivedEntryForOwnerAndProject, getTemplateForEditAndProject, clearEntryViewLogs, logAuditEvent, getUserDocumentationHeaders, getUserDocumentationFooters, getUserChangelogHeaders, getUserChangelogFooters, getDocumentationHeaderForEditAndProject, getDocumentationFooterForEditAndProject, getChangelogHeaderForEditAndProject, getChangelogFooterForEditAndProject, hashPreviewPassword } from "../utils.js";
+import { getUserTemplates, getProjectForOwner, getEntryForOwnerAndProject, getArchivedEntryForOwnerAndProject, getTemplateForEditAndProject, clearEntryViewLogs, logAuditEvent, getUserDocumentationHeaders, getUserDocumentationFooters, getUserChangelogHeaders, getUserChangelogFooters, getDocumentationHeaderForEditAndProject, getDocumentationFooterForEditAndProject, getChangelogHeaderForEditAndProject, getChangelogFooterForEditAndProject, hashPreviewPassword, sanitizeHtml, calculateReadingTime } from "../utils.js";
 import { logger } from "../logger.js";
 
 const router = express.Router();
@@ -265,8 +266,8 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
     logger.time(`[PROJ] FetchRecentEntries ${projectId}`);
     const recentEntriesResult = await pbAdmin.collection("entries_main").getList(1, 5, {
       filter: `project = '${projectId}' && type != 'roadmap' && type != 'sidebar_header'`,
-      sort: "-updated",
-      fields: "id, title, updated, type",
+      sort: "-content_updated_at",
+      fields: "id, title, updated, type, content_updated_at",
       $autoCancel: false,
     });
     logger.timeEnd(`[PROJ] FetchRecentEntries ${projectId}`);
@@ -277,8 +278,10 @@ router.get("/:projectId", checkProjectAccess, async (req, res) => {
       totalViews: totalViews,
       entriesByType: entriesByType,
       recentEntries: recentEntriesResult.items.map((e) => ({
-        ...e,
-        formattedUpdated: new Date(e.updated).toLocaleDateString("en-US", {
+        id: e.id,
+        title: e.title,
+        type: e.type,
+        formattedUpdated: new Date(e.content_updated_at || e.updated).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
         }),
@@ -627,7 +630,7 @@ async function renderEntriesList(req, res, entryType) {
   logger.time(`[PROJ] renderEntriesList ${entryType} ${projectId}`);
   let pageTitle = "";
   let viewName = "";
-  let listFields = "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,total_view_duration,view_duration_count,helpful_yes,helpful_no";
+  let listFields = "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,total_view_duration,view_duration_count,helpful_yes,helpful_no,content_updated_at";
 
   switch (entryType) {
     case "documentation":
@@ -687,11 +690,12 @@ async function renderEntriesList(req, res, entryType) {
       entriesWithViewUrl.push({
         ...entry,
         viewUrl: entryType !== "roadmap" && entryType !== "knowledge_base" ? `/view/${entry.id}` : null,
-        formattedUpdated: new Date(entry.updated).toLocaleDateString("en-US", {
+        formattedUpdated: new Date(entry.content_updated_at || entry.updated).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           year: "numeric",
         }),
+        systemUpdatedAt: entry.updated,
       });
     }
 
@@ -868,6 +872,7 @@ router.post("/:projectId/new", checkProjectAccess, async (req, res) => {
         custom_changelog_footer: custom_changelog_footer || "",
         show_in_project_sidebar: show_in_project_sidebar === "true",
         roadmap_stage: roadmap_stage || "",
+        content_updated_at: new Date().toISOString(),
       };
       logger.timeEnd(`[PROJ] POST /projects/${projectId}/new ${userId}`);
       return res.status(400).render("projects/new_entry", {
@@ -900,6 +905,7 @@ router.post("/:projectId/new", checkProjectAccess, async (req, res) => {
         custom_changelog_footer: custom_changelog_footer || "",
         show_in_project_sidebar: show_in_project_sidebar === "true",
         roadmap_stage: roadmap_stage || "",
+        content_updated_at: new Date().toISOString(),
       };
       logger.timeEnd(`[PROJ] POST /projects/${projectId}/new ${userId}`);
       return res.status(400).render("projects/new_entry", {
@@ -948,6 +954,7 @@ router.post("/:projectId/new", checkProjectAccess, async (req, res) => {
     staged_changelog_header: null,
     staged_changelog_footer: null,
     staged_roadmap_stage: null,
+    content_updated_at: new Date().toISOString(),
   };
 
   const recordIdToUse = trimmedUrl.length === 15 ? trimmedUrl : undefined;
@@ -1033,6 +1040,7 @@ router.post("/:projectId/new", checkProjectAccess, async (req, res) => {
         custom_changelog_footer: custom_changelog_footer || "",
         show_in_project_sidebar: show_in_project_sidebar === "true",
         roadmap_stage: roadmap_stage || "",
+        content_updated_at: new Date().toISOString(),
       };
       res.status(400).render("projects/new_entry", {
         pageTitle: `New Entry - ${req.project.name}`,
@@ -1064,6 +1072,7 @@ router.post("/:projectId/new", checkProjectAccess, async (req, res) => {
         custom_changelog_footer: custom_changelog_footer || "",
         show_in_project_sidebar: show_in_project_sidebar === "true",
         roadmap_stage: roadmap_stage || "",
+        content_updated_at: new Date().toISOString(),
       };
       res.status(400).render("projects/new_entry", {
         pageTitle: `New Entry - ${req.project.name}`,
@@ -1294,6 +1303,7 @@ router.post("/:projectId/edit/:entryId", checkProjectAccess, async (req, res, ne
         staged_changelog_header: null,
         staged_changelog_footer: null,
         staged_roadmap_stage: null,
+        content_updated_at: new Date().toISOString(),
       };
       if (wasPublished && submittedStatus === "draft") {
         actionType = "ENTRY_UNPUBLISH";
@@ -1409,6 +1419,184 @@ router.post("/:projectId/edit/:entryId", checkProjectAccess, async (req, res, ne
   }
 });
 
+const customRenderer = new marked.Renderer();
+const originalImageRenderer = customRenderer.image;
+const originalCodeRenderer = customRenderer.code;
+
+customRenderer.image = function (href, title, text) {
+  let actualHref = href;
+  let themeClass = "";
+  let cleanHref = "";
+
+  if (typeof href === "object" && href !== null && href.href) {
+    actualHref = href.href;
+  } else if (typeof href !== "string") {
+    logger.warn(`[MarkdownRender] Unexpected href type received: ${typeof href}. Falling back.`, href);
+    return originalImageRenderer.call(this, href, title, text);
+  }
+
+  cleanHref = actualHref;
+
+  if (typeof actualHref === "string") {
+    if (actualHref.includes("#light")) {
+      themeClass = "light-mode-image";
+      cleanHref = actualHref.replace(/#light$/, "");
+    } else if (actualHref.includes("#dark")) {
+      themeClass = "dark-mode-image";
+      cleanHref = actualHref.replace(/#dark$/, "");
+    }
+  }
+
+  const titleAttr = title ? ` title="${title}"` : "";
+  const classAttr = themeClass ? ` class="${themeClass}"` : "";
+  const escapedText = text ? text.replace(/"/g, "&quot;") : "";
+
+  if (typeof cleanHref !== "string") {
+    logger.error(`[MarkdownRender] cleanHref ended up non-string: ${typeof cleanHref}. Fallback needed.`);
+    return "<!-- Error rendering image: Invalid href type -->";
+  }
+
+  return `<img src="${cleanHref}" alt="${escapedText}"${titleAttr}${classAttr}>`;
+};
+
+customRenderer.code = function (code, language, isEscaped) {
+  if (language === "mermaid") {
+    return `<pre class="language-mermaid">${code}</pre>`;
+  }
+  return originalCodeRenderer.call(this, code, language, isEscaped);
+};
+
+function parseMarkdownWithThemeImages(markdownContent) {
+  if (!markdownContent) {
+    return "";
+  }
+  const unsafeHtml = marked.parse(markdownContent, {
+    renderer: customRenderer,
+  });
+  return sanitizeHtml(unsafeHtml);
+}
+
+router.get("/:projectId/preview-staged/:entryId", checkProjectAccess, async (req, res, next) => {
+  const entryId = req.params.entryId;
+  const projectId = req.params.projectId;
+  const userId = req.session.user.id;
+  logger.debug(`[PROJ] GET /projects/${projectId}/preview-staged/${entryId} requested by user ${userId}`);
+  logger.time(`[PROJ] GET /projects/${projectId}/preview-staged/${entryId} ${userId}`);
+
+  try {
+    const record = await getEntryForOwnerAndProject(entryId, userId, projectId);
+
+    if (record.status !== "published" || !record.has_staged_changes) {
+      logger.warn(`[PROJ] Staged preview requested for entry ${entryId}, but it's not published or has no staged changes. Status: ${record.status}, HasStaged: ${record.has_staged_changes}`);
+      logAuditEvent(req, "ENTRY_STAGED_PREVIEW_FAILURE", "entries_main", entryId, {
+        projectId: projectId,
+        reason: "Not published or no staged changes",
+      });
+      logger.timeEnd(`[PROJ] GET /projects/${projectId}/preview-staged/${entryId} ${userId}`);
+      return res.redirect(`/projects/${projectId}/edit/${entryId}?error=Staged preview only available for published entries with changes.`);
+    }
+
+    const stagedType = record.staged_type ?? record.type;
+    const stagedContent = record.staged_content ?? record.content;
+    const stagedTitle = record.staged_title ?? record.title;
+    const stagedTags = record.staged_tags ?? record.tags;
+
+    const cleanMainHtml = parseMarkdownWithThemeImages(stagedContent);
+    const readingTime = calculateReadingTime(stagedContent);
+
+    let headerRecordToUse = null;
+    let footerRecordToUse = null;
+
+    if (stagedType === "documentation") {
+      headerRecordToUse = record.expand?.staged_documentation_header ?? record.expand?.custom_documentation_header;
+      footerRecordToUse = record.expand?.staged_documentation_footer ?? record.expand?.custom_documentation_footer;
+    } else if (stagedType === "changelog") {
+      headerRecordToUse = record.expand?.staged_changelog_header ?? record.expand?.custom_changelog_header;
+      footerRecordToUse = record.expand?.staged_changelog_footer ?? record.expand?.custom_changelog_footer;
+    }
+
+    let customHeaderHtml = null;
+    if (headerRecordToUse?.content) {
+      customHeaderHtml = parseMarkdownWithThemeImages(headerRecordToUse.content);
+    }
+
+    let customFooterHtml = null;
+    if (footerRecordToUse?.content) {
+      customFooterHtml = parseMarkdownWithThemeImages(footerRecordToUse.content);
+    }
+
+    let sidebarEntries = [];
+    let hasPublishedKbEntries = false;
+    if (req.project) {
+      try {
+        logger.time(`[PROJ] FetchSidebar /preview-staged/${entryId}`);
+        sidebarEntries = await pbAdmin.collection("entries_main").getFullList({
+          filter: `project = '${projectId}' && status = 'published' && show_in_project_sidebar = true && type != 'roadmap' && type != 'knowledge_base'`,
+          sort: "+sidebar_order,+title",
+          fields: "id, title, type",
+          $autoCancel: false,
+        });
+        logger.timeEnd(`[PROJ] FetchSidebar /preview-staged/${entryId}`);
+      } catch (sidebarError) {
+        logger.timeEnd(`[PROJ] FetchSidebar /preview-staged/${entryId}`);
+        logger.error(`[PROJ] Failed to fetch sidebar entries for project ${projectId}: Status ${sidebarError?.status || "N/A"}`, sidebarError?.message || sidebarError);
+      }
+      try {
+        await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && type = 'knowledge_base' && status = 'published'`, {
+          fields: "id",
+          $autoCancel: false,
+        });
+        hasPublishedKbEntries = true;
+      } catch (kbError) {
+        if (kbError.status !== 404) {
+          logger.warn(`[PROJ] Error checking for published KB entries for project ${projectId} (staged preview): Status ${kbError?.status || "N/A"}`, kbError.message);
+        }
+        hasPublishedKbEntries = false;
+      }
+    }
+
+    const entryForView = {
+      ...record,
+      title: stagedTitle,
+      type: stagedType,
+      tags: stagedTags,
+      updated: record.content_updated_at || record.updated,
+    };
+
+    logAuditEvent(req, "ENTRY_STAGED_PREVIEW", "entries_main", entryId, {
+      projectId: projectId,
+      title: stagedTitle,
+    });
+
+    logger.debug(`[PROJ] Rendering staged preview for entry ${entryId}`);
+    logger.timeEnd(`[PROJ] GET /projects/${projectId}/preview-staged/${entryId} ${userId}`);
+    res.render("view", {
+      entry: entryForView,
+      project: req.project,
+      sidebarEntries: sidebarEntries,
+      contentHtml: cleanMainHtml,
+      readingTime: readingTime,
+      customHeaderHtml: customHeaderHtml,
+      customFooterHtml: customFooterHtml,
+      pageTitle: `[STAGED PREVIEW] ${stagedTitle}`,
+      isStagedPreview: true,
+      hasPublishedKbEntries: hasPublishedKbEntries,
+    });
+  } catch (error) {
+    logger.timeEnd(`[PROJ] GET /projects/${projectId}/preview-staged/${entryId} ${userId}`);
+    if (error.status === 403 || error.status === 404) {
+      logger.warn(`[PROJ] Access denied or not found for staged preview entry ${entryId}, project ${projectId}. Status: ${error.status}`);
+      return next(error);
+    }
+    logger.error(`[PROJ] Failed to fetch entry ${entryId} for staged preview in project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    logAuditEvent(req, "ENTRY_STAGED_PREVIEW_FAILURE", "entries_main", entryId, {
+      projectId: projectId,
+      error: error?.message,
+    });
+    next(error);
+  }
+});
+
 router.post("/:projectId/delete/:entryId", checkProjectAccess, async (req, res, next) => {
   const entryId = req.params.entryId;
   const projectId = req.params.projectId;
@@ -1511,6 +1699,7 @@ router.post("/:projectId/archive/:entryId", checkProjectAccess, async (req, res,
       custom_changelog_header: originalRecord.custom_changelog_header || null,
       custom_changelog_footer: originalRecord.custom_changelog_footer || null,
       roadmap_stage: originalRecord.roadmap_stage || null,
+      content_updated_at: originalRecord.content_updated_at,
     };
 
     archiveData.id = undefined;
@@ -1586,7 +1775,7 @@ async function renderArchivedList(req, res, entryType) {
   logger.time(`[PROJ] renderArchivedList ${entryType} ${projectId}`);
   let pageTitle = "";
   let viewName = "";
-  let listFields = "id,title,status,type,updated,original_id";
+  let listFields = "id,title,status,type,updated,original_id,content_updated_at";
 
   switch (entryType) {
     case "documentation":
@@ -1615,7 +1804,7 @@ async function renderArchivedList(req, res, entryType) {
   try {
     const filter = `owner = '${userId}' && project = '${projectId}' && type = '${entryType}'`;
     const initialPage = 1;
-    const initialSort = "-updated";
+    const initialSort = "-content_updated_at";
     logger.trace(`[PROJ] Archived entries list filter: ${filter}`);
 
     const resultList = await pbAdmin.collection("entries_archived").getList(initialPage, ITEMS_PER_PAGE, {
@@ -1629,11 +1818,12 @@ async function renderArchivedList(req, res, entryType) {
     for (const entry of resultList.items) {
       entriesForView.push({
         ...entry,
-        formattedUpdated: new Date(entry.updated).toLocaleDateString("en-US", {
+        formattedUpdated: new Date(entry.content_updated_at || entry.updated).toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           year: "numeric",
         }),
+        systemUpdatedAt: entry.updated,
       });
     }
 
@@ -1672,7 +1862,7 @@ async function renderArchivedList(req, res, entryType) {
         totalItems: 0,
         totalPages: 0,
       },
-      initialSort: "-updated",
+      initialSort: "-content_updated_at",
       error: `Could not load archived ${entryType} entries.`,
       action: null,
     });
@@ -1716,6 +1906,7 @@ router.post("/:projectId/unarchive/:entryId", checkProjectAccess, async (req, re
       custom_changelog_header: originalRecord.custom_changelog_header || null,
       custom_changelog_footer: originalRecord.custom_changelog_footer || null,
       roadmap_stage: originalRecord.roadmap_stage || null,
+      content_updated_at: originalRecord.content_updated_at,
     };
 
     mainData.id = originalRecord.original_id;
