@@ -308,6 +308,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  document.addEventListener("keydown", (event) => {
+    const isSKey = event.key.toLowerCase() === "s";
+    const isModifierPressed = event.ctrlKey || event.metaKey;
+
+    if (isSKey && isModifierPressed) {
+      const activeForm = document.querySelector("form.entry-form, form.template-form, form.header-form, form.footer-form, form#edit-form, form#settings-form");
+      const confirmModalVisible = document.getElementById("confirm-modal")?.classList.contains("is-visible");
+      const alertModalVisible = document.getElementById("alert-modal")?.classList.contains("is-visible");
+
+      if (activeForm && !confirmModalVisible && !alertModalVisible) {
+        event.preventDefault();
+        let submitButton = activeForm.querySelector('button[type="submit"].btn-primary');
+        if (!submitButton) {
+          submitButton = activeForm.querySelector('button[type="submit"]');
+        }
+
+        if (submitButton && !submitButton.disabled) {
+          submitButton.click();
+        } else if (!submitButton) {
+          activeForm.submit();
+        }
+      }
+    }
+  });
+
   themeToggleButton?.addEventListener("click", () => {
     const isDarkMode = document.body.classList.contains("dark-mode");
     const newTheme = isDarkMode ? "light" : "dark";

@@ -5,6 +5,11 @@
 <div class="content-header">
   <h1>Edit Entry: <span class="text-muted"><%= entry.title %></span></h1>
   <div class="header-actions">
+    <% if (locals.isEditingStaged) { %>
+      <a href="/projects/<%= project.id %>/diff/<%= entry.id %>" class="btn btn-secondary" title="View changes between published and staged versions">
+        <i class="fas fa-exchange-alt"></i> View Changes
+      </a>
+    <% } %>
     <% if (entry.status === 'draft') { %>
       <button id="share-preview-btn" class="btn btn-info" data-entry-id="<%= entry.id %>" data-project-id="<%= project.id %>">
         <i class="fas fa-share-alt"></i> Share Preview
@@ -66,8 +71,7 @@
 
       <div class="form-group">
         <label for="collection">Collection</label>
-        <input type="text" id="collection" name="collection" class="form-control" placeholder="e.g., API, Frontend" value="<%= entry.collection %>"
-          <%= locals.isEditingStaged ? 'disabled' : '' %>>
+        <input type="text" id="collection" name="collection" class="form-control" placeholder="e.g., API, Frontend" value="<%= entry.collection %>" <%= locals.isEditingStaged ? 'disabled' : '' %>>
         <% if (locals.isEditingStaged) { %>
           <input type="hidden" name="collection" value="<%= entry.collection %>">
         <% } %>

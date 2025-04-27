@@ -76,6 +76,9 @@
                 <button type="button" class="btn btn-icon btn-publish-staged js-publish-staged-btn" data-url="/api/projects/<%= project.id %>/entries/<%= entry.id %>/publish-staged" data-entry-title="<%= entry.title %>" title="Publish Staged Changes">
                   <i class="fas fa-upload"></i>
                 </button>
+                <a href="/projects/<%= project.id %>/diff/<%= entry.id %>" class="btn btn-icon btn-diff" title="View Staged Changes">
+                  <i class="fas fa-exchange-alt"></i>
+                </a>
               <% } %>
               <a href="/roadmap/<%= project.id %>" target="_blank" class="btn btn-icon btn-view" title="View Public Roadmap"><i class="fas fa-columns"></i></a>
               <a href="/projects/<%= project.id %>/edit/<%= entry.id %>" class="btn btn-icon btn-edit" title="Edit <%= entry.has_staged_changes ? 'Staged ' : '' %>Entry"><i class="fas fa-pencil-alt"></i></a>

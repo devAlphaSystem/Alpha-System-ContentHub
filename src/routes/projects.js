@@ -2232,6 +2232,59 @@ router.post("/:projectId/sidebar-order", checkProjectAccess, async (req, res, ne
   }
 });
 
+router.get("/:projectId/diff/:entryId", checkProjectAccess, async (req, res, next) => {
+  const entryId = req.params.entryId;
+  const projectId = req.params.projectId;
+  const userId = req.session.user.id;
+  logger.debug(`[PROJ] GET /projects/${projectId}/diff/${entryId} requested by user ${userId}`);
+  logger.time(`[PROJ] GET /projects/${projectId}/diff/${entryId} ${userId}`);
+
+  try {
+    const record = await getEntryForOwnerAndProject(entryId, userId, projectId);
+
+    if (record.status !== "published" || !record.has_staged_changes) {
+      logger.warn(`[PROJ] Diff view requested for entry ${entryId}, but it's not published or has no staged changes. Status: ${record.status}, HasStaged: ${record.has_staged_changes}`);
+      const err = new Error("Diff view is only available for published entries with staged changes.");
+      err.status = 400;
+      logAuditEvent(req, "ENTRY_DIFF_VIEW_FAILURE", "entries_main", entryId, {
+        projectId: projectId,
+        reason: "Not published or no staged changes",
+      });
+      logger.timeEnd(`[PROJ] GET /projects/${projectId}/diff/${entryId} ${userId}`);
+      return next(err);
+    }
+
+    const publishedContent = record.content || "";
+    const stagedContent = record.staged_content || "";
+
+    logAuditEvent(req, "ENTRY_DIFF_VIEW", "entries_main", entryId, {
+      projectId: projectId,
+      title: record.title,
+    });
+
+    logger.timeEnd(`[PROJ] GET /projects/${projectId}/diff/${entryId} ${userId}`);
+    res.render("projects/diff_view", {
+      pageTitle: `Changes for ${record.title} - ${req.project.name}`,
+      project: req.project,
+      entry: record,
+      publishedContent: publishedContent,
+      stagedContent: stagedContent,
+    });
+  } catch (error) {
+    logger.timeEnd(`[PROJ] GET /projects/${projectId}/diff/${entryId} ${userId}`);
+    if (error.status === 403 || error.status === 404) {
+      logger.warn(`[PROJ] Access denied or not found for diff view entry ${entryId}, project ${projectId}. Status: ${error.status}`);
+      return next(error);
+    }
+    logger.error(`[PROJ] Failed to fetch entry ${entryId} for diff view in project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    logAuditEvent(req, "ENTRY_DIFF_VIEW_FAILURE", "entries_main", entryId, {
+      projectId: projectId,
+      error: error?.message,
+    });
+    next(error);
+  }
+});
+
 async function renderAssetList(req, res, assetType, collectionName, viewName) {
   const projectId = req.params.projectId;
   const userId = req.session.user.id;

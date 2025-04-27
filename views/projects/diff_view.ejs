@@ -1,0 +1,168 @@
+<% locals.pageTitle = `Changes for ${entry.title} - ${project.name}` %>
+
+<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: project.id }) %>
+
+<style>
+  .diff-container {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background-color: var(--content-bg);
+  }
+
+  .diff-header {
+    background-color: var(--page-bg);
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .diff-header span {
+    font-weight: 600;
+  }
+
+  .diff-content {
+    padding: 15px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .diff-added {
+    font-family: "Roboto Mono", monospace !important;
+    background-color: var(--diff-add-bg);
+    color: var(--diff-add-text);
+    display: block;
+    padding-left: 5px;
+    border-left: 3px solid var(--success-color);
+  }
+
+  .diff-removed {
+    font-family: "Roboto Mono", monospace !important;
+    background-color: var(--diff-remove-bg);
+    color: var(--diff-remove-text);
+    text-decoration: line-through;
+    display: block;
+    padding-left: 5px;
+    border-left: 3px solid var(--danger-color);
+  }
+
+  .diff-unchanged {
+    font-family: "Roboto Mono", monospace !important;
+    color: var(--text-muted);
+    display: block;
+    padding-left: 8px;
+  }
+
+  body.dark-mode .diff-container {
+    border-color: var(--dark-border-light);
+    background-color: var(--dark-content-bg);
+  }
+
+  body.dark-mode .diff-header {
+    background-color: var(--dark-page-bg);
+    border-bottom-color: var(--dark-border-light);
+  }
+
+  body.dark-mode .diff-added {
+    background-color: var(--dark-diff-add-bg);
+    color: var(--dark-diff-add-text);
+    border-left-color: var(--dark-success-color);
+  }
+
+  body.dark-mode .diff-removed {
+    background-color: var(--dark-diff-remove-bg);
+    color: var(--dark-diff-remove-text);
+    border-left-color: var(--dark-danger-color);
+  }
+
+  body.dark-mode .diff-unchanged {
+    color: var(--dark-text-muted);
+  }
+</style>
+
+<div class="content-header">
+  <h1>Changes for: <span class="text-muted"><%= entry.title %></span></h1>
+  <div class="header-actions">
+    <a href="/projects/<%= project.id %>/edit/<%= entry.id %>" class="btn btn-secondary">
+      <i class="fas fa-pencil-alt"></i> Edit Staged Version
+    </a>
+    <a href="/projects/<%= project.id %>/<%= entry.type === 'documentation' ? 'documentation' : (entry.type === 'changelog' ? 'changelogs' : (entry.type === 'roadmap' ? 'roadmaps' : 'knowledge_base')) %>" class="btn btn-secondary">Back to Entries</a>
+  </div>
+</div>
+
+<div class="diff-container">
+  <div class="diff-header">
+    <span>Published Version</span>
+    <span>Staged Version</span>
+  </div>
+  <div id="diff-output" class="diff-content">
+    Loading diff...
+  </div>
+</div>
+
+<script id="published-content-data" type="application/json">
+  <%- JSON.stringify(publishedContent) %>
+</script>
+
+<script id="staged-content-data" type="application/json">
+  <%- JSON.stringify(stagedContent) %>
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.2.0/diff.min.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const diffOutput = document.getElementById('diff-output');
+    const publishedDataElement = document.getElementById('published-content-data');
+    const stagedDataElement = document.getElementById('staged-content-data');
+
+    if (!diffOutput || !publishedDataElement || !stagedDataElement) {
+      console.error("Required elements for diff view not found.");
+      if (diffOutput) diffOutput.textContent = 'Error: Missing required page elements.';
+      return;
+    }
+
+    let publishedContent = '';
+    let stagedContent = '';
+
+    try {
+      publishedContent = JSON.parse(publishedDataElement.textContent || '""');
+      stagedContent = JSON.parse(stagedDataElement.textContent || '""');
+    } catch (e) {
+      console.error("Error parsing content JSON from script tags:", e);
+      diffOutput.textContent = 'Error loading diff content (parsing failed).';
+      return;
+    }
+
+    if (typeof Diff === 'undefined' || typeof Diff.diffLines !== 'function') {
+      console.error("Diff library (jsdiff) not loaded correctly.");
+      diffOutput.textContent = 'Error loading diff library.';
+      return;
+    }
+
+    try {
+      const diff = Diff.diffLines(publishedContent, stagedContent, { newlineIsToken: true });
+      let html = '';
+
+      for (const part of diff) {
+        const span = document.createElement('span');
+        span.className = part.added ? 'diff-added' : part.removed ? 'diff-removed' : 'diff-unchanged';
+        span.textContent = part.value;
+        html += span.outerHTML;
+      }
+
+      diffOutput.innerHTML = html || '<span class="diff-unchanged">(No changes detected)</span>';
+    } catch (diffError) {
+      console.error("Error performing diff:", diffError);
+      diffOutput.textContent = 'Error generating diff.';
+    }
+  });
+</script>
+
+<%- include('../partials/footer', { scriptPath: null }) %>

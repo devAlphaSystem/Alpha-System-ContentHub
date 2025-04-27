@@ -124,27 +124,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  document.addEventListener("keydown", (event) => {
-    const isSKey = event.key.toLowerCase() === "s";
-    const isModifierPressed = event.ctrlKey || event.metaKey;
-
-    if (isSKey && isModifierPressed) {
-      const activeForm = document.querySelector("form.entry-form, form.template-form, form.header-form, form.footer-form");
-      const confirmModalVisible = document.getElementById("confirm-modal")?.classList.contains("is-visible");
-      const alertModalVisible = document.getElementById("alert-modal")?.classList.contains("is-visible");
-
-      if (activeForm && !confirmModalVisible && !alertModalVisible) {
-        event.preventDefault();
-        const submitButton = activeForm.querySelector('button[type="submit"]');
-        if (submitButton) {
-          submitButton.click();
-        } else {
-          activeForm.submit();
-        }
-      }
-    }
-  });
-
   templateSelect?.addEventListener("change", async (event) => {
     const templateId = event.target.value;
     const currentProjectId = document.body.dataset.projectId;
