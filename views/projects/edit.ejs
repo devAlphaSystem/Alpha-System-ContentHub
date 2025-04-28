@@ -107,6 +107,9 @@
       <button type="submit" class="btn btn-primary btn-lg">
         <i class="fas fa-save"></i> Save Changes
       </button>
+      <a href="/projects/<%= project.id %>/export" class="btn btn-secondary btn-lg" download>
+        <i class="fas fa-download"></i> Export Project Data
+      </a>
       <a href="/projects/<%= project.id %>" class="btn btn-secondary btn-lg">Cancel</a>
     </div>
   </form>

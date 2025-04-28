@@ -10,6 +10,7 @@
       <input type="search" id="search-projects-input" class="form-control" placeholder="Search projects..." title="Search by Name or Description">
     </div>
     <button id="refresh-projects-btn" class="btn btn-secondary" title="Refresh Table"> <i class="fas fa-sync-alt"></i> <span>Refresh</span> </button>
+    <a href="/projects/import" class="btn btn-secondary"> <i class="fas fa-upload"></i> Import Project </a>
     <a href="/projects/new" class="btn btn-primary"> <i class="fas fa-plus"></i> Create New Project </a>
   </div>
 </div>
@@ -51,6 +52,7 @@
               <td data-label="Actions" class="actions-cell">
                 <a href="/projects/<%= project.id %>" class="btn btn-icon btn-view" title="View Project Dashboard"><i class="fas fa-tachometer-alt"></i></a>
                 <a href="/projects/<%= project.id %>/edit" class="btn btn-icon btn-edit" title="Edit Project Settings"><i class="fas fa-cog"></i></a>
+                <a href="/projects/<%= project.id %>/export" class="btn btn-icon btn-edit" title="Export Project Data" download><i class="fas fa-download"></i></a>
                 <form action="/projects/<%= project.id %>/delete" method="POST" class="delete-project-form" title="Delete Project" style="display: inline;">
                   <button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button>
                 </form>

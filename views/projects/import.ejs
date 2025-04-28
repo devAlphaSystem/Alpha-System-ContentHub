@@ -1,0 +1,40 @@
+<% locals.pageTitle='Import Project' %>
+
+<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: null }) %>
+
+<div class="content-header">
+  <h1><%= locals.pageTitle %></h1>
+</div>
+
+<% if (locals.message) { %>
+  <div class="alert alert-info">
+    <i class="fas fa-info-circle alert-icon"></i>
+    <span><%= message %></span>
+  </div>
+<% } %>
+
+<% if (locals.error) { %>
+  <div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle alert-icon"></i>
+    <span><%= error %></span>
+  </div>
+<% } %>
+
+<div class="card form-card">
+  <form action="/projects/import" method="POST" enctype="multipart/form-data" novalidate>
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
+      <label for="projectFile">Project Export File (.json) <span class="required">*</span></label>
+      <input type="file" id="projectFile" name="projectFile" required class="form-control" accept=".json">
+      <small class="form-text">Select the JSON file exported from another Content Hub instance. <strong>Importing will always create a new project</strong> in your account, even if a project with the same name already exists. It will never overwrite an existing project.</small>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-lg">
+        <i class="fas fa-upload"></i> Import Project
+      </button>
+      <a href="/projects" class="btn btn-secondary btn-lg">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<%- include('../partials/footer', { scriptPath: null }) %>

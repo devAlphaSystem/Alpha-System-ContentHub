@@ -392,7 +392,7 @@ document.addEventListener("DOMContentLoaded", () => {
       isActive = true;
     } else if (navId === "dashboard" && currentPath === "/") {
       isActive = true;
-    } else if (navId === "projects" && currentPath === "/projects") {
+    } else if (navId === "projects" && (currentPath === "/projects" || currentPath === "/projects/import")) {
       isActive = true;
     } else if (navId === "audit-log" && currentPath === "/audit-log") {
       isActive = true;

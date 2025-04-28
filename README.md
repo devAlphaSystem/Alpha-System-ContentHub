@@ -27,6 +27,8 @@ A NodeJS application for creating and managing documentation, changelogs, roadma
 - **🧠 Knowledge Base Management:** Create and manage question/answer pairs within projects.
 - **💡 Public Knowledge Base View:** Automatically generated, searchable public view for each project's knowledge base (`/kb/:projectId`).
 - **↔️ Sidebar Ordering (Per-Project):** Drag-and-drop interface to control the order of entries and headers shown in the public project sidebar.
+- **📤 Export Projects:** Export entire projects including entries, templates, and assets for backup or transfer.
+- **📥 Import Projects:** Import previously exported projects to restore or migrate content seamlessly.
 - **🖥️ Admin Dashboards:**
   - Global dashboard for an overview across all projects.
   - Per-project dashboard with specific metrics and activity charts (using ApexCharts).
@@ -45,6 +47,12 @@ A NodeJS application for creating and managing documentation, changelogs, roadma
 - **💼 File Management:** Basic overview page for files uploaded via the editor (size calculation optional).
 - **🌗 Light & Dark Themes:** Choose your preferred viewing mode for the admin interface. Theme preference is saved per user.
 - **✨ Graceful Shutdown:** Handles `SIGINT` to close database connections and the server properly.
+
+## Preview & Changelog
+
+You can see a public page example [here](https://docs.alphasystem.dev/view/contenthubmarkd).
+
+You can see the changelog [here](https://docs.alphasystem.dev/view/changelogsystem).
 
 ## Tech Stack
 
