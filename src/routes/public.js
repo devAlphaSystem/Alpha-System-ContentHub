@@ -157,7 +157,16 @@ router.get("/view/:id", async (req, res, next) => {
   logger.debug(`[PUBLIC] Requesting view for entry ${entryId}`);
   logger.time(`[PUBLIC] /view/${entryId}`);
   try {
-    const entry = await getPublicEntryById(entryId);
+    const entry = await pbAdmin
+      .collection("entries_main")
+      .getFirstListItem(`id = '${entryId}' && status = 'published'`, {
+        expand: "project,custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer",
+        fields: "*,expand.project.*," + "expand.custom_documentation_header.id,expand.custom_documentation_header.content,expand.custom_documentation_header.apply_full_width,expand.custom_documentation_header.is_sticky,expand.custom_documentation_header.custom_css,expand.custom_documentation_header.custom_js," + "expand.custom_documentation_footer.id,expand.custom_documentation_footer.content,expand.custom_documentation_footer.apply_full_width,expand.custom_documentation_footer.custom_css,expand.custom_documentation_footer.custom_js," + "expand.custom_changelog_header.id,expand.custom_changelog_header.content,expand.custom_changelog_header.apply_full_width,expand.custom_changelog_header.is_sticky,expand.custom_changelog_header.custom_css,expand.custom_changelog_header.custom_js," + "expand.custom_changelog_footer.id,expand.custom_changelog_footer.content,expand.custom_changelog_footer.apply_full_width,expand.custom_changelog_footer.custom_css,expand.custom_changelog_footer.custom_js",
+      })
+      .catch((err) => {
+        if (err.status === 404) return null;
+        throw err;
+      });
 
     if (!entry) {
       logger.debug(`[PUBLIC] Entry ${entryId} not found or not public.`);
@@ -225,8 +234,6 @@ router.get("/view/:id", async (req, res, next) => {
     const cleanMainHtml = parseMarkdownWithThemeImages(entry.content);
     const readingTime = calculateReadingTime(entry.content);
 
-    let customHeaderHtml = null;
-    let customFooterHtml = null;
     let headerRecord = null;
     let footerRecord = null;
 
@@ -238,12 +245,16 @@ router.get("/view/:id", async (req, res, next) => {
       footerRecord = entry.expand?.custom_changelog_footer;
     }
 
-    if (headerRecord?.content) {
-      customHeaderHtml = parseMarkdownWithThemeImages(headerRecord.content);
-    }
-    if (footerRecord?.content) {
-      customFooterHtml = parseMarkdownWithThemeImages(footerRecord.content);
-    }
+    const customHeaderHtml = headerRecord?.content ? parseMarkdownWithThemeImages(headerRecord.content) : null;
+    const headerApplyFullWidth = headerRecord?.apply_full_width === true;
+    const headerIsSticky = headerRecord?.is_sticky === true;
+    const headerCustomCss = headerRecord?.custom_css || null;
+    const headerCustomJs = headerRecord?.custom_js || null;
+
+    const customFooterHtml = footerRecord?.content ? parseMarkdownWithThemeImages(footerRecord.content) : null;
+    const footerApplyFullWidth = footerRecord?.apply_full_width === true;
+    const footerCustomCss = footerRecord?.custom_css || null;
+    const footerCustomJs = footerRecord?.custom_js || null;
 
     let sidebarEntries = [];
     let hasPublishedKbEntries = false;
@@ -262,10 +273,7 @@ router.get("/view/:id", async (req, res, next) => {
         logger.error(`[PUBLIC] Failed to fetch sidebar entries for project ${project.id}: Status ${sidebarError?.status || "N/A"}`, sidebarError?.message || sidebarError);
       }
       try {
-        await pbAdmin.collection("entries_main").getFirstListItem(`project = '${project.id}' && type = 'knowledge_base' && status = 'published'`, {
-          fields: "id",
-          $autoCancel: false,
-        });
+        await pbAdmin.collection("entries_main").getFirstListItem(`project = '${project.id}' && type = 'knowledge_base' && status = 'published'`, { fields: "id", $autoCancel: false });
         hasPublishedKbEntries = true;
       } catch (kbError) {
         if (kbError.status !== 404) {
@@ -284,6 +292,13 @@ router.get("/view/:id", async (req, res, next) => {
       readingTime: readingTime,
       customHeaderHtml: customHeaderHtml,
       customFooterHtml: customFooterHtml,
+      headerApplyFullWidth: headerApplyFullWidth,
+      footerApplyFullWidth: footerApplyFullWidth,
+      headerIsSticky: headerIsSticky,
+      headerCustomCss: headerCustomCss,
+      headerCustomJs: headerCustomJs,
+      footerCustomCss: footerCustomCss,
+      footerCustomJs: footerCustomJs,
       pageTitle: `${entry.title} - ${project ? project.name : entry.type === "changelog" ? "Changelog" : "Documentation"}`,
       hasPublishedKbEntries: hasPublishedKbEntries,
     });
@@ -537,7 +552,7 @@ router.get("/preview/:token", async (req, res, next) => {
       readingTime: readingTime,
       customHeaderHtml: customHeaderHtml,
       customFooterHtml: customFooterHtml,
-      pageTitle: `[PREVIEW] ${entryTitle}`,
+      pageTitle: `[DRAFT PREVIEW] ${entryTitle}`,
       isPreview: true,
       hasPublishedKbEntries: hasPublishedKbEntries,
     });

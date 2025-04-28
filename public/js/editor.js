@@ -3,6 +3,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const templateContentTextArea = document.getElementById("template-content");
   const headerContentTextArea = document.getElementById("header-content");
   const footerContentTextArea = document.getElementById("footer-content");
+  const customCssTextArea = document.getElementById("custom-css-editor");
+  const customJsTextArea = document.getElementById("custom-js-editor");
+
   const templateSelect = document.getElementById("template-select");
   const sharePreviewButton = document.getElementById("share-preview-btn");
   const typeSelect = document.getElementById("type");
@@ -19,6 +22,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let templateEasyMDEInstance = null;
   let headerEasyMDEInstance = null;
   let footerEasyMDEInstance = null;
+  let customCssMDEInstance = null;
+  let customJsMDEInstance = null;
+
   let searchDebounceTimer;
   let checkDebounceTimer;
   let currentCheckController = null;
@@ -68,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
     {
       name: "checkGrammar",
       action: (editor) => {
-        if (!checkGrammarButton.disabled) {
+        if (checkGrammarButton && !checkGrammarButton.disabled) {
           performGrammarCheck();
         }
       },
@@ -293,346 +299,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  const updateCharCount = () => {
-    if (!easyMDEInstance || !charCountElement) return;
-    const characterLimit = 150000;
-    const currentLength = easyMDEInstance.value().length;
-    charCountElement.textContent = `${currentLength} / ${characterLimit}`;
-    const easyMDEContainer = easyMDEInstance.element.closest(".EasyMDEContainer");
-    if (currentLength > characterLimit) {
-      charCountElement.classList.add("over-limit");
-      if (easyMDEContainer) easyMDEContainer.classList.add("invalid");
-    } else {
-      charCountElement.classList.remove("over-limit");
-      if (easyMDEContainer) easyMDEContainer.classList.remove("invalid");
-    }
-  };
-
-  function clearGrammarHighlights(cm) {
-    if (currentGrammarMarks && cm) {
-      for (const mark of currentGrammarMarks) {
-        mark.clear();
-      }
-      currentGrammarMarks = [];
-    }
-    if (grammarStatusElement) {
-      grammarStatusElement.textContent = "";
-      grammarStatusElement.style.color = "";
-      grammarStatusElement.style.marginLeft = "0";
-    }
-  }
-
-  async function performGrammarCheck() {
-    if (!easyMDEInstance) {
-      console.warn("EasyMDE instance not available for grammar check.");
-      return;
-    }
-
-    const cm = easyMDEInstance.codemirror;
-    const selectedText = cm.getSelection();
-    let textToCheck = "";
-    let checkScope = "document";
-    let selectionOffset = 0;
-
-    if (selectedText && selectedText.trim() !== "") {
-      textToCheck = selectedText;
-      checkScope = "selection";
-      selectionOffset = cm.indexFromPos(cm.getCursor("start"));
-    } else {
-      textToCheck = easyMDEInstance.value();
-      checkScope = "document";
-      selectionOffset = 0;
-    }
-
-    if (!textToCheck.trim()) {
-      if (grammarStatusElement) {
-        grammarStatusElement.textContent = "Nothing to check.";
-        grammarStatusElement.style.marginLeft = "10px";
-      }
-      return;
-    }
-
-    clearGrammarHighlights(cm);
-
-    if (grammarStatusElement) {
-      grammarStatusElement.textContent = `Checking ${checkScope}...`;
-      grammarStatusElement.style.marginLeft = "10px";
-    }
-    checkGrammarButton.disabled = true;
-    checkGrammarButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Checking...`;
-
-    const apiUrl = "https://api.languagetool.org/v2/check";
-    const params = new URLSearchParams({
-      text: textToCheck,
-      language: "en-US",
-    });
-
-    try {
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Accept: "application/json",
-        },
-        body: params.toString(),
-      });
-
-      if (!response.ok) {
-        let errorDetail = `Status: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorDetail = errorData.message || errorDetail;
-        } catch (_) {}
-        throw new Error(`LanguageTool API error! ${errorDetail}`);
-      }
-
-      const result = await response.json();
-
-      if (result.matches && result.matches.length > 0) {
-        for (const match of result.matches) {
-          const actualFromIndex = match.offset + selectionOffset;
-          const actualToIndex = match.offset + match.length + selectionOffset;
-          const fromPos = cm.posFromIndex(actualFromIndex);
-          const toPos = cm.posFromIndex(actualToIndex);
-
-          const mark = cm.markText(fromPos, toPos, {
-            className: "grammar-error",
-            title: `${match.message} (Rule: ${match.rule.id})`,
-          });
-          currentGrammarMarks.push(mark);
-        }
-
-        if (grammarStatusElement) {
-          grammarStatusElement.textContent = `${result.matches.length} potential issue(s) found in ${checkScope}.`;
-          grammarStatusElement.style.color = "var(--warning-color)";
-          grammarStatusElement.style.marginLeft = "10px";
-        }
-      } else {
-        if (grammarStatusElement) {
-          grammarStatusElement.textContent = `No issues found in ${checkScope}.`;
-          grammarStatusElement.style.color = "var(--success-color)";
-          grammarStatusElement.style.marginLeft = "10px";
-        }
-      }
-    } catch (error) {
-      console.error("Error checking grammar:", error);
-      if (grammarStatusElement) {
-        grammarStatusElement.textContent = "Error checking grammar.";
-        grammarStatusElement.style.color = "var(--danger-color)";
-        grammarStatusElement.style.marginLeft = "10px";
-      }
-      window.showAlertModal(`Could not check grammar: ${error.message}`, "Grammar Check Error");
-    } finally {
-      checkGrammarButton.disabled = false;
-      checkGrammarButton.innerHTML = `<i class="fas fa-spell-check"></i> Check Grammar & Style`;
-    }
-  }
-
-  if (contentTextArea) {
-    try {
-      const easyMDEConfig = {
-        element: contentTextArea,
-        spellChecker: false,
-        status: ["lines", "words"],
-        toolbar: standardToolbar,
-        renderingConfig: {
-          codeSyntaxHighlighting: true,
-        },
-        uploadImage: false,
-        errorCallback: (errorMessage) => {
-          console.error("EasyMDE Error:", errorMessage);
-          window.showAlertModal(`Editor error: ${errorMessage}`, "Editor Error");
-        },
-      };
-
-      const configEntryId = contentTextArea?.dataset.entryId;
-      const configProjectId = document.body.dataset.projectId;
-
-      if (configEntryId && configProjectId) {
-        easyMDEConfig.uploadImage = true;
-        easyMDEConfig.imageUploadEndpoint = `/api/projects/${configProjectId}/entries/${configEntryId}/upload-image`;
-        easyMDEConfig.imagePathAbsolute = true;
-        easyMDEConfig.imageAccept = "image/png, image/jpeg, image/gif, image/webp";
-        easyMDEConfig.imageMaxSize = 1024 * 1024 * 10;
-        easyMDEConfig.imageCSRFToken = false;
-        easyMDEConfig.imageTexts = {
-          sbInit: "Attach files by dragging & dropping or selecting them.",
-          sbOnDragEnter: "Drop image to upload it.",
-          sbOnDrop: "Uploading image...",
-          sbProgress: "Uploading (##) %...",
-          sbOnUploaded: "Uploaded!",
-          sizeUnits: " B, KB, MB",
-        };
-        easyMDEConfig.imageUploadFunction = (file, onSuccess, onError) => {
-          const formData = new FormData();
-          formData.append("image", file);
-
-          fetch(`/api/projects/${configProjectId}/entries/${configEntryId}/upload-image`, {
-            method: "POST",
-            body: formData,
-          })
-            .then(async (response) => {
-              if (!response.ok) {
-                const errorData = await response.json().catch(() => ({
-                  error: `HTTP error ${response.status}`,
-                }));
-                throw new Error(errorData.error || `HTTP error ${response.status}`);
-              }
-              return response.json();
-            })
-            .then((result) => {
-              if (result.data?.filePath && result.data.filePath.trim() !== "") {
-                onSuccess(result.data.filePath);
-              } else {
-                console.error("Image Upload Succeeded but API returned invalid/empty filePath:", result.data);
-                throw new Error("Server processed upload but did not return a valid file path.");
-              }
-            })
-            .catch((error) => {
-              console.error("Image Upload Failed:", error);
-              onError(error.message || "Image upload failed. Check console for details.");
-            });
-        };
-      } else {
-        console.warn("Image upload disabled: Entry ID or Project ID missing at editor init.");
-      }
-
-      easyMDEInstance = new EasyMDE(easyMDEConfig);
-
-      updateCharCount();
-      easyMDEInstance.codemirror.on("change", (cm, changeObj) => {
-        if (currentGrammarMarks.length > 0) {
-          clearGrammarHighlights(cm);
-          if (grammarStatusElement) {
-            grammarStatusElement.textContent = "Highlights cleared due to edit.";
-            grammarStatusElement.style.marginLeft = "10px";
-          }
-        }
-        updateCharCount();
-      });
-
-      easyMDEInstance.codemirror.on("keydown", (cm, event) => {
-        const isGKey = event.key.toLowerCase() === "g";
-        const isModifierPressed = event.ctrlKey || event.metaKey;
-        const isShiftPressed = event.shiftKey;
-
-        if (isGKey && isModifierPressed && isShiftPressed) {
-          event.preventDefault();
-          if (checkGrammarButton && !checkGrammarButton.disabled) {
-            checkGrammarButton.click();
-          }
-        }
-      });
-
-      checkGrammarButton?.addEventListener("click", performGrammarCheck);
-    } catch (error) {
-      console.error("Failed to initialize EasyMDE for content:", error);
-      window.showAlertModal("Failed to load the text editor.", "Editor Error");
-    }
-  }
-
-  if (templateContentTextArea) {
-    try {
-      templateEasyMDEInstance = new EasyMDE({
-        element: templateContentTextArea,
-        spellChecker: false,
-        status: ["lines", "words"],
-        toolbar: standardToolbar,
-        renderingConfig: {
-          codeSyntaxHighlighting: true,
-        },
-        uploadImage: false,
-      });
-    } catch (error) {
-      console.error("Failed to initialize EasyMDE for template:", error);
-      window.showAlertModal("Failed to load the template editor.", "Editor Error");
-    }
-  }
-
-  if (headerContentTextArea) {
-    try {
-      headerEasyMDEInstance = new EasyMDE({
-        element: headerContentTextArea,
-        spellChecker: false,
-        status: ["lines", "words"],
-        toolbar: standardToolbar,
-        renderingConfig: {
-          codeSyntaxHighlighting: true,
-        },
-        uploadImage: false,
-      });
-    } catch (error) {
-      console.error("Failed to initialize EasyMDE for header:", error);
-      window.showAlertModal("Failed to load the header editor.", "Editor Error");
-    }
-  }
-
-  if (footerContentTextArea) {
-    try {
-      footerEasyMDEInstance = new EasyMDE({
-        element: footerContentTextArea,
-        spellChecker: false,
-        status: ["lines", "words"],
-        toolbar: standardToolbar,
-        renderingConfig: {
-          codeSyntaxHighlighting: true,
-        },
-        uploadImage: false,
-      });
-    } catch (error) {
-      console.error("Failed to initialize EasyMDE for footer:", error);
-      window.showAlertModal("Failed to load the footer editor.", "Editor Error");
-    }
-  }
-
-  function toggleTypeSpecificFields(selectedType) {
-    const docHeaderGroup = document.getElementById("documentation-header-group");
-    const docFooterGroup = document.getElementById("documentation-footer-group");
-    const clHeaderGroup = document.getElementById("changelog-header-group");
-    const clFooterGroup = document.getElementById("changelog-footer-group");
-    const roadmapStageGroup = document.getElementById("roadmap-stage-group");
-    const contentGroup = document.querySelector(".form-group-content");
-    const contentLabel = contentGroup?.querySelector("label[for='content']");
-    const tagsGroup = document.getElementById("tags")?.closest(".form-group");
-    const sidebarGroup = document.getElementById("show_in_project_sidebar")?.closest(".form-group");
-
-    if (docHeaderGroup) docHeaderGroup.style.display = "none";
-    if (docFooterGroup) docFooterGroup.style.display = "none";
-    if (clHeaderGroup) clHeaderGroup.style.display = "none";
-    if (clFooterGroup) clFooterGroup.style.display = "none";
-    if (roadmapStageGroup) roadmapStageGroup.style.display = "none";
-    if (tagsGroup) tagsGroup.style.display = "none";
-    if (sidebarGroup) sidebarGroup.style.display = "none";
-
-    if (contentGroup) contentGroup.style.display = "block";
-    if (contentLabel) contentLabel.innerHTML = 'Content (Markdown) <span class="required">*</span>';
-
-    if (selectedType === "documentation") {
-      if (docHeaderGroup) docHeaderGroup.style.display = "block";
-      if (docFooterGroup) docFooterGroup.style.display = "block";
-      if (tagsGroup) tagsGroup.style.display = "block";
-      if (sidebarGroup) sidebarGroup.style.display = "block";
-    } else if (selectedType === "changelog") {
-      if (clHeaderGroup) clHeaderGroup.style.display = "block";
-      if (clFooterGroup) clFooterGroup.style.display = "block";
-      if (tagsGroup) tagsGroup.style.display = "block";
-      if (sidebarGroup) sidebarGroup.style.display = "block";
-    } else if (selectedType === "roadmap") {
-      if (roadmapStageGroup) roadmapStageGroup.style.display = "block";
-      if (contentGroup) contentGroup.style.display = "none";
-    } else if (selectedType === "knowledge_base") {
-      if (contentGroup) contentGroup.style.display = "block";
-      if (contentLabel) contentLabel.innerHTML = 'Answer (Markdown) <span class="required">*</span>';
-    }
-  }
-
-  if (typeSelect) {
-    typeSelect.addEventListener("change", (event) => {
-      toggleTypeSpecificFields(event.target.value);
-    });
-    toggleTypeSpecificFields(typeSelect.value);
-  }
-
   async function handleDuplicateEntry(button) {
     const entryId = button.dataset.entryId;
     const projectId = button.dataset.projectId;
@@ -824,4 +490,393 @@ document.addEventListener("DOMContentLoaded", () => {
       checkDebounceTimer = setTimeout(checkUrlAvailability, 500);
     }
   });
+
+  const updateCharCount = () => {
+    if (!easyMDEInstance || !charCountElement) return;
+    const characterLimit = 150000;
+    const currentLength = easyMDEInstance.value().length;
+    charCountElement.textContent = `${currentLength} / ${characterLimit}`;
+    const easyMDEContainer = easyMDEInstance.element.closest(".EasyMDEContainer");
+    if (currentLength > characterLimit) {
+      charCountElement.classList.add("over-limit");
+      if (easyMDEContainer) easyMDEContainer.classList.add("invalid");
+    } else {
+      charCountElement.classList.remove("over-limit");
+      if (easyMDEContainer) easyMDEContainer.classList.remove("invalid");
+    }
+  };
+
+  function clearGrammarHighlights(cm) {
+    if (currentGrammarMarks && cm) {
+      for (const mark of currentGrammarMarks) {
+        mark.clear();
+      }
+      currentGrammarMarks = [];
+    }
+    if (grammarStatusElement) {
+      grammarStatusElement.textContent = "";
+      grammarStatusElement.style.color = "";
+      grammarStatusElement.style.marginLeft = "0";
+    }
+  }
+
+  async function performGrammarCheck() {
+    if (!easyMDEInstance) {
+      console.warn("EasyMDE instance not available for grammar check.");
+      return;
+    }
+
+    const cm = easyMDEInstance.codemirror;
+    const selectedText = cm.getSelection();
+    let textToCheck = "";
+    let checkScope = "document";
+    let selectionOffset = 0;
+
+    if (selectedText && selectedText.trim() !== "") {
+      textToCheck = selectedText;
+      checkScope = "selection";
+      selectionOffset = cm.indexFromPos(cm.getCursor("start"));
+    } else {
+      textToCheck = easyMDEInstance.value();
+      checkScope = "document";
+      selectionOffset = 0;
+    }
+
+    if (!textToCheck.trim()) {
+      if (grammarStatusElement) {
+        grammarStatusElement.textContent = "Nothing to check.";
+        grammarStatusElement.style.marginLeft = "10px";
+      }
+      return;
+    }
+
+    clearGrammarHighlights(cm);
+
+    if (grammarStatusElement) {
+      grammarStatusElement.textContent = `Checking ${checkScope}...`;
+      grammarStatusElement.style.marginLeft = "10px";
+    }
+
+    if (checkGrammarButton) {
+      checkGrammarButton.disabled = true;
+      checkGrammarButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Checking...`;
+    }
+
+    const apiUrl = "https://api.languagetool.org/v2/check";
+    const params = new URLSearchParams({
+      text: textToCheck,
+      language: "en-US",
+    });
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
+        body: params.toString(),
+      });
+
+      if (!response.ok) {
+        let errorDetail = `Status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorDetail = errorData.message || errorDetail;
+        } catch (_) {}
+        throw new Error(`LanguageTool API error! ${errorDetail}`);
+      }
+
+      const result = await response.json();
+
+      if (result.matches && result.matches.length > 0) {
+        for (const match of result.matches) {
+          const actualFromIndex = match.offset + selectionOffset;
+          const actualToIndex = match.offset + match.length + selectionOffset;
+          const fromPos = cm.posFromIndex(actualFromIndex);
+          const toPos = cm.posFromIndex(actualToIndex);
+
+          const mark = cm.markText(fromPos, toPos, {
+            className: "grammar-error",
+            title: `${match.message} (Rule: ${match.rule.id})`,
+          });
+          currentGrammarMarks.push(mark);
+        }
+
+        if (grammarStatusElement) {
+          grammarStatusElement.textContent = `${result.matches.length} potential issue(s) found in ${checkScope}.`;
+          grammarStatusElement.style.color = "var(--warning-color)";
+          grammarStatusElement.style.marginLeft = "10px";
+        }
+      } else {
+        if (grammarStatusElement) {
+          grammarStatusElement.textContent = `No issues found in ${checkScope}.`;
+          grammarStatusElement.style.color = "var(--success-color)";
+          grammarStatusElement.style.marginLeft = "10px";
+        }
+      }
+    } catch (error) {
+      console.error("Error checking grammar:", error);
+      if (grammarStatusElement) {
+        grammarStatusElement.textContent = "Error checking grammar.";
+        grammarStatusElement.style.color = "var(--danger-color)";
+        grammarStatusElement.style.marginLeft = "10px";
+      }
+      window.showAlertModal(`Could not check grammar: ${error.message}`, "Grammar Check Error");
+    } finally {
+      if (checkGrammarButton) {
+        checkGrammarButton.disabled = false;
+        checkGrammarButton.innerHTML = `<i class="fas fa-spell-check"></i> Check Grammar & Style`;
+      }
+    }
+  }
+
+  if (contentTextArea) {
+    try {
+      const easyMDEConfig = {
+        element: contentTextArea,
+        spellChecker: false,
+        status: ["lines", "words"],
+        toolbar: standardToolbar,
+        renderingConfig: {
+          codeSyntaxHighlighting: true,
+        },
+        uploadImage: false,
+        errorCallback: (errorMessage) => {
+          console.error("EasyMDE Error:", errorMessage);
+          window.showAlertModal(`Editor error: ${errorMessage}`, "Editor Error");
+        },
+      };
+
+      const configEntryId = contentTextArea?.dataset.entryId;
+      const configProjectId = document.body.dataset.projectId;
+
+      if (configEntryId && configProjectId) {
+        easyMDEConfig.uploadImage = true;
+        easyMDEConfig.imageUploadEndpoint = `/api/projects/${configProjectId}/entries/${configEntryId}/upload-image`;
+        easyMDEConfig.imagePathAbsolute = true;
+        easyMDEConfig.imageAccept = "image/png, image/jpeg, image/gif, image/webp";
+        easyMDEConfig.imageMaxSize = 1024 * 1024 * 10;
+        easyMDEConfig.imageCSRFToken = false;
+        easyMDEConfig.imageTexts = {
+          sbInit: "Attach files by dragging & dropping or selecting them.",
+          sbOnDragEnter: "Drop image to upload it.",
+          sbOnDrop: "Uploading image...",
+          sbProgress: "Uploading (##) %...",
+          sbOnUploaded: "Uploaded!",
+          sizeUnits: " B, KB, MB",
+        };
+        easyMDEConfig.imageUploadFunction = (file, onSuccess, onError) => {
+          const formData = new FormData();
+          formData.append("image", file);
+
+          fetch(`/api/projects/${configProjectId}/entries/${configEntryId}/upload-image`, {
+            method: "POST",
+            body: formData,
+          })
+            .then(async (response) => {
+              if (!response.ok) {
+                const errorData = await response.json().catch(() => ({
+                  error: `HTTP error ${response.status}`,
+                }));
+                throw new Error(errorData.error || `HTTP error ${response.status}`);
+              }
+              return response.json();
+            })
+            .then((result) => {
+              if (result.data?.filePath && result.data.filePath.trim() !== "") {
+                onSuccess(result.data.filePath);
+              } else {
+                console.error("Image Upload Succeeded but API returned invalid/empty filePath:", result.data);
+                throw new Error("Server processed upload but did not return a valid file path.");
+              }
+            })
+            .catch((error) => {
+              console.error("Image Upload Failed:", error);
+              onError(error.message || "Image upload failed. Check console for details.");
+            });
+        };
+      } else {
+        console.warn("Image upload disabled: Entry ID or Project ID missing at editor init.");
+      }
+
+      easyMDEInstance = new EasyMDE(easyMDEConfig);
+
+      updateCharCount();
+      easyMDEInstance.codemirror.on("change", (cm, changeObj) => {
+        if (currentGrammarMarks.length > 0) {
+          clearGrammarHighlights(cm);
+          if (grammarStatusElement) {
+            grammarStatusElement.textContent = "Highlights cleared due to edit.";
+            grammarStatusElement.style.marginLeft = "10px";
+          }
+        }
+        updateCharCount();
+      });
+
+      easyMDEInstance.codemirror.on("keydown", (cm, event) => {
+        const isGKey = event.key.toLowerCase() === "g";
+        const isModifierPressed = event.ctrlKey || event.metaKey;
+        const isShiftPressed = event.shiftKey;
+
+        if (isGKey && isModifierPressed && isShiftPressed) {
+          event.preventDefault();
+          if (checkGrammarButton && !checkGrammarButton.disabled) {
+            checkGrammarButton.click();
+          }
+        }
+      });
+
+      checkGrammarButton?.addEventListener("click", performGrammarCheck);
+    } catch (error) {
+      console.error("Failed to initialize EasyMDE for content:", error);
+      window.showAlertModal("Failed to load the text editor.", "Editor Error");
+    }
+  }
+
+  if (templateContentTextArea) {
+    try {
+      templateEasyMDEInstance = new EasyMDE({
+        element: templateContentTextArea,
+        spellChecker: false,
+        status: ["lines", "words"],
+        toolbar: standardToolbar,
+        renderingConfig: {
+          codeSyntaxHighlighting: true,
+        },
+        uploadImage: false,
+      });
+    } catch (error) {
+      console.error("Failed to initialize EasyMDE for template:", error);
+      window.showAlertModal("Failed to load the template editor.", "Editor Error");
+    }
+  }
+
+  if (headerContentTextArea) {
+    try {
+      headerEasyMDEInstance = new EasyMDE({
+        element: headerContentTextArea,
+        spellChecker: false,
+        status: ["lines", "words"],
+        toolbar: false,
+        renderingConfig: {
+          codeSyntaxHighlighting: true,
+        },
+        uploadImage: false,
+        mode: "htmlmixed",
+      });
+    } catch (error) {
+      console.error("Failed to initialize EasyMDE for header:", error);
+      window.showAlertModal("Failed to load the header editor.", "Editor Error");
+    }
+  }
+
+  if (footerContentTextArea) {
+    try {
+      footerEasyMDEInstance = new EasyMDE({
+        element: footerContentTextArea,
+        spellChecker: false,
+        status: ["lines", "words"],
+        toolbar: false,
+        renderingConfig: {
+          codeSyntaxHighlighting: true,
+        },
+        uploadImage: false,
+        mode: "htmlmixed",
+      });
+    } catch (error) {
+      console.error("Failed to initialize EasyMDE for footer:", error);
+      window.showAlertModal("Failed to load the footer editor.", "Editor Error");
+    }
+  }
+
+  if (customCssTextArea) {
+    try {
+      customCssMDEInstance = new EasyMDE({
+        element: customCssTextArea,
+        spellChecker: false,
+        toolbar: false,
+        status: ["lines", "words"],
+        renderingConfig: {
+          codeSyntaxHighlighting: true,
+        },
+        uploadImage: false,
+        mode: "css",
+        indentUnit: 2,
+        tabSize: 2,
+      });
+    } catch (error) {
+      console.error("Failed to initialize EasyMDE for Custom CSS:", error);
+      window.showAlertModal("Failed to load the Custom CSS editor.", "Editor Error");
+    }
+  }
+
+  if (customJsTextArea) {
+    try {
+      customJsMDEInstance = new EasyMDE({
+        element: customJsTextArea,
+        spellChecker: false,
+        toolbar: false,
+        status: ["lines", "words"],
+        renderingConfig: {
+          codeSyntaxHighlighting: true,
+        },
+        uploadImage: false,
+        mode: "javascript",
+        indentUnit: 2,
+        tabSize: 2,
+      });
+    } catch (error) {
+      console.error("Failed to initialize EasyMDE for Custom JS:", error);
+      window.showAlertModal("Failed to load the Custom JS editor.", "Editor Error");
+    }
+  }
+
+  function toggleTypeSpecificFields(selectedType) {
+    const docHeaderGroup = document.getElementById("documentation-header-group");
+    const docFooterGroup = document.getElementById("documentation-footer-group");
+    const clHeaderGroup = document.getElementById("changelog-header-group");
+    const clFooterGroup = document.getElementById("changelog-footer-group");
+    const roadmapStageGroup = document.getElementById("roadmap-stage-group");
+    const contentGroup = document.querySelector(".form-group-content");
+    const contentLabel = contentGroup?.querySelector("label[for='content']");
+    const tagsGroup = document.getElementById("tags")?.closest(".form-group");
+    const sidebarGroup = document.getElementById("show_in_project_sidebar")?.closest(".form-group");
+
+    if (docHeaderGroup) docHeaderGroup.style.display = "none";
+    if (docFooterGroup) docFooterGroup.style.display = "none";
+    if (clHeaderGroup) clHeaderGroup.style.display = "none";
+    if (clFooterGroup) clFooterGroup.style.display = "none";
+    if (roadmapStageGroup) roadmapStageGroup.style.display = "none";
+    if (tagsGroup) tagsGroup.style.display = "none";
+    if (sidebarGroup) sidebarGroup.style.display = "none";
+
+    if (contentGroup) contentGroup.style.display = "block";
+    if (contentLabel) contentLabel.innerHTML = 'Content (Markdown) <span class="required">*</span>';
+
+    if (selectedType === "documentation") {
+      if (docHeaderGroup) docHeaderGroup.style.display = "block";
+      if (docFooterGroup) docFooterGroup.style.display = "block";
+      if (tagsGroup) tagsGroup.style.display = "block";
+      if (sidebarGroup) sidebarGroup.style.display = "block";
+    } else if (selectedType === "changelog") {
+      if (clHeaderGroup) clHeaderGroup.style.display = "block";
+      if (clFooterGroup) clFooterGroup.style.display = "block";
+      if (tagsGroup) tagsGroup.style.display = "block";
+      if (sidebarGroup) sidebarGroup.style.display = "block";
+    } else if (selectedType === "roadmap") {
+      if (roadmapStageGroup) roadmapStageGroup.style.display = "block";
+      if (contentGroup) contentGroup.style.display = "none";
+    } else if (selectedType === "knowledge_base") {
+      if (contentGroup) contentGroup.style.display = "block";
+      if (contentLabel) contentLabel.innerHTML = 'Answer (Markdown) <span class="required">*</span>';
+    }
+  }
+
+  if (typeSelect) {
+    typeSelect.addEventListener("change", (event) => {
+      toggleTypeSpecificFields(event.target.value);
+    });
+    toggleTypeSpecificFields(typeSelect.value);
+  }
 });

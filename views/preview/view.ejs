@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  
+
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,10 +10,44 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
     <link rel="stylesheet" href="/css/vendors/hljs-theme.css">
     <link rel="stylesheet" href="/css/view-style.css">
+
+    <% if (locals.headerApplyFullWidth) { %>
+      <style>
+        .custom-header-content {
+          width: 100vw;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+
+        .sticky-header {
+          position: sticky;
+          top: 0;
+          z-index: 1000;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+      </style>
+    <% } %>
+
+    <% if (locals.footerApplyFullWidth) { %>
+      <style>
+        .custom-footer-content {
+          width: 100vw;
+          margin-top: 0;
+          padding-top: 0;
+        }
+
+        .sticky-header {
+          position: sticky;
+          top: 0;
+          z-index: 1000;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+      </style>
+    <% } %>
 
     <style>
       .preview-banner {
@@ -43,20 +77,26 @@
         top: 45px;
         height: calc(100vh - 45px);
       }
-
-      @media (max-width: 1023px) {
-        body:has(.preview-banner) .main-content {
-          padding-top: calc(var(--header-height) + 45px + 24px);
-        }
-      }
     </style>
+
+    <% if (locals.headerCustomCss) { %>
+      <style>
+        <%- headerCustomCss %>
+      </style>
+    <% } %>
+
+    <% if (locals.footerCustomCss) { %>
+      <style>
+        <%- footerCustomCss %>
+      </style>
+    <% } %>
   </head>
 
   <body class="public-view">
 
     <script>
       const currentTheme = localStorage.getItem("theme") || "light";
-      
+
       if (currentTheme === "dark") {
         document.body.classList.add("dark-mode");
       }
@@ -66,42 +106,53 @@
       <i class="fas fa-eye"></i> DRAFT PREVIEW - Content may change.
     </div>
 
+    <% if (locals.customHeaderHtml && locals.headerApplyFullWidth) { %>
+      <div class="custom-header-content full-width-header <%= locals.headerIsSticky ? 'sticky-header' : '' %>">
+        <%- customHeaderHtml %>
+      </div>
+    <% } %>
+
     <header class="mobile-header">
       <button id="mobile-project-nav-toggle" class="mobile-nav-toggle <% if (!project) { %>hidden<% } %>" aria-label="Toggle Project Navigation">
         <i class="fas fa-bars"></i>
       </button>
-      <a href="/" class="mobile-logo"><%= project ? project.name : 'Content Hub' %></a>
+      <a class="mobile-logo"><%= project ? project.name : 'Content Hub' %></a>
       <button id="mobile-toc-nav-toggle" class="mobile-nav-toggle" aria-label="Toggle Table of Contents">
         <i class="fas fa-list-ul"></i>
       </button>
     </header>
 
-    <div class="page-wrapper <%= project?.use_full_width_content ? 'full-width-content' : '' %>" style="padding-top: 0;">
+    <div class="page-wrapper <%= project?.use_full_width_content ? 'full-width-content' : '' %>">
       <% if (project && sidebarEntries && sidebarEntries.length > 0) { %>
         <aside class="project-sidebar" id="project-sidebar">
           <div class="sidebar-sticky-content">
             <h3 class="project-sidebar-title">
-              <a href="/projects/<%= project.id %>/entries" title="Go to project admin page (requires login)">
-                <%= project.name %>
-              </a>
+              <%= project.name %>
             </h3>
             <nav class="project-entries-nav">
               <ul>
-                <% for(const item of sidebarEntries) { %>
-                  <li>
-                    <a href="/view/<%= item.id %>" class="project-entry-link <% if (item.id === entry.id) { %>active<% } %>">
-                      <% if (item.type === 'changelog') { %>
-                        <i class="fas fa-history fa-fw type-icon"></i>
-                      <% } else { %>
-                        <i class="fas fa-file-alt fa-fw type-icon"></i>
-                      <% } %>
+                <% for (const item of sidebarEntries) { %>
+                  <% if (item.type === 'sidebar_header') { %>
+                    <li class="sidebar-header-item">
                       <span><%= item.title %></span>
-                      <% if (locals.isPreview && item.status === 'draft') { %>
-                        <span class="draft-indicator">(Draft)</span>
-                      <% } %>
-                    </a>
-                  </li>
+                    </li>
+                  <% } else { %>
+                    <li>
+                      <a href="/view/<%= item.id %>" class="project-entry-link <% if (item.id === entry.id) { %>active<% } %>">
+                        <% if (item.type === 'changelog') { %>
+                          <i class="fas fa-history fa-fw type-icon"></i>
+                        <% } else if (item.type === 'documentation') { %>
+                          <i class="fas fa-file-alt fa-fw type-icon"></i>
+                        <% } %>
+                        <span><%= item.title %></span>
+                        <% if (locals.isPreview && item.status === 'draft') { %>
+                          <span class="draft-indicator">(Draft)</span>
+                        <% } %>
+                      </a>
+                    </li>
+                  <% } %>
                 <% } %>
+
                 <% if (project.is_publicly_viewable && locals.hasPublishedKbEntries) { %>
                   <li>
                     <a href="/kb/<%= project.id %>" class="project-entry-link">
@@ -110,6 +161,7 @@
                     </a>
                   </li>
                 <% } %>
+
                 <% if (project.roadmap_enabled) { %>
                   <li>
                     <a href="/roadmap/<%= project.id %>" class="project-entry-link">
@@ -120,13 +172,19 @@
                 <% } %>
               </ul>
             </nav>
+            <div class="theme-toggle-container">
+              <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme">
+                <i class="fas fa-sun"></i>
+                <i class="fas fa-moon"></i>
+              </button>
+            </div>
           </div>
         </aside>
       <% } %>
 
-      <div class="main-content" style="padding-top: 25px;">
-        <% if (locals.customHeaderHtml) { %>
-          <div class="custom-header-content">
+      <div class="main-content">
+        <% if (locals.customHeaderHtml && !locals.headerApplyFullWidth) { %>
+          <div class="custom-header-content <%= locals.headerIsSticky ? 'sticky-header' : '' %>">
             <%- customHeaderHtml %>
           </div>
         <% } %>
@@ -152,33 +210,56 @@
             </div>
           <% } %>
 
-          <p class="publish-date">Published: <%= new Date(entry.updated).toLocaleDateString('en-US', { year: 'numeric' , month: 'long' , day: 'numeric' }) %></p>
+          <div class="entry-dates">
+            <% const publishedDate = new Date(entry.created); %>
+            <% const updatedDate = new Date(entry.content_updated_at || entry.updated); %>
+            <% const dateFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' }; %>
+
+            <span>Published: <%= publishedDate.toLocaleDateString('en-US', dateFormatOptions) %></span>
+
+            <% if (updatedDate.getTime() > publishedDate.getTime() + (60 * 1000)) { %>
+              <span>Last Updated: <%= updatedDate.toLocaleDateString('en-US', dateFormatOptions) %></span>
+            <% } %>
+          </div>
         </header>
 
-        <article id="markdown-content-area" class="markdown-body">
+        <article id="markdown-content-area" class="markdown-body" data-entry-id="<%= entry.id %>" data-view-time-tracking-enabled="<%= project?.view_time_tracking_enabled %>" data-is-staged-preview="<%= locals.isStagedPreview ? 'true' : 'false' %>">
           <%- contentHtml %>
         </article>
 
-        <% if (locals.customFooterHtml) { %>
+        <% if (!locals.isPreview && !locals.isStagedPreview && project?.view_tracking_enabled) { %>
+          <section class="feedback-section">
+            <h4>Was this page helpful?</h4>
+            <button class="btn btn-secondary feedback-btn" data-entry-id="<%= entry.id %>" data-vote-type="yes">
+              <i class="fas fa-thumbs-up"></i> Yes
+            </button>
+            <button class="btn btn-secondary feedback-btn" data-entry-id="<%= entry.id %>" data-vote-type="no">
+              <i class="fas fa-thumbs-down"></i> No
+            </button>
+            <p class="feedback-message"></p>
+          </section>
+        <% } %>
+
+        <% if (locals.customFooterHtml && !locals.footerApplyFullWidth) { %>
           <div class="custom-footer-content">
             <%- customFooterHtml %>
           </div>
         <% } %>
       </div>
-      
+
       <aside class="toc-sidebar" id="toc-sidebar">
         <div class="sidebar-sticky-content">
           <h3 class="toc-title">On this page</h3>
           <nav id="toc" class="table-of-contents"></nav>
-          <div class="theme-toggle-container">
-            <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme">
-              <i class="fas fa-sun"></i>
-              <i class="fas fa-moon"></i>
-            </button>
-          </div>
         </div>
       </aside>
     </div>
+
+    <% if (locals.customFooterHtml && locals.footerApplyFullWidth) { %>
+      <div class="custom-footer-content full-width-footer">
+        <%- customFooterHtml %>
+      </div>
+    <% } %>
 
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
@@ -197,12 +278,10 @@
             }
           });
           mermaid.run({ querySelector: '.language-mermaid' });
-          console.log('Mermaid initialized with theme:', mermaidTheme);
         } catch (e) {
           console.error("Error initializing or running Mermaid:", e);
         }
       }
-
       document.addEventListener('DOMContentLoaded', () => {
         const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
         initializeMermaid(currentTheme);
@@ -211,5 +290,18 @@
 
     <script src="/js/vendors/highlight.min.js"></script>
     <script src="/js/view.js"></script>
+
+    <% if (locals.headerCustomJs) { %>
+      <script>
+        <%- headerCustomJs %>
+      </script>
+    <% } %>
+    
+    <% if (locals.footerCustomJs) { %>
+      <script>
+        <%- footerCustomJs %>
+      </script>
+    <% } %>
   </body>
+
 </html>

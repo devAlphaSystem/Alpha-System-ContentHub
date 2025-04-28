@@ -15,9 +15,43 @@
     <link rel="stylesheet" href="/css/vendors/hljs-theme.css">
     <link rel="stylesheet" href="/css/view-style.css">
 
+    <% if (locals.headerApplyFullWidth) { %>
+      <style>
+        .custom-header-content {
+          width: 100vw;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+
+        .sticky-header {
+          position: sticky;
+          top: 0;
+          z-index: 1000;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+      </style>
+    <% } %>
+
+    <% if (locals.footerApplyFullWidth) { %>
+      <style>
+        .custom-footer-content {
+          width: 100vw;
+          margin-top: 0;
+          padding-top: 0;
+        }
+
+        .sticky-header {
+          position: sticky;
+          top: 0;
+          z-index: 1000;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+      </style>
+    <% } %>
+
     <% if (locals.isStagedPreview) { %>
       <style>
-        .staged-preview-banner {
+        .preview-banner {
           background-color: #fdba74;
           color: #7c2d12;
           padding: 10px 20px;
@@ -29,27 +63,33 @@
           border-bottom: 1px solid #f97316;
         }
 
-        body.dark-mode .staged-preview-banner {
+        body.dark-mode .preview-banner {
           background-color: #b45309;
           color: #fffbeb;
           border-bottom-color: #92400e;
         }
 
-        body:has(.staged-preview-banner) .mobile-header {
+        body:has(.preview-banner) .mobile-header {
           top: 45px;
         }
 
-        body:has(.staged-preview-banner) .project-sidebar,
-        body:has(.staged-preview-banner) .toc-sidebar {
+        body:has(.preview-banner) .project-sidebar,
+        body:has(.preview-banner) .toc-sidebar {
           top: 45px;
           height: calc(100vh - 45px);
         }
+      </style>
+    <% } %>
 
-        @media (max-width: 1023px) {
-          body:has(.staged-preview-banner) .main-content {
-            padding-top: calc(var(--header-height) + 45px + 24px);
-          }
-        }
+    <% if (locals.headerCustomCss) { %>
+      <style>
+        <%- headerCustomCss %>
+      </style>
+    <% } %>
+
+    <% if (locals.footerCustomCss) { %>
+      <style>
+        <%- footerCustomCss %>
       </style>
     <% } %>
   </head>
@@ -64,9 +104,15 @@
       }
     </script>
 
-    <% if (locals.isStagedPreview) { %>
-      <div class="staged-preview-banner">
-        <i class="fas fa-flask"></i> STAGED PREVIEW - This is not the live version.
+    <% if (locals.isPreview || locals.isStagedPreview) { %>
+      <div class="preview-banner">
+        <i class="fas fa-eye"></i> <%= locals.isStagedPreview ? 'STAGED PREVIEW' : 'DRAFT PREVIEW' %> - Content may change.
+      </div>
+    <% } %>
+
+    <% if (locals.customHeaderHtml && locals.headerApplyFullWidth) { %>
+      <div class="custom-header-content full-width-header <%= locals.headerIsSticky ? 'sticky-header' : '' %>">
+        <%- customHeaderHtml %>
       </div>
     <% } %>
 
@@ -81,7 +127,7 @@
     </header>
 
     <div class="page-wrapper <%= project?.use_full_width_content ? 'full-width-content' : '' %>">
-      <% if (project && (sidebarEntries && sidebarEntries.length > 0 || project.roadmap_enabled || hasPublishedKbEntries)) { %>
+      <% if (project && sidebarEntries && sidebarEntries.length > 0) { %>
         <aside class="project-sidebar" id="project-sidebar">
           <div class="sidebar-sticky-content">
             <h3 class="project-sidebar-title">
@@ -89,26 +135,28 @@
             </h3>
             <nav class="project-entries-nav">
               <ul>
-                <% if (sidebarEntries && sidebarEntries.length > 0) { %>
-                  <% for(const item of sidebarEntries) { %>
-                    <% if (item.type === 'sidebar_header') { %>
-                      <li class="sidebar-header-item">
+                <% for (const item of sidebarEntries) { %>
+                  <% if (item.type === 'sidebar_header') { %>
+                    <li class="sidebar-header-item">
+                      <span><%= item.title %></span>
+                    </li>
+                  <% } else { %>
+                    <li>
+                      <a href="/view/<%= item.id %>" class="project-entry-link <% if (item.id === entry.id) { %>active<% } %>">
+                        <% if (item.type === 'changelog') { %>
+                          <i class="fas fa-history fa-fw type-icon"></i>
+                        <% } else if (item.type === 'documentation') { %>
+                          <i class="fas fa-file-alt fa-fw type-icon"></i>
+                        <% } %>
                         <span><%= item.title %></span>
-                      </li>
-                    <% } else { %>
-                      <li>
-                        <a href="/view/<%= item.id %>" class="project-entry-link <% if (item.id === entry.id) { %>active<% } %>">
-                          <% if (item.type === 'changelog') { %>
-                            <i class="fas fa-history fa-fw type-icon"></i>
-                          <% } else { %>
-                            <i class="fas fa-file-alt fa-fw type-icon"></i>
-                          <% } %>
-                          <span><%= item.title %></span>
-                        </a>
-                      </li>
-                    <% } %>
+                        <% if (locals.isPreview && item.status === 'draft') { %>
+                          <span class="draft-indicator">(Draft)</span>
+                        <% } %>
+                      </a>
+                    </li>
                   <% } %>
                 <% } %>
+
                 <% if (project.is_publicly_viewable && locals.hasPublishedKbEntries) { %>
                   <li>
                     <a href="/kb/<%= project.id %>" class="project-entry-link">
@@ -117,6 +165,7 @@
                     </a>
                   </li>
                 <% } %>
+
                 <% if (project.roadmap_enabled) { %>
                   <li>
                     <a href="/roadmap/<%= project.id %>" class="project-entry-link">
@@ -138,8 +187,8 @@
       <% } %>
 
       <div class="main-content">
-        <% if (locals.customHeaderHtml) { %>
-          <div class="custom-header-content">
+        <% if (locals.customHeaderHtml && !locals.headerApplyFullWidth) { %>
+          <div class="custom-header-content <%= locals.headerIsSticky ? 'sticky-header' : '' %>">
             <%- customHeaderHtml %>
           </div>
         <% } %>
@@ -165,27 +214,37 @@
             </div>
           <% } %>
 
-          <p class="publish-date">Published: <%= new Date(entry.updated).toLocaleDateString('en-US', { year: 'numeric' , month: 'long' , day: 'numeric' }) %></p>
+          <div class="entry-dates">
+            <% const publishedDate = new Date(entry.created); %>
+            <% const updatedDate = new Date(entry.content_updated_at || entry.updated); %>
+            <% const dateFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' }; %>
+
+            <span>Published: <%= publishedDate.toLocaleDateString('en-US', dateFormatOptions) %></span>
+
+            <% if (updatedDate.getTime() > publishedDate.getTime() + (60 * 1000)) { %>
+              <span>Last Updated: <%= updatedDate.toLocaleDateString('en-US', dateFormatOptions) %></span>
+            <% } %>
+          </div>
         </header>
 
-        <article id="markdown-content-area" class="markdown-body" data-entry-id="<%= entry.id %>" data-view-time-tracking-enabled="<%= project?.view_time_tracking_enabled ?? false %>" data-is-staged-preview="<%= locals.isStagedPreview ?? false %>">
+        <article id="markdown-content-area" class="markdown-body" data-entry-id="<%= entry.id %>" data-view-time-tracking-enabled="<%= project?.view_time_tracking_enabled %>" data-is-staged-preview="<%= locals.isStagedPreview ? 'true' : 'false' %>">
           <%- contentHtml %>
         </article>
 
-        <div class="feedback-section" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-primary); text-align: center;">
-          <h4>Was this page helpful?</h4>
-          <div style="margin-top: 10px;">
-            <button class="btn btn-sm btn-success feedback-btn" data-entry-id="<%= entry.id %>" data-vote-type="yes" style="margin-right: 10px;">
+        <% if (!locals.isPreview && !locals.isStagedPreview && project?.view_tracking_enabled) { %>
+          <section class="feedback-section">
+            <h4>Was this page helpful?</h4>
+            <button class="btn btn-secondary feedback-btn" data-entry-id="<%= entry.id %>" data-vote-type="yes">
               <i class="fas fa-thumbs-up"></i> Yes
             </button>
-            <button class="btn btn-sm btn-danger feedback-btn" data-entry-id="<%= entry.id %>" data-vote-type="no">
+            <button class="btn btn-secondary feedback-btn" data-entry-id="<%= entry.id %>" data-vote-type="no">
               <i class="fas fa-thumbs-down"></i> No
             </button>
-          </div>
-          <p class="feedback-message" style="display: none; margin-top: 15px; font-weight: 500;"></p>
-        </div>
+            <p class="feedback-message"></p>
+          </section>
+        <% } %>
 
-        <% if (locals.customFooterHtml) { %>
+        <% if (locals.customFooterHtml && !locals.footerApplyFullWidth) { %>
           <div class="custom-footer-content">
             <%- customFooterHtml %>
           </div>
@@ -199,6 +258,12 @@
         </div>
       </aside>
     </div>
+
+    <% if (locals.customFooterHtml && locals.footerApplyFullWidth) { %>
+      <div class="custom-footer-content full-width-footer">
+        <%- customFooterHtml %>
+      </div>
+    <% } %>
 
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
@@ -217,7 +282,6 @@
             }
           });
           mermaid.run({ querySelector: '.language-mermaid' });
-          console.log('Mermaid initialized with theme:', mermaidTheme);
         } catch (e) {
           console.error("Error initializing or running Mermaid:", e);
         }
@@ -230,6 +294,18 @@
 
     <script src="/js/vendors/highlight.min.js"></script>
     <script src="/js/view.js"></script>
+
+    <% if (locals.headerCustomJs) { %>
+      <script>
+        <%- headerCustomJs %>
+      </script>
+    <% } %>
+    
+    <% if (locals.footerCustomJs) { %>
+      <script>
+        <%- footerCustomJs %>
+      </script>
+    <% } %>
   </body>
 
 </html>

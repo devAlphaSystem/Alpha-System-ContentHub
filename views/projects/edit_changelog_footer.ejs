@@ -27,10 +27,30 @@
       <input type="text" id="name" name="name" required class="form-control <%= locals.errors?.name ? 'is-invalid' : '' %>" value="<%= asset.name %>" autofocus>
     </div>
 
-    <div class="form-group form-group-full">
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="apply_full_width" name="apply_full_width" value="true" <%= asset.apply_full_width ? 'checked' : '' %>>
+        <label class="form-check-label" for="apply_full_width">Apply Full Width</label>
+      </div>
+      <small class="form-text">If enabled, this footer will span the full page width instead of being constrained to the content area.</small>
+    </div>
+
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
       <label for="footer-content">Footer Content (HTML)</label>
       <textarea id="footer-content" name="content" rows="15" class="form-control html-input"><%= asset.content %></textarea>
       <small class="form-text">Enter the HTML content for the footer. Use with caution.</small>
+    </div>
+
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
+      <label for="custom-css-editor">Custom CSS (Optional)</label>
+      <textarea id="custom-css-editor" name="custom_css" rows="15"><%= locals.asset ? (asset.custom_css || '') : '' %></textarea>
+      <small class="form-text">CSS rules to be injected specifically for this footer.</small>
+    </div>
+
+    <div class="form-group form-group-full">
+      <label for="custom-js-editor">Custom JavaScript (Optional)</label>
+      <textarea id="custom-js-editor" name="custom_js" rows="15"><%= locals.asset ? (asset.custom_js || '') : '' %></textarea>
+      <small class="form-text">JavaScript code to be injected specifically for this footer. Use with caution.</small>
     </div>
 
     <div class="form-actions">

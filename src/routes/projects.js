@@ -1484,7 +1484,26 @@ router.get("/:projectId/preview-staged/:entryId", checkProjectAccess, async (req
   logger.time(`[PROJ] GET /projects/${projectId}/preview-staged/${entryId} ${userId}`);
 
   try {
-    const record = await getEntryForOwnerAndProject(entryId, userId, projectId);
+    const record = await pbAdmin.collection("entries_main").getOne(entryId, {
+      expand: "project,custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer,staged_documentation_header,staged_documentation_footer,staged_changelog_header,staged_changelog_footer",
+      fields:
+        "*,expand.project.*," +
+        "expand.custom_documentation_header.id,expand.custom_documentation_header.content,expand.custom_documentation_header.apply_full_width,expand.custom_documentation_header.is_sticky,expand.custom_documentation_header.custom_css,expand.custom_documentation_header.custom_js," +
+        "expand.custom_documentation_footer.id,expand.custom_documentation_footer.content,expand.custom_documentation_footer.apply_full_width,expand.custom_documentation_footer.custom_css,expand.custom_documentation_footer.custom_js," +
+        "expand.custom_changelog_header.id,expand.custom_changelog_header.content,expand.custom_changelog_header.apply_full_width,expand.custom_changelog_header.is_sticky,expand.custom_changelog_header.custom_css,expand.custom_changelog_header.custom_js," +
+        "expand.custom_changelog_footer.id,expand.custom_changelog_footer.content,expand.custom_changelog_footer.apply_full_width,expand.custom_changelog_footer.custom_css,expand.custom_changelog_footer.custom_js," +
+        "expand.staged_documentation_header.id,expand.staged_documentation_header.content,expand.staged_documentation_header.apply_full_width,expand.staged_documentation_header.is_sticky,expand.staged_documentation_header.custom_css,expand.staged_documentation_header.custom_js," +
+        "expand.staged_documentation_footer.id,expand.staged_documentation_footer.content,expand.staged_documentation_footer.apply_full_width,expand.staged_documentation_footer.custom_css,expand.staged_documentation_footer.custom_js," +
+        "expand.staged_changelog_header.id,expand.staged_changelog_header.content,expand.staged_changelog_header.apply_full_width,expand.staged_changelog_header.is_sticky,expand.staged_changelog_header.custom_css,expand.staged_changelog_header.custom_js," +
+        "expand.staged_changelog_footer.id,expand.staged_changelog_footer.content,expand.staged_changelog_footer.apply_full_width,expand.staged_changelog_footer.custom_css,expand.staged_changelog_footer.custom_js",
+    });
+
+    if (record.owner !== userId || record.project !== projectId) {
+      logger.warn(`[PROJ] Forbidden attempt to preview staged entry ${entryId} by user ${userId}.`);
+      const err = new Error("Forbidden");
+      err.status = 403;
+      throw err;
+    }
 
     if (record.status !== "published" || !record.has_staged_changes) {
       logger.warn(`[PROJ] Staged preview requested for entry ${entryId}, but it's not published or has no staged changes. Status: ${record.status}, HasStaged: ${record.has_staged_changes}`);
@@ -1515,15 +1534,16 @@ router.get("/:projectId/preview-staged/:entryId", checkProjectAccess, async (req
       footerRecordToUse = record.expand?.staged_changelog_footer ?? record.expand?.custom_changelog_footer;
     }
 
-    let customHeaderHtml = null;
-    if (headerRecordToUse?.content) {
-      customHeaderHtml = parseMarkdownWithThemeImages(headerRecordToUse.content);
-    }
+    const customHeaderHtml = headerRecordToUse?.content ? parseMarkdownWithThemeImages(headerRecordToUse.content) : null;
+    const headerApplyFullWidth = headerRecordToUse?.apply_full_width === true;
+    const headerIsSticky = headerRecordToUse?.is_sticky === true;
+    const headerCustomCss = headerRecordToUse?.custom_css || null;
+    const headerCustomJs = headerRecordToUse?.custom_js || null;
 
-    let customFooterHtml = null;
-    if (footerRecordToUse?.content) {
-      customFooterHtml = parseMarkdownWithThemeImages(footerRecordToUse.content);
-    }
+    const customFooterHtml = footerRecordToUse?.content ? parseMarkdownWithThemeImages(footerRecordToUse.content) : null;
+    const footerApplyFullWidth = footerRecordToUse?.apply_full_width === true;
+    const footerCustomCss = footerRecordToUse?.custom_css || null;
+    const footerCustomJs = footerRecordToUse?.custom_js || null;
 
     let sidebarEntries = [];
     let hasPublishedKbEntries = false;
@@ -1542,10 +1562,7 @@ router.get("/:projectId/preview-staged/:entryId", checkProjectAccess, async (req
         logger.error(`[PROJ] Failed to fetch sidebar entries for project ${projectId}: Status ${sidebarError?.status || "N/A"}`, sidebarError?.message || sidebarError);
       }
       try {
-        await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && type = 'knowledge_base' && status = 'published'`, {
-          fields: "id",
-          $autoCancel: false,
-        });
+        await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && type = 'knowledge_base' && status = 'published'`, { fields: "id", $autoCancel: false });
         hasPublishedKbEntries = true;
       } catch (kbError) {
         if (kbError.status !== 404) {
@@ -1578,6 +1595,13 @@ router.get("/:projectId/preview-staged/:entryId", checkProjectAccess, async (req
       readingTime: readingTime,
       customHeaderHtml: customHeaderHtml,
       customFooterHtml: customFooterHtml,
+      headerApplyFullWidth: headerApplyFullWidth,
+      footerApplyFullWidth: footerApplyFullWidth,
+      headerIsSticky: headerIsSticky,
+      headerCustomCss: headerCustomCss,
+      headerCustomJs: headerCustomJs,
+      footerCustomCss: footerCustomCss,
+      footerCustomJs: footerCustomJs,
       pageTitle: `[STAGED PREVIEW] ${stagedTitle}`,
       isStagedPreview: true,
       hasPublishedKbEntries: hasPublishedKbEntries,
@@ -2563,27 +2587,27 @@ async function renderNewAssetForm(req, res, assetType, viewName) {
 async function handleNewAssetPost(req, res, assetType, collectionName, redirectPath) {
   const projectId = req.params.projectId;
   const userId = req.session.user.id;
-  const { name, content } = req.body;
+  const { name, content, is_sticky, custom_css, custom_js, apply_full_width } = req.body;
   logger.info(`[PROJ][ASSET] POST /projects/${projectId}/${assetType}/new attempt by user ${userId}. Name: ${name}`);
   logger.time(`[PROJ][ASSET] POST /new ${assetType} ${projectId}`);
 
   if (!name || name.trim() === "") {
     logger.warn(`[PROJ][ASSET] New ${assetType} validation failed for project ${projectId}: Name required.`);
     logger.timeEnd(`[PROJ][ASSET] POST /new ${assetType} ${projectId}`);
-    const viewName = `projects/new_${assetType.toLowerCase().replace(" ", "_")}`;
+    const viewName = `projects/new_${assetType.toLowerCase().replace(/ /g, "_")}`;
     return res.status(400).render(viewName, {
       pageTitle: `New ${assetType} - ${req.project.name}`,
       project: req.project,
       asset: {
         name,
         content,
+        is_sticky: is_sticky === "true",
+        custom_css,
+        custom_js,
+        apply_full_width: apply_full_width === "true",
       },
       assetType: assetType,
-      errors: {
-        name: {
-          message: "Name is required.",
-        },
-      },
+      errors: { name: { message: "Name is required." } },
     });
   }
 
@@ -2593,7 +2617,14 @@ async function handleNewAssetPost(req, res, assetType, collectionName, redirectP
       content: content || "",
       owner: userId,
       project: projectId,
+      apply_full_width: apply_full_width === "true",
+      custom_css: custom_css || "",
+      custom_js: custom_js || "",
     };
+    if (collectionName === "documentation_headers" || collectionName === "changelog_headers") {
+      data.is_sticky = is_sticky === "true";
+    }
+
     logger.debug(`[PROJ][ASSET] Creating ${assetType} in project ${projectId} with data:`, data);
     const newAsset = await pb.collection(collectionName).create(data);
     logger.info(`[PROJ][ASSET] ${assetType} created successfully: ${newAsset.id} (${newAsset.name}) in project ${projectId} by user ${userId}`);
@@ -2611,20 +2642,20 @@ async function handleNewAssetPost(req, res, assetType, collectionName, redirectP
       name: name,
       error: error?.message,
     });
-    const viewName = `projects/new_${assetType.toLowerCase().replace(" ", "_")}`;
+    const viewName = `projects/new_${assetType.toLowerCase().replace(/ /g, "_")}`;
     res.status(500).render(viewName, {
       pageTitle: `New ${assetType} - ${req.project.name}`,
       project: req.project,
       asset: {
         name,
         content,
+        is_sticky: is_sticky === "true",
+        custom_css,
+        custom_js,
+        apply_full_width: apply_full_width === "true",
       },
       assetType: assetType,
-      errors: {
-        general: {
-          message: `Failed to create ${assetType}.`,
-        },
-      },
+      errors: { general: { message: `Failed to create ${assetType}.` } },
     });
   }
 }
@@ -2666,7 +2697,7 @@ async function handleEditAssetPost(req, res, next, assetType, collectionName, re
   const assetId = req.params.assetId;
   const projectId = req.params.projectId;
   const userId = req.session.user.id;
-  const { name, content } = req.body;
+  const { name, content, is_sticky, custom_css, custom_js, apply_full_width } = req.body;
   logger.info(`[PROJ][ASSET] POST /projects/${projectId}/${assetType}/edit/${assetId} attempt by user ${userId}. Name: ${name}`);
   logger.time(`[PROJ][ASSET] POST /edit ${assetType} ${assetId}`);
 
@@ -2674,7 +2705,7 @@ async function handleEditAssetPost(req, res, next, assetType, collectionName, re
     logger.warn(`[PROJ][ASSET] Edit ${assetType} validation failed for ${assetId}, project ${projectId}: Name required.`);
     try {
       const asset = await getAssetFunction(assetId, userId, projectId);
-      const viewName = `projects/edit_${assetType.toLowerCase().replace(" ", "_")}`;
+      const viewName = `projects/edit_${assetType.toLowerCase().replace(/ /g, "_")}`;
       logger.timeEnd(`[PROJ][ASSET] POST /edit ${assetType} ${assetId}`);
       return res.status(400).render(viewName, {
         pageTitle: `Edit ${assetType} - ${req.project.name}`,
@@ -2683,13 +2714,13 @@ async function handleEditAssetPost(req, res, next, assetType, collectionName, re
           ...asset,
           name,
           content,
+          is_sticky: is_sticky === "true",
+          custom_css,
+          custom_js,
+          apply_full_width: apply_full_width === "true",
         },
         assetType: assetType,
-        errors: {
-          name: {
-            message: "Name is required.",
-          },
-        },
+        errors: { name: { message: "Name is required." } },
       });
     } catch (fetchError) {
       logger.error(`[PROJ][ASSET] Failed to fetch ${assetType} ${assetId} after edit validation error: ${fetchError.message}`);
@@ -2702,7 +2733,14 @@ async function handleEditAssetPost(req, res, next, assetType, collectionName, re
     const data = {
       name: name.trim(),
       content: content || "",
+      apply_full_width: apply_full_width === "true",
+      custom_css: custom_css || "",
+      custom_js: custom_js || "",
     };
+    if (collectionName === "documentation_headers" || collectionName === "changelog_headers") {
+      data.is_sticky = is_sticky === "true";
+    }
+
     logger.debug(`[PROJ][ASSET] Updating ${assetType} ${assetId} in project ${projectId} with data:`, data);
     const updatedAsset = await pb.collection(collectionName).update(assetId, data);
     logger.info(`[PROJ][ASSET] ${assetType} ${assetId} updated successfully in project ${projectId} by user ${userId}.`);
@@ -2725,7 +2763,7 @@ async function handleEditAssetPost(req, res, next, assetType, collectionName, re
     }
     try {
       const asset = await getAssetFunction(assetId, userId, projectId);
-      const viewName = `projects/edit_${assetType.toLowerCase().replace(" ", "_")}`;
+      const viewName = `projects/edit_${assetType.toLowerCase().replace(/ /g, "_")}`;
       res.status(500).render(viewName, {
         pageTitle: `Edit ${assetType} - ${req.project.name}`,
         project: req.project,
@@ -2733,13 +2771,13 @@ async function handleEditAssetPost(req, res, next, assetType, collectionName, re
           ...asset,
           name,
           content,
+          is_sticky: is_sticky === "true",
+          custom_css,
+          custom_js,
+          apply_full_width: apply_full_width === "true",
         },
         assetType: assetType,
-        errors: {
-          general: {
-            message: `Failed to update ${assetType}.`,
-          },
-        },
+        errors: { general: { message: `Failed to update ${assetType}.` } },
       });
     } catch (fetchError) {
       logger.error(`[PROJ][ASSET] Failed to fetch ${assetType} ${assetId} after update error: ${fetchError.message}`);

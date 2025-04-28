@@ -1,6 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
   const detailsModal = document.getElementById("details-modal");
-  const detailsModalTitle = document.getElementById("details-modal-title");
   const detailsModalContent = document.getElementById("details-modal-content");
   const detailsModalCloseBtn = document.getElementById("details-modal-close-btn");
   const detailsModalOkBtn = document.getElementById("details-modal-ok-btn");
@@ -26,6 +25,11 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentSortDir = "desc";
   let isLoading = false;
 
+  function escapeHtml(unsafe) {
+    if (typeof unsafe !== "string") return unsafe;
+    return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+
   function showDetailsModal(details) {
     if (!detailsModal || !detailsModalContent) return;
     try {
@@ -49,7 +53,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const userDisplay = log.user_email ? escapeHtml(log.user_email) : log.user ? `<span class="text-muted">${escapeHtml(log.user)}</span>` : '<span class="text-muted">System/Unknown</span>';
     const targetDisplay = log.target_collection ? `${escapeHtml(log.target_collection)}${log.target_record ? `:${escapeHtml(log.target_record)}` : ""}` : "-";
     const ipDisplay = log.ip_address ? escapeHtml(log.ip_address) : "-";
-    const detailsButton = log.details && Object.keys(log.details).length > 0 ? `<button class="btn btn-xs btn-secondary btn-view-details" title="View Details" data-details='${escapeHtml(JSON.stringify(log.details))}'><i class="fas fa-info-circle"></i></button>` : "-";
+
+    const detailsString = log.details && Object.keys(log.details).length > 0 ? JSON.stringify(log.details) : null;
+    const escapedDetailsAttribute = detailsString ? detailsString.replace(/"/g, "&quot;") : "";
+
+    const detailsButton = detailsString ? `<button class="btn btn-icon btn-view-details" title="View Details" data-details="${escapedDetailsAttribute}"><i class="fas fa-info-circle"></i></button>` : "-";
 
     return `
       <tr data-log-id="${escapeHtml(log.id)}">
@@ -210,9 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showDetailsModal(detailsData);
       } catch (e) {
         console.error("Failed to parse details JSON:", e);
-        showDetailsModal({
-          error: "Could not parse details.",
-        });
+        showDetailsModal({ error: "Could not parse details." });
       }
     }
   }
@@ -328,9 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const csvData = await response.text();
-      const blob = new Blob([csvData], {
-        type: "text/csv;charset=utf-8;",
-      });
+      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
 
       if (link.download !== undefined) {

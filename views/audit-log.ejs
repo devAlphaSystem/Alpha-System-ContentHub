@@ -3,26 +3,14 @@
 <%- include('partials/header', { pageTitle: locals.pageTitle, currentProjectId: null }) %>
 
 <style>
-  code {
-    background-color: unset !important;
-    border: unset !important;
-    padding: 0 !important;
-    font-size: 0.8em;
-    color: var(--text-code);
-  }
-
-  pre code {
-    padding: 10px !important;
-    font-size: 0.75rem !important;
-    background-color: var(--page-bg) !important;
-    border: 1px solid var(--border-light) !important;
-    color: var(--text-secondary) !important;
-  }
-
-  body.dark-mode pre code {
-    background-color: var(--dark-page-bg) !important;
-    border-color: var(--dark-border-light) !important;
-    color: var(--dark-text-secondary) !important;
+  #details-modal-content {
+    background-color: unset;
+    padding: unset;
+    border-radius: unset;
+    border: unset;
+    max-height: unset;
+    overflow: unset;
+    font-size: unset;
   }
 </style>
 
@@ -91,7 +79,9 @@
             </td>
             <td data-label="Details">
               <% if (log.details && Object.keys(log.details).length > 0) { %>
-                <button class="btn btn-xs btn-secondary btn-view-details" title="View Details" data-details="<%= JSON.stringify(log.details).replace(/"/g, '&quot;') %>">
+                <% const detailsJsonString = JSON.stringify(log.details); %>
+                <% const escapedDetails = detailsJsonString.replace(/"/g, '&quot;'); %>
+                <button class="btn btn-icon btn-view-details" title="View Details" data-details="<%- escapedDetails %>">
                   <i class="fas fa-info-circle"></i>
                 </button>
               <% } else { %>
