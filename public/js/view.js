@@ -449,4 +449,77 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
   }
+
+  const roadmapCards = document.querySelectorAll(".js-roadmap-card");
+  const roadmapModal = document.getElementById("roadmap-details-modal");
+  const roadmapModalTitle = document.getElementById("roadmap-modal-title");
+  const roadmapModalContent = document.getElementById("roadmap-modal-content");
+  const roadmapModalCloseBtn = document.getElementById("roadmap-modal-close-btn");
+  const roadmapModalOkBtn = document.getElementById("roadmap-modal-ok-btn");
+
+  function showRoadmapModal(title, content) {
+    if (!roadmapModal || !roadmapModalTitle || !roadmapModalContent || !marked) return;
+
+    roadmapModalTitle.textContent = title || "Roadmap Item Details";
+
+    if (content && content.trim() !== "") {
+      try {
+        const unsafeHtml = marked.parse(content);
+        roadmapModalContent.innerHTML = DOMPurify.sanitize(unsafeHtml, {
+          USE_PROFILES: { html: true },
+        });
+        hljs.highlightAll();
+        if (typeof initializeMermaid === "function") {
+          const currentTheme = document.body.classList.contains("dark-mode") ? "dark" : "light";
+          initializeMermaid(currentTheme);
+        }
+      } catch (e) {
+        console.error("Error parsing or rendering roadmap content:", e);
+        roadmapModalContent.innerHTML = "<p><em>Error displaying details.</em></p>";
+      }
+    } else {
+      roadmapModalContent.innerHTML = "<p><em>No details provided.</em></p>";
+    }
+
+    roadmapModal.classList.add("is-visible");
+    roadmapModal.setAttribute("aria-hidden", "false");
+  }
+
+  function hideRoadmapModal() {
+    if (roadmapModal) {
+      roadmapModal.classList.remove("is-visible");
+      roadmapModal.setAttribute("aria-hidden", "true");
+      if (roadmapModalContent) roadmapModalContent.innerHTML = "";
+    }
+  }
+
+  roadmapCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      const contentEncoded = card.dataset.content;
+      const title = card.dataset.title || "Details";
+      let content = "";
+      if (contentEncoded) {
+        try {
+          content = decodeURIComponent(contentEncoded);
+        } catch (e) {
+          console.error("Failed to decode roadmap content:", e);
+        }
+      }
+      showRoadmapModal(title, content);
+    });
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        card.click();
+      }
+    });
+  });
+
+  roadmapModalCloseBtn?.addEventListener("click", hideRoadmapModal);
+  roadmapModalOkBtn?.addEventListener("click", hideRoadmapModal);
+  roadmapModal?.addEventListener("click", (event) => {
+    if (event.target === roadmapModal) {
+      hideRoadmapModal();
+    }
+  });
 });

@@ -22,6 +22,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchInput = document.getElementById("search-input");
   const projectId = document.body.dataset.projectId;
 
+  const stageFilterSelect = document.getElementById("stage-filter-select");
+
+  const changeStageModal = document.getElementById("change-stage-modal");
+  const changeStageModalTitle = document.getElementById("change-stage-modal-title");
+  const changeStageEntryTitle = document.getElementById("change-stage-entry-title");
+  const changeStageSelect = document.getElementById("change-stage-select");
+  const changeStageStagedNotice = document.getElementById("change-stage-staged-notice");
+  const changeStageModalCloseBtn = document.getElementById("change-stage-modal-close-btn");
+  const changeStageModalCancelBtn = document.getElementById("change-stage-modal-cancel-btn");
+  const changeStageModalConfirmBtn = document.getElementById("change-stage-modal-confirm-btn");
+
   let currentPage = 1;
   let totalPages = 1;
   let totalItems = 0;
@@ -30,6 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentSortDir = "asc";
   let isLoading = false;
   let currentSearchTerm = "";
+  let currentStageFilter = "";
   let searchDebounceTimer;
 
   function debounce(func, delay) {
@@ -66,12 +78,13 @@ document.addEventListener("DOMContentLoaded", () => {
       : "";
 
     const stageDisplay = entry.roadmap_stage || "-";
+    const stagedStageDisplay = entry.staged_roadmap_stage || "";
 
     return `
       <tr data-entry-id="${escapeHtml(entry.id)}" data-updated-timestamp="${updatedTimestamp}">
         <td class="checkbox-column"><input type="checkbox" class="entry-checkbox" value="${escapeHtml(entry.id)}"></td>
         <td data-label="Title">${escapeHtml(entry.title)}</td>
-        <td data-label="Stage">${escapeHtml(stageDisplay)}</td>
+        <td data-label="Stage" class="stage-cell">${escapeHtml(stageDisplay)}</td>
         <td data-label="Status">
           <span class="badge status-badge status-${escapeHtml(entry.status.toLowerCase())}">${escapeHtml(entry.status)}</span>
           ${stagedBadge}
@@ -81,6 +94,9 @@ document.addEventListener("DOMContentLoaded", () => {
           ${publishStagedButton}
           <a href="${publicRoadmapUrl}" target="_blank" class="btn btn-icon btn-view" title="View Public Roadmap"><i class="fas fa-columns"></i></a>
           <a href="${editUrl}" class="btn btn-icon btn-edit" title="${editTitle}"><i class="fas fa-pencil-alt"></i></a>
+          <button type="button" class="btn btn-icon btn-change-stage" style="background: none;" title="Change Roadmap Stage" data-entry-id="${escapeHtml(entry.id)}" data-current-stage="${escapeHtml(stageDisplay)}" data-staged-stage="${escapeHtml(stagedStageDisplay)}" data-has-staged="${entry.has_staged_changes ? "true" : "false"}" data-entry-title="${escapeHtml(entry.title)}">
+            <i class="fas fa-tasks"></i>
+          </button>
           <form action="${archiveUrl}" method="POST" class="archive-form" title="Archive Item">
             <button type="submit" class="btn btn-icon btn-archive"><i class="fas fa-archive"></i></button>
           </form>
@@ -128,10 +144,17 @@ document.addEventListener("DOMContentLoaded", () => {
       if (noMatchRow) noMatchRow.remove();
     } else {
       const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 6;
-      const message = currentSearchTerm ? "No roadmap items match your search." : "No roadmap items found.";
+      let message = "No roadmap items found.";
+      if (currentSearchTerm && currentStageFilter) {
+        message = `No roadmap items match your search in the '${currentStageFilter}' stage.`;
+      } else if (currentSearchTerm) {
+        message = "No roadmap items match your search.";
+      } else if (currentStageFilter) {
+        message = `No roadmap items found in the '${currentStageFilter}' stage.`;
+      }
       entriesTableBody.innerHTML = `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">${message}</td></tr>`;
 
-      if (totalItems === 0) {
+      if (totalItems === 0 && !currentSearchTerm && !currentStageFilter) {
         if (dataCardElement) dataCardElement.classList.add("hidden");
         if (emptyStateCard) emptyStateCard.style.display = "";
       } else {
@@ -143,12 +166,12 @@ document.addEventListener("DOMContentLoaded", () => {
     updateBulkActionUI();
   }
 
-  async function fetchEntries(isNewSearch = false) {
+  async function fetchEntries(isNewSearchOrFilter = false) {
     if (isLoading || !projectId || entryType !== "roadmap") {
       return;
     }
     isLoading = true;
-    if (isNewSearch) currentPage = 1;
+    if (isNewSearchOrFilter) currentPage = 1;
 
     if (refreshButton) {
       refreshButton.disabled = true;
@@ -158,6 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (nextPageBtn) nextPageBtn.disabled = true;
     if (selectAllCheckbox) selectAllCheckbox.disabled = true;
     if (searchInput) searchInput.disabled = true;
+    if (stageFilterSelect) stageFilterSelect.disabled = true;
 
     const sortParam = `${currentSortDir === "desc" ? "-" : ""}${currentSortKey}`;
     const params = new URLSearchParams({
@@ -166,6 +190,10 @@ document.addEventListener("DOMContentLoaded", () => {
       sort: sortParam,
       type: entryType,
     });
+
+    if (currentStageFilter && currentStageFilter.trim() !== "") {
+      params.append("stage", currentStageFilter.trim());
+    }
 
     if (currentSearchTerm && currentSearchTerm.trim() !== "") {
       params.append("search", currentSearchTerm.trim());
@@ -210,6 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       if (selectAllCheckbox) selectAllCheckbox.disabled = totalItems === 0;
       if (searchInput) searchInput.disabled = false;
+      if (stageFilterSelect) stageFilterSelect.disabled = false;
       updatePaginationControls();
     }
   }
@@ -390,14 +419,107 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, 400);
 
+  function showChangeStageModal(button) {
+    const entryId = button.dataset.entryId;
+    const currentStage = button.dataset.currentStage;
+    const stagedStage = button.dataset.stagedStage;
+    const hasStaged = button.dataset.hasStaged === "true";
+    const entryTitle = button.dataset.entryTitle;
+
+    if (!changeStageModal || !changeStageEntryTitle || !changeStageSelect || !changeStageStagedNotice || !changeStageModalConfirmBtn) return;
+
+    changeStageEntryTitle.textContent = entryTitle || "this item";
+    changeStageModalConfirmBtn.dataset.entryId = entryId;
+    changeStageModalConfirmBtn.dataset.hasStaged = hasStaged.toString();
+
+    const stageToSelect = hasStaged ? stagedStage : currentStage;
+    changeStageSelect.value = stageToSelect || "Planned";
+
+    changeStageStagedNotice.style.display = hasStaged ? "block" : "none";
+
+    changeStageModal.classList.add("is-visible");
+    changeStageModal.setAttribute("aria-hidden", "false");
+  }
+
+  function hideChangeStageModal() {
+    if (changeStageModal) {
+      changeStageModal.classList.remove("is-visible");
+      changeStageModal.setAttribute("aria-hidden", "true");
+    }
+  }
+
+  async function handleChangeStageConfirm() {
+    if (isLoading || !changeStageModalConfirmBtn || !changeStageSelect) return;
+
+    const entryId = changeStageModalConfirmBtn.dataset.entryId;
+    const hasStaged = changeStageModalConfirmBtn.dataset.hasStaged === "true";
+    const newStage = changeStageSelect.value;
+
+    if (!entryId || !newStage) {
+      window.showAlertModal("Error: Missing entry ID or stage.", "Error");
+      return;
+    }
+
+    isLoading = true;
+    changeStageModalConfirmBtn.disabled = true;
+    changeStageModalConfirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Updating...`;
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/entries/${entryId}/change-stage`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ newStage, updateStaged: hasStaged }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `Server error ${response.status}`);
+      }
+
+      hideChangeStageModal();
+      window.showAlertModal(result.message || "Stage updated successfully.", "Success");
+
+      const row = entriesTableBody?.querySelector(`tr[data-entry-id="${entryId}"]`);
+      const stageCell = row?.querySelector(".stage-cell");
+      if (stageCell && !hasStaged) {
+        stageCell.textContent = newStage;
+      } else if (row && hasStaged) {
+        const changeStageButton = row.querySelector(".btn-change-stage");
+        if (changeStageButton) {
+          changeStageButton.dataset.stagedStage = newStage;
+        }
+      }
+    } catch (error) {
+      console.error("Failed to change stage:", error);
+      window.showAlertModal(`Error updating stage: ${error.message}`, "Error");
+    } finally {
+      isLoading = false;
+      changeStageModalConfirmBtn.disabled = false;
+      changeStageModalConfirmBtn.innerHTML = "Update Stage";
+    }
+  }
+
   function attachActionListeners() {
     entriesTableBody?.removeEventListener("submit", handleStandardFormSubmit);
     entriesTableBody?.removeEventListener("click", handleApiButtonClick);
     entriesTableBody?.removeEventListener("change", handleCheckboxChange);
+    entriesTableBody?.removeEventListener("click", handleChangeStageClick);
 
     entriesTableBody?.addEventListener("submit", handleStandardFormSubmit);
     entriesTableBody?.addEventListener("click", handleApiButtonClick);
     entriesTableBody?.addEventListener("change", handleCheckboxChange);
+    entriesTableBody?.addEventListener("click", handleChangeStageClick);
+  }
+
+  function handleChangeStageClick(event) {
+    const button = event.target.closest(".btn-change-stage");
+    if (button) {
+      showChangeStageModal(button);
+    }
   }
 
   function attachSortListeners() {
@@ -502,6 +624,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   searchInput?.addEventListener("input", debouncedSearch);
 
+  stageFilterSelect?.addEventListener("change", () => {
+    if (isLoading) return;
+    currentStageFilter = stageFilterSelect.value;
+    fetchEntries(true);
+  });
+
+  changeStageModalCloseBtn?.addEventListener("click", hideChangeStageModal);
+  changeStageModalCancelBtn?.addEventListener("click", hideChangeStageModal);
+  changeStageModalConfirmBtn?.addEventListener("click", handleChangeStageConfirm);
+  changeStageModal?.addEventListener("click", (event) => {
+    if (event.target === changeStageModal) {
+      hideChangeStageModal();
+    }
+  });
+
   function initializeProjectRoadmaps() {
     if (!projectId || entryType !== "roadmap") {
       console.error("Initialization skipped: Missing projectId or incorrect entryType.");
@@ -578,6 +715,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (searchInput) {
       searchInput.value = "";
       currentSearchTerm = "";
+    }
+
+    if (stageFilterSelect) {
+      stageFilterSelect.value = "";
+      currentStageFilter = "";
     }
   }
 

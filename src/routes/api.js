@@ -135,9 +135,7 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
   if (!entryType || !["documentation", "changelog", "roadmap", "knowledge_base", "sidebar_header"].includes(entryType)) {
     logger.warn(`[API] Invalid or missing entry type filter for project ${projectId}: ${entryType}`);
     logger.timeEnd(`[API] GET /projects/${projectId}/entries ${userId} ${entryType}`);
-    return res.status(400).json({
-      error: "Invalid or missing entry type filter.",
-    });
+    return res.status(400).json({ error: "Invalid or missing entry type filter." });
   }
 
   try {
@@ -148,6 +146,7 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
     const statusFilter = req.query.status;
     const collectionFilter = req.query.collection;
     const searchTerm = req.query.search;
+    const stageFilter = req.query.stage;
 
     if (statusFilter && ["published", "draft"].includes(statusFilter)) {
       baseFilterParts.push(`status = '${statusFilter}'`);
@@ -158,6 +157,16 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
       const escapedCollection = collectionFilter.replace(/'/g, "''");
       baseFilterParts.push(`collection = '${escapedCollection}'`);
       logger.trace(`[API] Adding collection filter: ${escapedCollection}`);
+    }
+
+    if (entryType === "roadmap" && stageFilter && stageFilter.trim() !== "") {
+      const validStages = ["Planned", "Next Up", "In Progress", "Done"];
+      if (validStages.includes(stageFilter)) {
+        baseFilterParts.push(`roadmap_stage = '${stageFilter}'`);
+        logger.trace(`[API] Adding stage filter: ${stageFilter}`);
+      } else {
+        logger.warn(`[API] Invalid stage filter value received: ${stageFilter}`);
+      }
     }
 
     if (searchTerm && searchTerm.trim() !== "") {
@@ -173,7 +182,7 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
     const resultList = await pb.collection("entries_main").getList(page, perPage, {
       sort: sort,
       filter: combinedFilter,
-      fields: "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,roadmap_stage,total_view_duration,view_duration_count,helpful_yes,helpful_no,content_updated_at",
+      fields: "id,title,status,type,collection,views,updated,owner,has_staged_changes,tags,roadmap_stage,staged_roadmap_stage,total_view_duration,view_duration_count,helpful_yes,helpful_no,content_updated_at",
     });
     logger.debug(`[API] Fetched ${resultList.items.length} ${entryType} entries (page ${page}/${resultList.totalPages}) for project ${projectId}`);
 
@@ -193,6 +202,7 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
         }),
         has_staged_changes: entry.has_staged_changes ?? false,
         systemUpdatedAt: entry.updated,
+        staged_roadmap_stage: entry.staged_roadmap_stage || null,
       });
     }
 
@@ -209,13 +219,9 @@ router.get("/projects/:projectId/entries", requireLogin, checkProjectAccessApi, 
     logger.error(`[API] Error fetching entries for project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
     if (error?.data?.message?.includes("filter")) {
       logger.error("[API] PocketBase filter error details:", error.data);
-      return res.status(400).json({
-        error: "Invalid search or filter criteria.",
-      });
+      return res.status(400).json({ error: "Invalid search or filter criteria." });
     }
-    res.status(500).json({
-      error: "Failed to fetch entries",
-    });
+    res.status(500).json({ error: "Failed to fetch entries" });
   }
 });
 
@@ -1492,7 +1498,7 @@ router.post("/projects/:projectId/entries/:entryId/duplicate", requireLogin, che
       custom_changelog_header: dataToDuplicate.custom_changelog_header || null,
       custom_changelog_footer: dataToDuplicate.custom_changelog_footer || null,
       roadmap_stage: dataToDuplicate.roadmap_stage || null,
-      content: dataToDuplicate.type === "roadmap" || dataToDuplicate.type === "sidebar_header" ? "" : dataToDuplicate.content,
+      content: dataToDuplicate.type === "sidebar_header" ? "" : dataToDuplicate.content,
       content_updated_at: new Date().toISOString(),
     };
 
@@ -1714,6 +1720,81 @@ router.post("/projects/:projectId/sidebar-headers/:headerId", requireLogin, chec
     res.status(500).json({
       error: "Failed to update sidebar header.",
     });
+  }
+});
+
+router.post("/projects/:projectId/entries/:id/change-stage", requireLogin, checkProjectAccessApi, async (req, res) => {
+  const entryId = req.params.id;
+  const projectId = req.params.projectId;
+  const userId = req.session.user.id;
+  const { newStage, updateStaged } = req.body;
+  const validStages = ["Planned", "Next Up", "In Progress", "Done"];
+
+  logger.info(`[API] Attempting to change stage for entry ${entryId} in project ${projectId} by user ${userId}. New Stage: ${newStage}, Update Staged: ${updateStaged}`);
+  logger.time(`[API] POST /change-stage ${entryId}`);
+
+  if (!newStage || !validStages.includes(newStage)) {
+    logger.warn(`[API] Invalid stage provided for entry ${entryId}: ${newStage}`);
+    logger.timeEnd(`[API] POST /change-stage ${entryId}`);
+    return res.status(400).json({ error: "Invalid stage provided." });
+  }
+
+  try {
+    const record = await pbAdmin.collection("entries_main").getOne(entryId);
+
+    if (record.owner !== userId || record.project !== projectId) {
+      logger.warn(`[API] Forbidden attempt to change stage for entry ${entryId} by user ${userId}.`);
+      logAuditEvent(req, "ENTRY_CHANGE_STAGE_FAILURE", "entries_main", entryId, { projectId: projectId, reason: "Forbidden" });
+      logger.timeEnd(`[API] POST /change-stage ${entryId}`);
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    if (record.type !== "roadmap") {
+      logger.warn(`[API] Attempt to change stage for non-roadmap entry ${entryId} (type: ${record.type}).`);
+      logAuditEvent(req, "ENTRY_CHANGE_STAGE_FAILURE", "entries_main", entryId, { projectId: projectId, reason: "Not a roadmap entry" });
+      logger.timeEnd(`[API] POST /change-stage ${entryId}`);
+      return res.status(400).json({ error: "Stage can only be changed for roadmap entries." });
+    }
+
+    const updateData = {};
+    let actionType = "ENTRY_UPDATE_STAGE";
+    const isStagedUpdate = updateStaged === true && record.has_staged_changes;
+
+    if (isStagedUpdate) {
+      updateData.staged_roadmap_stage = newStage;
+      actionType = "ENTRY_STAGE_STAGE_UPDATE";
+      logger.debug(`[API] Updating STAGED roadmap stage for entry ${entryId} to ${newStage}.`);
+    } else {
+      updateData.roadmap_stage = newStage;
+      logger.debug(`[API] Updating MAIN roadmap stage for entry ${entryId} to ${newStage}.`);
+      if (record.has_staged_changes) {
+        logger.warn(`[API] Updating main stage for entry ${entryId} which has staged changes. Staged stage remains unchanged.`);
+      }
+    }
+
+    await pbAdmin.collection("entries_main").update(entryId, updateData);
+
+    logAuditEvent(req, actionType, "entries_main", entryId, {
+      projectId: projectId,
+      title: record.title,
+      newStage: newStage,
+      updatedStagedField: isStagedUpdate,
+    });
+    logger.info(`[API] Roadmap stage for entry ${entryId} updated successfully to ${newStage} (${isStagedUpdate ? "staged" : "main"}).`);
+
+    logger.timeEnd(`[API] POST /change-stage ${entryId}`);
+    res.status(200).json({ message: "Roadmap stage updated successfully." });
+  } catch (error) {
+    logger.timeEnd(`[API] POST /change-stage ${entryId}`);
+    logger.error(`[API] Error changing stage for entry ${entryId} in project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    logAuditEvent(req, "ENTRY_CHANGE_STAGE_FAILURE", "entries_main", entryId, { projectId: projectId, error: error?.message });
+    if (error.status === 404) {
+      return res.status(404).json({ error: "Entry not found." });
+    }
+    if (error.status === 403) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    res.status(500).json({ error: "Failed to update roadmap stage." });
   }
 });
 

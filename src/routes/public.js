@@ -371,6 +371,7 @@ router.get("/roadmap/:projectId", async (req, res, next) => {
         entriesByStage[stage].push({
           id: entry.id,
           title: entry.title,
+          content: entry.content || "",
           tags: entry.tags
             ? entry.tags
                 .split(",")

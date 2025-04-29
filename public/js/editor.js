@@ -866,10 +866,16 @@ document.addEventListener("DOMContentLoaded", () => {
       if (sidebarGroup) sidebarGroup.style.display = "block";
     } else if (selectedType === "roadmap") {
       if (roadmapStageGroup) roadmapStageGroup.style.display = "block";
-      if (contentGroup) contentGroup.style.display = "none";
+      if (contentGroup) contentGroup.style.display = "block";
+      if (contentLabel) contentLabel.innerHTML = "Description (Markdown - Optional)";
+      if (tagsGroup) tagsGroup.style.display = "none";
     } else if (selectedType === "knowledge_base") {
       if (contentGroup) contentGroup.style.display = "block";
       if (contentLabel) contentLabel.innerHTML = 'Answer (Markdown) <span class="required">*</span>';
+      if (tagsGroup) tagsGroup.style.display = "none";
+    } else if (selectedType === "sidebar_header") {
+      if (contentGroup) contentGroup.style.display = "none";
+      if (sidebarGroup) sidebarGroup.style.display = "block";
     }
   }
 

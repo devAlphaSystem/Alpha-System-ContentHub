@@ -1193,7 +1193,7 @@ router.post("/:projectId/new", checkProjectAccess, async (req, res) => {
   const data = {
     title,
     type,
-    content: type === "roadmap" ? "" : content,
+    content: content || "",
     status: status || "draft",
     tags: tags || "",
     collection: collection || "",
@@ -1529,7 +1529,7 @@ router.post("/:projectId/edit/:entryId", checkProjectAccess, async (req, res, ne
       updateData = {
         staged_title: title,
         staged_type: submittedType,
-        staged_content: submittedType === "roadmap" || submittedType === "sidebar_header" ? "" : content,
+        staged_content: submittedType === "sidebar_header" ? "" : content,
         staged_tags: submittedType === "sidebar_header" ? "" : tags || "",
         staged_documentation_header: submittedType === "documentation" ? custom_documentation_header || null : null,
         staged_documentation_footer: submittedType === "documentation" ? custom_documentation_footer || null : null,
@@ -1545,7 +1545,7 @@ router.post("/:projectId/edit/:entryId", checkProjectAccess, async (req, res, ne
       updateData = {
         title,
         type: submittedType,
-        content: submittedType === "roadmap" || submittedType === "sidebar_header" ? "" : content,
+        content: submittedType === "sidebar_header" ? "" : content,
         tags: submittedType === "sidebar_header" ? "" : tags || "",
         collection: submittedType === "sidebar_header" ? "" : collection || "",
         status: submittedType === "sidebar_header" ? "published" : submittedStatus,

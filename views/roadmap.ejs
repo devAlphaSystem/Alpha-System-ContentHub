@@ -133,7 +133,7 @@
         padding: 16px;
         margin-bottom: 12px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        cursor: grab;
+        cursor: pointer;
         transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
       }
 
@@ -151,7 +151,6 @@
         font-size: 0.95rem;
         font-weight: 600;
         color: var(--text-primary);
-        margin: 0 0 8px 0;
         line-height: 1.4;
       }
 
@@ -246,6 +245,212 @@
 
         .roadmap-card-title {
           font-size: 0.9rem;
+        }
+      }
+
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        visibility: hidden;
+        transition:
+          opacity 0.2s ease-in-out,
+          visibility 0s linear 0.2s;
+        z-index: 1050;
+        padding: 16px;
+      }
+
+      .modal-overlay.is-visible {
+        opacity: 1;
+        visibility: visible;
+        transition-delay: 0s;
+      }
+
+      .modal-content {
+        background-color: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-primary);
+        box-shadow: 0 4px 12px var(--shadow-color);
+        max-width: 700px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        transform: scale(0.95);
+        transition: transform 0.2s ease-in-out;
+        max-height: calc(100vh - 32px);
+        overflow: hidden;
+      }
+
+      .modal-overlay.is-visible .modal-content {
+        transform: scale(1);
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border-primary);
+        flex-shrink: 0;
+      }
+
+      .modal-title-text {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+      }
+
+      .modal-close-btn {
+        background: none;
+        border: none;
+        font-size: 1.75rem;
+        font-weight: 300;
+        line-height: 1;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0 5px;
+        opacity: 0.7;
+        transition: opacity 0.15s ease;
+      }
+
+      .modal-close-btn:hover {
+        opacity: 1;
+      }
+
+      .modal-body {
+        padding: 24px;
+        font-size: 1rem;
+        color: var(--text-secondary);
+        line-height: 1.7;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      #roadmap-modal-content {
+        max-height: 60vh;
+        overflow-y: auto;
+      }
+
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 16px 24px;
+        border-top: 1px solid var(--border-primary);
+        background-color: var(--bg-secondary);
+        border-bottom-left-radius: var(--radius-lg);
+        border-bottom-right-radius: var(--radius-lg);
+        flex-shrink: 0;
+        flex-wrap: wrap;
+      }
+
+      .modal-footer .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border: 1px solid var(--border-secondary);
+        border-radius: var(--radius-md);
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.5;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+        letter-spacing: 0.01em;
+        background-color: var(--bg-primary);
+        color: var(--link-color);
+      }
+
+      .modal-footer .btn:hover {
+        background-color: var(--bg-secondary);
+        border-color: var(--text-muted);
+        color: var(--link-hover-color);
+      }
+
+      .modal-footer .btn-primary {
+        background-color: var(--link-color);
+        border-color: var(--link-color);
+        color: var(--bg-primary);
+      }
+
+      .modal-footer .btn-primary:hover {
+        background-color: var(--link-hover-color);
+        border-color: var(--link-hover-color);
+        color: var(--bg-primary);
+      }
+
+      body.dark-mode .modal-overlay {
+        background-color: rgba(0, 0, 0, 0.7);
+      }
+
+      body.dark-mode .modal-content {
+        background-color: var(--dark-bg-primary);
+        border-color: var(--dark-border-primary);
+        box-shadow: 0 4px 12px var(--dark-shadow-color);
+      }
+
+      body.dark-mode .modal-header {
+        border-bottom-color: var(--dark-border-primary);
+      }
+
+      body.dark-mode .modal-title-text {
+        color: var(--dark-text-primary);
+      }
+
+      body.dark-mode .modal-close-btn {
+        color: var(--dark-text-muted);
+      }
+
+      body.dark-mode .modal-body {
+        color: var(--dark-text-secondary);
+      }
+
+      body.dark-mode .modal-footer {
+        background-color: var(--dark-bg-secondary);
+        border-top-color: var(--dark-border-primary);
+      }
+
+      body.dark-mode .modal-footer .btn {
+        background-color: var(--dark-bg-primary);
+        border-color: var(--dark-border-secondary);
+        color: var(--dark-link-color);
+      }
+
+      body.dark-mode .modal-footer .btn:hover {
+        background-color: var(--dark-bg-secondary);
+        border-color: var(--dark-text-muted);
+        color: var(--dark-link-hover-color);
+      }
+
+      body.dark-mode .modal-footer .btn-primary {
+        background-color: var(--dark-link-color);
+        border-color: var(--dark-link-color);
+        color: var(--dark-bg-primary);
+      }
+
+      body.dark-mode .modal-footer .btn-primary:hover {
+        background-color: var(--dark-link-hover-color);
+        border-color: var(--dark-link-hover-color);
+        color: var(--dark-bg-primary);
+      }
+
+      @media (max-width: 576px) {
+        .modal-header,
+        .modal-body,
+        .modal-footer {
+          padding: 16px;
+        }
+
+        .modal-content {
+          max-width: calc(100% - 20px);
         }
       }
     </style>
@@ -348,16 +553,16 @@
                 <div class="roadmap-cards">
                   <% if (entriesByStage[stage] && entriesByStage[stage].length > 0) { %>
                     <% entriesByStage[stage].forEach(entry => { %>
-                      <div class="roadmap-card" data-id="<%= entry.id %>">
-                        <h3 class="roadmap-card-title"><%= entry.title %></h3>
-                        <% if (entry.tags && entry.tags.length > 0) { %>
-                          <div class="roadmap-card-tags">
-                            <% entry.tags.forEach(tag => { %>
-                              <span class="tag-badge"><%= tag %></span>
-                            <% }) %>
-                          </div>
-                        <% } %>
-                      </div>
+                    <div class="roadmap-card js-roadmap-card" data-id="<%= entry.id %>" data-content="<%= encodeURIComponent(entry.content) %>" data-title="<%= entry.title %>" role="button" tabindex="0">
+                      <h3 class="roadmap-card-title"><%= entry.title %></h3>
+                      <% if (entry.tags && entry.tags.length > 0) { %>
+                        <div class="roadmap-card-tags">
+                          <% entry.tags.forEach(tag => { %>
+                            <span class="tag-badge"><%= tag %></span>
+                          <% }) %>
+                        </div>
+                      <% } %>
+                    </div>
                     <% }) %>
                   <% } else { %>
                     <p class="empty-stage-message">No items in this stage.</p>
@@ -366,6 +571,28 @@
               </div>
             <% }) %>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="roadmap-details-modal" class="modal-overlay" aria-hidden="true">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="roadmap-modal-title" style="max-width: 700px">
+        <div class="modal-header">
+          <h3 id="roadmap-modal-title" class="modal-title-text">
+            Roadmap Item Details
+          </h3>
+          <button id="roadmap-modal-close-btn" class="modal-close-btn" aria-label="Close">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <div id="roadmap-modal-content" class="markdown-body" style="max-height: 60vh; overflow-y: auto">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="roadmap-modal-ok-btn" class="btn btn-primary">
+            Close
+          </button>
         </div>
       </div>
     </div>
@@ -400,6 +627,10 @@
     </script>
 
     <script src="/js/vendors/highlight.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
     <script src="/js/view.js"></script>
   </body>
 </html>

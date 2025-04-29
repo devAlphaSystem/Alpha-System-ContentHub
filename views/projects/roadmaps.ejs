@@ -6,6 +6,20 @@
 <div class="content-header">
   <h1>Roadmap Entries: <span class="text-muted"><%= project.name %></span></h1>
   <div class="header-actions">
+    <div class="filter-group">
+      <label for="stage-filter-select" class="sr-only">Filter by Stage</label>
+      <select id="stage-filter-select" class="form-control filter-select">
+        <option value="">All Stages</option>
+        <option value="Planned">Planned</option>
+        <option value="Next Up">Next Up</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Done">Done</option>
+      </select>
+    </div>
+    <div class="search-group">
+      <label for="search-input" class="sr-only">Search Roadmap</label>
+      <input type="search" id="search-input" class="form-control" placeholder="Search roadmap..." title="Search by Title"/>
+    </div>
     <button id="refresh-entries-btn" class="btn btn-secondary" title="Refresh Table"> <i class="fas fa-sync-alt"></i> <span>Refresh</span> </button>
     <a href="/projects/<%= project.id %>/new?type=roadmap" class="btn btn-primary"> <i class="fas fa-plus"></i> Create New Roadmap Item </a>
   </div>
@@ -81,6 +95,9 @@
               <% } %>
               <a href="/roadmap/<%= project.id %>" target="_blank" class="btn btn-icon btn-view" title="View Public Roadmap"><i class="fas fa-columns"></i></a>
               <a href="/projects/<%= project.id %>/edit/<%= entry.id %>" class="btn btn-icon btn-edit" title="Edit <%= entry.has_staged_changes ? 'Staged ' : '' %>Entry"><i class="fas fa-pencil-alt"></i></a>
+              <button type="button" class="btn btn-icon btn-change-stage" style="background: none;" title="Change Roadmap Stage" data-entry-id="<%= entry.id %>" data-current-stage="<%= entry.roadmap_stage || '' %>" data-staged-stage="<%= entry.staged_roadmap_stage || '' %>" data-has-staged="<%= entry.has_staged_changes ? 'true' : 'false' %>" data-entry-title="<%= entry.title %>">
+                <i class="fas fa-tasks"></i>
+              </button>
               <form action="/projects/<%= project.id %>/archive/<%= entry.id %>" method="POST" class="archive-form" title="Archive Item">
                 <button type="submit" class="btn btn-icon btn-archive"><i class="fas fa-archive"></i></button>
               </form>
@@ -115,5 +132,31 @@
     <a href="/projects/<%= project.id %>/new?type=roadmap" class="btn btn-primary">Create First Roadmap Item</a>
   </div>
 <% } %>
+
+<div id="change-stage-modal" class="modal-overlay" aria-hidden="true">
+  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="change-stage-modal-title">
+    <div class="modal-header">
+      <h3 id="change-stage-modal-title" class="modal-title-text">Change Roadmap Stage</h3>
+      <button id="change-stage-modal-close-btn" class="modal-close-btn" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>Select the new stage for: <strong id="change-stage-entry-title"></strong></p>
+      <div class="form-group">
+        <label for="change-stage-select">New Stage</label>
+        <select id="change-stage-select" class="form-control">
+          <option value="Planned">Planned</option>
+          <option value="Next Up">Next Up</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Done">Done</option>
+        </select>
+        <small id="change-stage-staged-notice" class="form-text" style="color: var(--warning-color); display: none; margin-top: 5px">Note: This item has staged changes. Updating the stage here will update the <strong>staged</strong> stage.</small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="change-stage-modal-cancel-btn" class="btn btn-secondary">Cancel</button>
+      <button id="change-stage-modal-confirm-btn" class="btn btn-primary" data-entry-id="" data-has-staged="">Update Stage</button>
+    </div>
+  </div>
+</div>
 
 <%- include('../partials/footer', { scriptPath: '/js/roadmaps.js' }) %>
