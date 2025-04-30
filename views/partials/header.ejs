@@ -9,7 +9,34 @@
     <link rel="preload" href="/img/logo_white.png" as="image">
     <link rel="preload" href="/img/logo.png" as="image">
 
-    <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
+    <% if (locals.project && locals.project.favicon) { %>
+      <%
+        let faviconMimeType = 'image/png';
+        const extension = locals.project.favicon.split('.').pop().toLowerCase();
+        if (extension === 'ico') {
+          faviconMimeType = 'image/x-icon';
+        } else if (extension === 'svg') {
+          faviconMimeType = 'image/svg+xml';
+        }
+      %>
+      <link rel="icon" type="<%= faviconMimeType %>" href="<%= locals.pocketbaseUrl %>/api/files/projects/<%= project.id %>/<%= project.favicon %>">
+    <% } else if (locals.currentProjectId && locals.projects) { %>
+      <% const currentProjectData = locals.projects.find(p => p.id === locals.currentProjectId); %>
+      <% if (currentProjectData && currentProjectData.favicon) { %>
+        <%
+          let listFaviconMimeType = 'image/png';
+          const listExtension = currentProjectData.favicon.split('.').pop().toLowerCase();
+          if (listExtension === 'ico') {
+            listFaviconMimeType = 'image/x-icon';
+          } else if (listExtension === 'svg') {
+            listFaviconMimeType = 'image/svg+xml';
+          }
+        %>
+        <link rel="icon" type="<%= listFaviconMimeType %>" href="<%= locals.pocketbaseUrl %>/api/files/projects/<%= currentProjectData.id %>/<%= currentProjectData.favicon %>">
+      <% } %>
+    <% } else { %>
+      <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
+    <% } %>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

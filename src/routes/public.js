@@ -1,6 +1,6 @@
 import express from "express";
 import { marked } from "marked";
-import { pbAdmin, previewPasswordLimiter, apiLimiter } from "../config.js";
+import { pbAdmin, previewPasswordLimiter, apiLimiter, POCKETBASE_URL } from "../config.js";
 import { getPublicEntryById, getDraftEntryForPreview, sanitizeHtml, hashPreviewPassword, logEntryView, logAuditEvent, calculateReadingTime, getIP } from "../utils.js";
 import { logger } from "../logger.js";
 
@@ -72,12 +72,14 @@ router.get("/project-access/:projectId/password", async (req, res, next) => {
   logger.debug(`[PUBLIC] Accessing project password page for project ${projectId}`);
   try {
     const project = await pbAdmin.collection("projects").getOne(projectId, {
-      fields: "id, name",
+      fields: "id, name, favicon",
     });
     res.render("projects/project_password", {
       pageTitle: `Password Required - ${project.name}`,
       projectId: projectId,
       projectName: project.name,
+      project: project,
+      POCKETBASE_URL: POCKETBASE_URL,
       error: req.query.error,
       returnTo: returnTo,
     });
@@ -287,6 +289,7 @@ router.get("/view/:id", async (req, res, next) => {
     res.render("view", {
       entry: entry,
       project: project,
+      POCKETBASE_URL: POCKETBASE_URL,
       sidebarEntries: sidebarEntries,
       contentHtml: cleanMainHtml,
       readingTime: readingTime,
@@ -325,7 +328,7 @@ router.get("/roadmap/:projectId", async (req, res, next) => {
   let hasPublishedKbEntries = false;
   try {
     const project = await pbAdmin.collection("projects").getOne(projectId, {
-      fields: "id, name, is_publicly_viewable, password_protected, access_password_hash, roadmap_enabled, use_full_width_content",
+      fields: "id, name, is_publicly_viewable, password_protected, access_password_hash, roadmap_enabled, use_full_width_content, favicon",
     });
 
     if (!project || !project.is_publicly_viewable || !project.roadmap_enabled) {
@@ -416,6 +419,7 @@ router.get("/roadmap/:projectId", async (req, res, next) => {
     res.render("roadmap", {
       pageTitle: `Roadmap - ${project.name}`,
       project: project,
+      POCKETBASE_URL: POCKETBASE_URL,
       stages: stages,
       entriesByStage: entriesByStage,
       sidebarEntries: sidebarEntries,
@@ -548,6 +552,7 @@ router.get("/preview/:token", async (req, res, next) => {
     res.render("preview/view", {
       entry: entryForView,
       project: project,
+      POCKETBASE_URL: POCKETBASE_URL,
       sidebarEntries: sidebarEntries,
       contentHtml: cleanMainHtml,
       readingTime: readingTime,
@@ -641,7 +646,7 @@ router.get("/kb/:projectId", async (req, res, next) => {
   logger.time(`[PUBLIC] /kb/${projectId}`);
   try {
     const project = await pbAdmin.collection("projects").getOne(projectId, {
-      fields: "id, name, is_publicly_viewable, password_protected, access_password_hash, roadmap_enabled, use_full_width_content",
+      fields: "id, name, is_publicly_viewable, password_protected, access_password_hash, roadmap_enabled, use_full_width_content, favicon",
     });
 
     if (!project || !project.is_publicly_viewable) {
@@ -718,6 +723,7 @@ router.get("/kb/:projectId", async (req, res, next) => {
     res.render("knowledge", {
       pageTitle: `Knowledge Base - ${project.name}`,
       project: project,
+      POCKETBASE_URL: POCKETBASE_URL,
       kbEntries: kbEntries,
       sidebarEntries: sidebarEntries,
       hasPublishedKbEntries: true,

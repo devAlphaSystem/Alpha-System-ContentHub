@@ -28,7 +28,7 @@
 <% } %>
 
 <div class="card form-card">
-  <form action="/projects/<%= project.id %>/edit" method="POST" novalidate autocomplete="off" id="edit-form">
+  <form action="/projects/<%= project.id %>/edit" method="POST" enctype="multipart/form-data" novalidate autocomplete="off" id="edit-form">
     <div class="form-group form-group-full" style="margin-bottom: 15px;">
       <label for="name">Project Name <span class="required">*</span></label>
       <input type="text" id="name" name="name" required class="form-control <%= locals.errors?.name ? 'is-invalid' : '' %>" value="<%= project.name %>" autofocus>
@@ -103,6 +103,23 @@
       <small class="form-text">If enabled, the main content area on public view pages will span the full width, removing side padding.</small>
     </div>
 
+    <div class="form-group form-group-full">
+      <label for="favicon">Project Favicon (Optional)</label>
+      <% if (locals.faviconUrl) { %>
+        <div style="margin-bottom: 10px;">
+          <img src="<%= faviconUrl %>" alt="Current Favicon" style="max-width: 32px; max-height: 32px; vertical-align: middle; margin-right: 10px;">
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Current Favicon</span>
+          <div class="form-check" style="display: inline-block; margin-left: 20px;">
+            <input class="form-check-input" type="checkbox" id="remove_favicon" name="remove_favicon" value="true">
+            <label class="form-check-label" for="remove_favicon" style="font-size: 0.8rem;">Remove Favicon</label>
+          </div>
+        </div>
+      <% } %>
+      <input type="file" id="favicon" name="favicon" class="form-control <%= locals.errors?.favicon ? 'is-invalid' : '' %>" accept=".ico,.png,.svg">
+      <small class="form-text">Upload a .ico, .png, or .svg file (max 1MB). Recommended size: 32x32 or 64x64 pixels.</small>
+      <% if (locals.errors?.favicon) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.favicon.message %></small> <% } %>
+    </div>
+
     <div class="form-actions">
       <button type="submit" class="btn btn-primary btn-lg">
         <i class="fas fa-save"></i> Save Changes
@@ -123,6 +140,8 @@
   const viewTrackingToggle = document.getElementById('view_tracking_enabled');
   const viewTimeTrackingGroup = document.getElementById('view-time-tracking-group');
   const viewTimeTrackingToggle = document.getElementById('view_time_tracking_enabled');
+  const removeFaviconCheckbox = document.getElementById('remove_favicon');
+  const faviconInput = document.getElementById('favicon');
 
   function togglePasswordFields() {
     if (passwordToggle.checked && publicViewToggle.checked) {
@@ -148,8 +167,31 @@
   publicViewToggle?.addEventListener('change', togglePasswordFields);
   viewTrackingToggle?.addEventListener('change', toggleViewTimeTrackingField);
 
+  removeFaviconCheckbox?.addEventListener('change', () => {
+    if (faviconInput) {
+      faviconInput.disabled = removeFaviconCheckbox.checked;
+      if (removeFaviconCheckbox.checked) {
+        faviconInput.value = ''; 
+      }
+    }
+  });
+
+  faviconInput?.addEventListener('change', () => {
+    if (removeFaviconCheckbox) {
+      removeFaviconCheckbox.disabled = !!faviconInput.files.length;
+      if (faviconInput.files.length) {
+        removeFaviconCheckbox.checked = false;
+      }
+    }
+  });
+
   togglePasswordFields();
   toggleViewTimeTrackingField();
+  
+  if (removeFaviconCheckbox && faviconInput) {
+    faviconInput.disabled = removeFaviconCheckbox.checked;
+    removeFaviconCheckbox.disabled = !!faviconInput.files.length;
+  }
 </script>
 
 <%- include('../partials/footer', { scriptPath: null }) %>

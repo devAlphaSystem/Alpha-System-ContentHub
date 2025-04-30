@@ -21,8 +21,10 @@ logger.trace("Auth routes configured.");
 
 router.use("/", requireLogin, dashboardRouter);
 logger.trace("Global dashboard routes configured (requires login).");
-router.use("/projects", requireLogin, projectsRouter);
+
+router.use("/projects", projectsRouter);
 logger.trace("Project routes configured (requires login).");
+
 router.use("/files", requireLogin, filesRouter);
 logger.trace("Files routes configured (requires login).");
 router.use("/audit-log", requireLogin, auditLogRouter);

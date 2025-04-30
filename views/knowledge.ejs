@@ -5,7 +5,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= locals.pageTitle || 'Knowledge Base' %></title>
-    <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
+
+    <% if (locals.project && locals.project.favicon) { %>
+      <%
+        let faviconMimeType = 'image/png';
+        const extension = locals.project.favicon.split('.').pop().toLowerCase();
+        if (extension === 'ico') {
+          faviconMimeType = 'image/x-icon';
+        } else if (extension === 'svg') {
+          faviconMimeType = 'image/svg+xml';
+        }
+      %>
+      <link rel="icon" type="<%= faviconMimeType %>" href="<%= locals.pocketbaseUrl %>/api/files/projects/<%= project.id %>/<%= project.favicon %>">
+    <% } else { %>
+      <link rel="icon" type="image/png" sizes="32x32" href="/img/icon.png" />
+    <% } %>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
