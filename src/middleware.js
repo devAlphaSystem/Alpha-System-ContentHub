@@ -1,5 +1,24 @@
 import { pb, POCKETBASE_URL, NODE_ENV, PORT, getSettings } from "./config.js";
+import { logAuditEvent } from "./utils.js";
 import { logger } from "./logger.js";
+
+export function requireAdmin(req, res, next) {
+  logger.trace(`requireAdmin middleware check for path: ${req.originalUrl}`);
+  if (!req.session.user || req.session.user.isAdmin !== true) {
+    logger.warn(`Admin access denied for user ${req.session.user?.id || "Unknown"} to path: ${req.originalUrl}. isAdmin flag: ${req.session.user?.isAdmin ?? "Not set/Not logged in"}`);
+    logAuditEvent(req, "ADMIN_ACCESS_DENIED", null, null, { path: req.originalUrl });
+
+    if (req.originalUrl.startsWith("/api/")) {
+      return res.status(403).json({ error: "Forbidden: Administrator access required." });
+    }
+    const err = new Error("Forbidden: Administrator access required.");
+    err.status = 403;
+    return next(err);
+  }
+
+  logger.trace(`requireAdmin: Admin access granted for user ${req.session.user.id}. Proceeding.`);
+  next();
+}
 
 export function requireLogin(req, res, next) {
   logger.trace(`requireLogin middleware check for path: ${req.originalUrl}`);

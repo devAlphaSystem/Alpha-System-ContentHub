@@ -19,7 +19,7 @@ logger.trace("Public routes configured.");
 router.use("/", authRouter);
 logger.trace("Auth routes configured.");
 
-router.use("/", requireLogin, dashboardRouter);
+router.use("/", dashboardRouter);
 logger.trace("Global dashboard routes configured (requires login).");
 
 router.use("/projects", projectsRouter);

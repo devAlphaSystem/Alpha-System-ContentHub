@@ -4,7 +4,7 @@ import multer from "multer";
 import path from "node:path";
 import Papa from "papaparse";
 import { pb, pbAdmin, apiLimiter, getSettings, APP_SETTINGS_RECORD_ID, ITEMS_PER_PAGE, POCKETBASE_URL } from "../config.js";
-import { requireLogin } from "../middleware.js";
+import { requireLogin, requireAdmin } from "../middleware.js";
 import { getEntryForOwnerAndProject, getArchivedEntryForOwnerAndProject, getTemplateForEditAndProject, clearEntryViewLogs, hashPreviewPassword, logAuditEvent, getProjectForOwner, getDocumentationHeaderForEditAndProject, getDocumentationFooterForEditAndProject, getChangelogHeaderForEditAndProject, getChangelogFooterForEditAndProject, getIP, hashIP } from "../utils.js";
 import { logger } from "../logger.js";
 
@@ -1278,7 +1278,7 @@ router.get("/projects/:projectId/changelog_footers", requireLogin, checkProjectA
   getProjectAssetsApi("changelog_footers", req, res);
 });
 
-router.get("/audit-log", requireLogin, apiLimiter, async (req, res) => {
+router.get("/audit-log", requireLogin, requireAdmin, apiLimiter, async (req, res) => {
   const userId = req.session.user.id;
   logger.debug(`[API] GET /audit-log requested by user ${userId}`);
   logger.time(`[API] GET /audit-log ${userId}`);
@@ -1316,7 +1316,7 @@ router.get("/audit-log", requireLogin, apiLimiter, async (req, res) => {
   }
 });
 
-router.delete("/audit-log/all", requireLogin, apiLimiter, async (req, res) => {
+router.delete("/audit-log/all", requireLogin, requireAdmin, apiLimiter, async (req, res) => {
   const userId = req.session.user.id;
   logger.warn(`[API] DELETE /audit-log/all requested by user ${userId}. Initiating clear.`);
   logger.time(`[API] DELETE /audit-log/all ${userId}`);
@@ -1367,7 +1367,7 @@ router.delete("/audit-log/all", requireLogin, apiLimiter, async (req, res) => {
   }
 });
 
-router.get("/audit-log/export/csv", requireLogin, apiLimiter, async (req, res) => {
+router.get("/audit-log/export/csv", requireLogin, requireAdmin, apiLimiter, async (req, res) => {
   const userId = req.session.user.id;
   logger.info(`[API] GET /audit-log/export/csv requested by user ${userId}`);
   logger.time(`[API] GET /audit-log/export/csv ${userId}`);

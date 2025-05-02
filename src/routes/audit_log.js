@@ -1,11 +1,11 @@
 import express from "express";
 import { pbAdmin, ITEMS_PER_PAGE } from "../config.js";
-import { requireLogin } from "../middleware.js";
+import { requireLogin, requireAdmin } from "../middleware.js";
 import { logger } from "../logger.js";
 
 const router = express.Router();
 
-router.get("/", requireLogin, async (req, res, next) => {
+router.get("/", requireLogin, requireAdmin, async (req, res, next) => {
   const userId = req.session.user.id;
   logger.debug(`[AUDIT] GET /audit-log (global) requested by user ${userId}`);
   logger.time(`[AUDIT] GET /audit-log ${userId}`);

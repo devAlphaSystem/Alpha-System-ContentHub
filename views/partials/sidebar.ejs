@@ -54,7 +54,7 @@
         <span>Documentation</span>
       </a>
 
-      <% if (locals.enableAuditLog) { %>
+      <% if (user && user.isAdmin && locals.enableAuditLog) { %>
         <a href="/audit-log" class="nav-link <% if (currentPath === '/audit-log') { %>active<% } %>" data-nav-id="audit-log">
           <i class="fas fa-history fa-fw"></i>
           <span>Global Log</span>
