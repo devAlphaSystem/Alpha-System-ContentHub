@@ -51,6 +51,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pocketbase/0.25.2/pocketbase.umd.js"> </script>
 
     <link rel="stylesheet" href="/css/style.css">
+
+    <style>
+      .github-link {
+        color: var(--text-muted);
+        font-size: 1.5rem;
+        margin-left: 0.5rem;
+      }
+    </style>
   </head>
 
   <body class="admin-body <%= (locals.theme === 'dark' ? 'dark-mode' : '') %>" data-project-id="<%= locals.currentProjectId || '' %>" data-entry-type="<%= locals.entryType || (locals.entry && locals.entry.type) || '' %>">
@@ -149,6 +157,10 @@
               </form>
             <% } %>
           </div>
+
+          <a href="https://github.com/devAlphaSystem/Alpha-System-ContentHub" class="github-link" aria-label="GitHub Repository" target="_blank">
+            <i class="fab fa-github"></i>
+          </a>
         </header>
 
         <main class="page-content">

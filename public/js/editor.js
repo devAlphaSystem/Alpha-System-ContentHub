@@ -38,6 +38,31 @@ document.addEventListener("DOMContentLoaded", () => {
     "quote",
     "unordered-list",
     "ordered-list",
+    {
+      name: "insertDetails",
+      action: function insertDetailsBlock(editor) {
+        const cm = editor.codemirror;
+        const selectedText = cm.getSelection();
+
+        if (!selectedText) {
+          const output = "<details>\n  <summary>Details</summary>\n  Content goes here...\n</details>";
+          cm.replaceSelection(output);
+          const cursorPos = cm.getCursor();
+          cm.setCursor(cursorPos.line - 2, 11);
+          cm.focus();
+          return;
+        }
+
+        const output = `<details>\n  <summary>Click to expand</summary>\n  ${selectedText}\n</details>`;
+        const startPos = cm.getCursor("start");
+        cm.replaceSelection(output);
+
+        cm.setCursor(startPos.line + 1, 11);
+        cm.focus();
+      },
+      className: "fas fa-caret-square-down",
+      title: "Wrap selection in Details/Summary",
+    },
     "|",
     "link",
     "image",
