@@ -1,15 +1,15 @@
-<% locals.pageTitle='Documentation Headers - ' + project.name %>
+<% locals.pageTitle='Global Headers' %>
 
-<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: project.id }) %>
+<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: null }) %>
 
 <div class="content-header">
-  <h1>Documentation Headers: <span class="text-muted"><%= project.name %></span></h1>
+  <h1><%= locals.pageTitle %></h1>
   <div class="header-actions">
-    <button id="refresh-doc-headers-btn" class="btn btn-secondary" title="Refresh Table">
+    <button id="refresh-cl-headers-btn" class="btn btn-secondary" title="Refresh Table">
       <i class="fas fa-sync-alt"></i> <span>Refresh</span>
     </button>
-    <a href="/projects/<%= project.id %>/documentation_headers/new" class="btn btn-primary">
-      <i class="fas fa-plus"></i> Create New Doc Header
+    <a href="/headers/new" class="btn btn-primary">
+      <i class="fas fa-plus"></i> Create New Global Header
     </a>
   </div>
 </div>
@@ -21,10 +21,10 @@
   </div>
 <% } %>
 
-<% if (locals.error && locals.error === 'Could not load documentation headers.') { %>
+<% if (locals.error && locals.error === 'Could not load headers.') { %>
   <div class="alert alert-danger">
     <i class="fas fa-exclamation-triangle alert-icon"></i>
-    <span>Error loading documentation headers for this project. Please try refreshing the page or contact support.</span>
+    <span>Error loading global headers. Please try refreshing the page or contact support.</span>
   </div>
 <% } %>
 
@@ -38,14 +38,14 @@
           <th class="actions-column">Actions</th>
         </tr>
       </thead>
-      <tbody id="doc-headers-table-body">
+      <tbody id="cl-headers-table-body">
         <% for (const header of assets) { %>
           <tr data-header-id="<%= header.id %>" data-updated-timestamp="<%= new Date(header.updated).getTime() %>">
             <td data-label="Name"> <%= header.name %> </td>
             <td data-label="Updated"> <%= header.formattedUpdated %> </td>
             <td data-label="Actions" class="actions-cell">
-              <a href="/projects/<%= project.id %>/documentation_headers/edit/<%= header.id %>" class="btn btn-icon btn-edit" title="Edit Documentation Header"> <i class="fas fa-pencil-alt"></i> </a>
-              <form action="/projects/<%= project.id %>/documentation_headers/delete/<%= header.id %>" method="POST" class="delete-doc-header-form" title="Delete Documentation Header">
+              <a href="/headers/edit/<%= header.id %>" class="btn btn-icon btn-edit" title="Edit Header"> <i class="fas fa-pencil-alt"></i> </a>
+              <form action="/headers/delete/<%= header.id %>" method="POST" class="delete-cl-header-form" title="Delete Header">
                 <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
               </form>
             </td>
@@ -71,10 +71,10 @@
 <% if (assets.length === 0 && !locals.error) { %>
   <div class="card empty-state-card">
     <i class="far fa-arrow-alt-circle-up empty-state-icon"></i>
-    <h2>No custom documentation headers yet for this project</h2>
-    <p>Create reusable headers to customize the top of your documentation entry view pages.</p>
-    <a href="/projects/<%= project.id %>/documentation_headers/new" class="btn btn-primary">Create First Doc Header</a>
+    <h2>No global headers yet</h2>
+    <p>Create reusable headers to customize the top of your entry view pages across all projects.</p>
+    <a href="/headers/new" class="btn btn-primary">Create First Global Header</a>
   </div>
 <% } %>
 
-<%- include('../partials/footer', { scriptPath: '/js/documentation_headers.js' }) %>
+<%- include('../partials/footer', { scriptPath: '/js/headers.js' }) %>

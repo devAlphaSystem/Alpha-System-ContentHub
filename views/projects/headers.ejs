@@ -1,15 +1,15 @@
-<% locals.pageTitle='Changelog Footers - ' + project.name %>
+<% locals.pageTitle='Global Headers - ' + project.name %>
 
 <%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: project.id }) %>
 
 <div class="content-header">
-  <h1>Changelog Footers: <span class="text-muted"><%= project.name %></span></h1>
+  <h1>Global Headers <span class="text-muted">(Project: <%= project.name %>)</span></h1>
   <div class="header-actions">
-    <button id="refresh-cl-footers-btn" class="btn btn-secondary" title="Refresh Table">
+    <button id="refresh-cl-headers-btn" class="btn btn-secondary" title="Refresh Table">
       <i class="fas fa-sync-alt"></i> <span>Refresh</span>
     </button>
-    <a href="/projects/<%= project.id %>/changelog_footers/new" class="btn btn-primary">
-      <i class="fas fa-plus"></i> Create New Changelog Footer
+    <a href="/projects/<%= project.id %>/headers/new" class="btn btn-primary">
+      <i class="fas fa-plus"></i> Create New Global Header
     </a>
   </div>
 </div>
@@ -21,10 +21,10 @@
   </div>
 <% } %>
 
-<% if (locals.error && locals.error === 'Could not load changelog footers.') { %>
+<% if (locals.error && locals.error === 'Could not load headers.') { %>
   <div class="alert alert-danger">
     <i class="fas fa-exclamation-triangle alert-icon"></i>
-    <span>Error loading changelog footers for this project. Please try refreshing the page or contact support.</span>
+    <span>Error loading global headers. Please try refreshing the page or contact support.</span>
   </div>
 <% } %>
 
@@ -33,19 +33,19 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th data-sort-key="name" style="cursor: pointer;">Footer Name <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="name" style="cursor: pointer;">Header Name <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
           <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort-down"></i></span></th>
           <th class="actions-column">Actions</th>
         </tr>
       </thead>
-      <tbody id="cl-footers-table-body">
-        <% for (const footer of assets) { %>
-          <tr data-footer-id="<%= footer.id %>" data-updated-timestamp="<%= new Date(footer.updated).getTime() %>">
-            <td data-label="Name"> <%= footer.name %> </td>
-            <td data-label="Updated"> <%= footer.formattedUpdated %> </td>
+      <tbody id="cl-headers-table-body">
+        <% for (const header of assets) { %>
+          <tr data-header-id="<%= header.id %>" data-updated-timestamp="<%= new Date(header.updated).getTime() %>">
+            <td data-label="Name"> <%= header.name %> </td>
+            <td data-label="Updated"> <%= header.formattedUpdated %> </td>
             <td data-label="Actions" class="actions-cell">
-              <a href="/projects/<%= project.id %>/changelog_footers/edit/<%= footer.id %>" class="btn btn-icon btn-edit" title="Edit Changelog Footer"> <i class="fas fa-pencil-alt"></i> </a>
-              <form action="/projects/<%= project.id %>/changelog_footers/delete/<%= footer.id %>" method="POST" class="delete-cl-footer-form" title="Delete Changelog Footer">
+              <a href="/projects/<%= project.id %>/headers/edit/<%= header.id %>" class="btn btn-icon btn-edit" title="Edit Header"> <i class="fas fa-pencil-alt"></i> </a>
+              <form action="/projects/<%= project.id %>/headers/delete/<%= header.id %>" method="POST" class="delete-cl-header-form" title="Delete Header">
                 <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
               </form>
             </td>
@@ -70,11 +70,11 @@
 
 <% if (assets.length === 0 && !locals.error) { %>
   <div class="card empty-state-card">
-    <i class="far fa-arrow-alt-circle-down empty-state-icon"></i>
-    <h2>No custom changelog footers yet for this project</h2>
-    <p>Create reusable footers to customize the bottom of your changelog entry view pages.</p>
-    <a href="/projects/<%= project.id %>/changelog_footers/new" class="btn btn-primary">Create First Changelog Footer</a>
+    <i class="far fa-arrow-alt-circle-up empty-state-icon"></i>
+    <h2>No global headers yet</h2>
+    <p>Create reusable headers to customize the top of your entry view pages across all projects.</p>
+    <a href="/projects/<%= project.id %>/headers/new" class="btn btn-primary">Create First Global Header</a>
   </div>
 <% } %>
 
-<%- include('../partials/footer', { scriptPath: '/js/changelog_footers.js' }) %>
+<%- include('../partials/footer', { scriptPath: '/js/headers.js' }) %>

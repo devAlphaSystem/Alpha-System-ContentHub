@@ -8,6 +8,8 @@ import settingsRouter from "./settings.js";
 import apiRouter from "./api.js";
 import searchRouter from "./search.js";
 import filesRouter from "./files.js";
+import headersRouter from "./headers.js";
+import footersRouter from "./footers.js";
 import { requireLogin } from "../middleware.js";
 import { logger } from "../logger.js";
 
@@ -24,6 +26,11 @@ logger.trace("Global dashboard routes configured (requires login).");
 
 router.use("/projects", projectsRouter);
 logger.trace("Project routes configured (requires login).");
+
+router.use("/headers", requireLogin, headersRouter);
+logger.trace("Global headers routes configured.");
+router.use("/footers", requireLogin, footersRouter);
+logger.trace("Global footers routes configured.");
 
 router.use("/files", requireLogin, filesRouter);
 logger.trace("Files routes configured (requires login).");

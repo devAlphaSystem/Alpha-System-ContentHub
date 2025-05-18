@@ -5,7 +5,7 @@ import path from "node:path";
 import Papa from "papaparse";
 import { pb, pbAdmin, apiLimiter, getSettings, APP_SETTINGS_RECORD_ID, ITEMS_PER_PAGE, POCKETBASE_URL } from "../config.js";
 import { requireLogin, requireAdmin } from "../middleware.js";
-import { getEntryForOwnerAndProject, getArchivedEntryForOwnerAndProject, getTemplateForEditAndProject, clearEntryViewLogs, hashPreviewPassword, logAuditEvent, getProjectForOwner, getDocumentationHeaderForEditAndProject, getDocumentationFooterForEditAndProject, getChangelogHeaderForEditAndProject, getChangelogFooterForEditAndProject, getIP, hashIP } from "../utils.js";
+import { getEntryForOwnerAndProject, getArchivedEntryForOwnerAndProject, getTemplateForEditAndProject, clearEntryViewLogs, hashPreviewPassword, logAuditEvent, getProjectForOwner, getHeaderForEdit, getFooterForEdit, getIP, hashIP } from "../utils.js";
 import { logger } from "../logger.js";
 
 const router = express.Router();
@@ -318,21 +318,17 @@ router.post("/projects/:projectId/entries/:id/publish-staged", requireLogin, che
       type: record.staged_type,
       content: record.staged_content,
       tags: record.staged_tags,
-      custom_documentation_header: record.staged_type === "documentation" ? record.staged_documentation_header || null : record.custom_documentation_header,
-      custom_documentation_footer: record.staged_type === "documentation" ? record.staged_documentation_footer || null : record.custom_documentation_footer,
-      custom_changelog_header: record.staged_type === "changelog" ? record.staged_changelog_header || null : record.custom_changelog_header,
-      custom_changelog_footer: record.staged_type === "changelog" ? record.staged_changelog_footer || null : record.custom_changelog_footer,
-      roadmap_stage: record.staged_type === "roadmap" ? record.staged_roadmap_stage || null : record.roadmap_stage,
+      custom_header: record.staged_header || null,
+      custom_footer: record.staged_footer || null,
+      roadmap_stage: record.staged_roadmap_stage || null,
       has_staged_changes: false,
       staged_title: null,
       staged_type: null,
       staged_content: null,
       staged_tags: null,
       staged_collection: null,
-      staged_documentation_header: null,
-      staged_documentation_footer: null,
-      staged_changelog_header: null,
-      staged_changelog_footer: null,
+      staged_header: null,
+      staged_footer: null,
       staged_roadmap_stage: null,
       content_updated_at: new Date().toISOString(),
     };
@@ -540,8 +536,11 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
       }
       logger.trace(`[API] Fetched record ${id} from ${sourceCollectionName}`);
 
-      if (action === "archive") targetCollectionName = "entries_archived";
-      else if (action === "unarchive") targetCollectionName = "entries_main";
+      if (action === "archive") {
+        targetCollectionName = "entries_archived";
+      } else if (action === "unarchive") {
+        targetCollectionName = "entries_main";
+      }
 
       logDetails.title = record.title;
       logDetails.type = record.type;
@@ -555,10 +554,8 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
           const archiveData = {
             ...record,
             original_id: record.id,
-            custom_documentation_header: record.custom_documentation_header || null,
-            custom_documentation_footer: record.custom_documentation_footer || null,
-            custom_changelog_header: record.custom_changelog_header || null,
-            custom_changelog_footer: record.custom_changelog_footer || null,
+            custom_header: record.custom_header || null,
+            custom_footer: record.custom_footer || null,
             roadmap_stage: record.roadmap_stage || null,
             content_updated_at: record.content_updated_at,
           };
@@ -572,10 +569,8 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
           archiveData.staged_content = null;
           archiveData.staged_tags = null;
           archiveData.staged_collection = null;
-          archiveData.staged_documentation_header = null;
-          archiveData.staged_documentation_footer = null;
-          archiveData.staged_changelog_header = null;
-          archiveData.staged_changelog_footer = null;
+          archiveData.staged_header = null;
+          archiveData.staged_footer = null;
           archiveData.staged_roadmap_stage = null;
           logger.debug(`[API] Archiving entry ${id}`);
           const archivedRecord = await client.collection(targetCollectionName).create(archiveData);
@@ -1053,8 +1048,12 @@ router.get("/files", requireLogin, async (req, res) => {
         } else {
           return 0;
         }
-        if (valA < valB) return -1 * direction;
-        if (valA > valB) return 1 * direction;
+        if (valA < valB) {
+          return -1 * direction;
+        }
+        if (valA > valB) {
+          return 1 * direction;
+        }
         return 0;
       });
       logger.trace(`[API] Manually sorted files by ${sortField}`);
@@ -1217,24 +1216,23 @@ router.get("/projects/:projectId/archived-entries", requireLogin, checkProjectAc
   }
 });
 
-async function getProjectAssetsApi(collectionName, req, res) {
+async function getGlobalAssetsApi(collectionName, req, res) {
   const userId = req.session.user.id;
-  const projectId = req.params.projectId;
-  logger.debug(`[API] GET /projects/${projectId}/${collectionName} requested by user ${userId}`);
-  logger.time(`[API] GET /projects/${projectId}/${collectionName} ${userId}`);
+  logger.debug(`[API] GET /${collectionName} (global) requested by user ${userId}`);
+  logger.time(`[API] GET /${collectionName} ${userId}`);
   try {
-    const filter = `owner = '${userId}' && project = '${projectId}'`;
+    const filter = `owner = '${userId}'`;
     const page = Number.parseInt(req.query.page) || 1;
     const perPage = Number.parseInt(req.query.perPage) || ITEMS_PER_PAGE;
     const sort = req.query.sort || "-updated";
-    logger.trace(`[API] ${collectionName} filter: ${filter}`);
+    logger.trace(`[API] Global ${collectionName} filter: ${filter}`);
 
     const resultList = await pb.collection(collectionName).getList(page, perPage, {
       sort: sort,
       filter: filter,
       fields: "id,name,updated",
     });
-    logger.debug(`[API] Fetched ${resultList.items.length} ${collectionName} (page ${page}/${resultList.totalPages}) for project ${projectId}`);
+    logger.debug(`[API] Fetched ${resultList.items.length} global ${collectionName} (page ${page}/${resultList.totalPages}) for user ${userId}`);
 
     const assetsWithDetails = [];
     for (const asset of resultList.items) {
@@ -1248,34 +1246,26 @@ async function getProjectAssetsApi(collectionName, req, res) {
       });
     }
 
-    logger.timeEnd(`[API] GET /projects/${projectId}/${collectionName} ${userId}`);
+    logger.timeEnd(`[API] GET /${collectionName} ${userId}`);
     res.json({
       ...resultList,
       items: assetsWithDetails,
     });
   } catch (error) {
-    logger.timeEnd(`[API] GET /projects/${projectId}/${collectionName} ${userId}`);
-    logger.error(`[API] Error fetching ${collectionName} for project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    logger.timeEnd(`[API] GET /${collectionName} ${userId}`);
+    logger.error(`[API] Error fetching global ${collectionName} for user ${userId}: Status ${error?.status || "N/A"}`, error?.message || error);
     res.status(500).json({
       error: `Failed to fetch ${collectionName.replace("_", " ")}`,
     });
   }
 }
 
-router.get("/projects/:projectId/documentation_headers", requireLogin, checkProjectAccessApi, (req, res) => {
-  getProjectAssetsApi("documentation_headers", req, res);
+router.get("/headers", requireLogin, (req, res) => {
+  getGlobalAssetsApi("headers", req, res);
 });
 
-router.get("/projects/:projectId/documentation_footers", requireLogin, checkProjectAccessApi, (req, res) => {
-  getProjectAssetsApi("documentation_footers", req, res);
-});
-
-router.get("/projects/:projectId/changelog_headers", requireLogin, checkProjectAccessApi, (req, res) => {
-  getProjectAssetsApi("changelog_headers", req, res);
-});
-
-router.get("/projects/:projectId/changelog_footers", requireLogin, checkProjectAccessApi, (req, res) => {
-  getProjectAssetsApi("changelog_footers", req, res);
+router.get("/footers", requireLogin, (req, res) => {
+  getGlobalAssetsApi("footers", req, res);
 });
 
 router.get("/audit-log", requireLogin, requireAdmin, apiLimiter, async (req, res) => {
@@ -1488,15 +1478,11 @@ router.post("/projects/:projectId/entries/:entryId/duplicate", requireLogin, che
       staged_content: null,
       staged_tags: null,
       staged_collection: null,
-      staged_documentation_header: null,
-      staged_documentation_footer: null,
-      staged_changelog_header: null,
-      staged_changelog_footer: null,
+      staged_header: null,
+      staged_footer: null,
       staged_roadmap_stage: null,
-      custom_documentation_header: dataToDuplicate.custom_documentation_header || null,
-      custom_documentation_footer: dataToDuplicate.custom_documentation_footer || null,
-      custom_changelog_header: dataToDuplicate.custom_changelog_header || null,
-      custom_changelog_footer: dataToDuplicate.custom_changelog_footer || null,
+      custom_header: dataToDuplicate.custom_header || null,
+      custom_footer: dataToDuplicate.custom_footer || null,
       roadmap_stage: dataToDuplicate.roadmap_stage || null,
       content: dataToDuplicate.type === "sidebar_header" ? "" : dataToDuplicate.content,
       content_updated_at: new Date().toISOString(),

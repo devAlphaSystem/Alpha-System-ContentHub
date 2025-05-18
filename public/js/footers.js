@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const headersTableBody = document.getElementById("doc-headers-table-body");
-  const refreshButton = document.getElementById("refresh-doc-headers-btn");
+  const footersTableBody = document.getElementById("cl-footers-table-body");
+  const refreshButton = document.getElementById("refresh-cl-footers-btn");
   const paginationControls = document.querySelector(".pagination-controls");
   const prevPageBtn = document.getElementById("prev-page-btn");
   const nextPageBtn = document.getElementById("next-page-btn");
@@ -8,7 +8,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const dataCard = document.querySelector(".data-card");
   const emptyStateCard = document.querySelector(".empty-state-card");
   const tableElement = document.querySelector(".data-table");
-  const projectId = document.body.dataset.projectId;
 
   let currentPage = 1;
   let totalPages = 1;
@@ -18,25 +17,25 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentSortDir = "desc";
   let isLoading = false;
 
-  function renderTableRow(header) {
+  function renderTableRow(footer) {
     const formattedUpdated =
-      header.formattedUpdated ||
-      new Date(header.updated).toLocaleDateString("en-US", {
+      footer.formattedUpdated ||
+      new Date(footer.updated).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",
       });
-    const updatedTimestamp = new Date(header.updated).getTime();
-    const editUrl = `/projects/${projectId}/documentation_headers/edit/${escapeHtml(header.id)}`;
-    const deleteUrl = `/projects/${projectId}/documentation_headers/delete/${escapeHtml(header.id)}`;
+    const updatedTimestamp = new Date(footer.updated).getTime();
+    const editUrl = `/footers/edit/${window.escapeHtml(footer.id)}`;
+    const deleteUrl = `/footers/delete/${window.escapeHtml(footer.id)}`;
 
     return `
-      <tr data-header-id="${escapeHtml(header.id)}" data-updated-timestamp="${updatedTimestamp}">
-        <td data-label="Name">${escapeHtml(header.name)}</td>
+      <tr data-footer-id="${window.escapeHtml(footer.id)}" data-updated-timestamp="${updatedTimestamp}">
+        <td data-label="Name">${window.escapeHtml(footer.name)}</td>
         <td data-label="Updated">${formattedUpdated}</td>
         <td data-label="Actions" class="actions-cell">
-          <a href="${editUrl}" class="btn btn-icon btn-edit" title="Edit Documentation Header"><i class="fas fa-pencil-alt"></i></a>
-          <form action="${deleteUrl}" method="POST" class="delete-doc-header-form" title="Delete Documentation Header">
+          <a href="${editUrl}" class="btn btn-icon btn-edit" title="Edit Footer"><i class="fas fa-pencil-alt"></i></a>
+          <form action="${deleteUrl}" method="POST" class="delete-cl-footer-form" title="Delete Footer">
             <button type="submit" class="btn btn-icon btn-delete"><i class="fas fa-trash-alt"></i></button>
           </form>
         </td>
@@ -64,22 +63,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function renderTable(headers) {
-    if (!headersTableBody || !tableElement) return;
+  function renderTable(footers) {
+    if (!footersTableBody || !tableElement) return;
 
-    headersTableBody.innerHTML = "";
+    footersTableBody.innerHTML = "";
 
-    if (headers.length > 0) {
+    if (footers.length > 0) {
       let tableHtml = "";
-      for (const header of headers) {
-        tableHtml += renderTableRow(header);
+      for (const footer of footers) {
+        tableHtml += renderTableRow(footer);
       }
-      headersTableBody.innerHTML = tableHtml;
+      footersTableBody.innerHTML = tableHtml;
       if (dataCard) dataCard.classList.remove("hidden");
       if (emptyStateCard) emptyStateCard.style.display = "none";
     } else if (totalItems > 0) {
       const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 3;
-      headersTableBody.innerHTML = `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">No documentation headers found for this page.</td></tr>`;
+      footersTableBody.innerHTML = `<tr class="no-match-row"><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--text-muted);">No footers found for this page.</td></tr>`;
       if (dataCard) dataCard.classList.remove("hidden");
       if (emptyStateCard) emptyStateCard.style.display = "none";
     } else {
@@ -90,9 +89,8 @@ document.addEventListener("DOMContentLoaded", () => {
     attachActionListeners();
   }
 
-  async function fetchHeaders() {
-    if (isLoading || !projectId) {
-      if (!projectId) console.warn("Project ID missing, cannot fetch documentation headers.");
+  async function fetchFooters() {
+    if (isLoading) {
       return;
     }
     isLoading = true;
@@ -105,7 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (nextPageBtn) nextPageBtn.disabled = true;
 
     const sortParam = `${currentSortDir === "desc" ? "-" : ""}${currentSortKey}`;
-    const url = `/api/projects/${projectId}/documentation_headers?page=${currentPage}&perPage=${itemsPerPage}&sort=${sortParam}`;
+    const url = `/api/footers?page=${currentPage}&perPage=${itemsPerPage}&sort=${sortParam}`;
 
     try {
       const response = await fetch(url);
@@ -121,11 +119,11 @@ document.addEventListener("DOMContentLoaded", () => {
       renderTable(data.items);
       updatePaginationControls();
     } catch (error) {
-      console.error("Failed to fetch documentation headers:", error);
-      window.showAlertModal("Error loading documentation headers. Please try refreshing.", "Loading Error");
-      if (headersTableBody && tableElement) {
+      console.error("Failed to fetch footers:", error);
+      window.showAlertModal("Error loading footers. Please try refreshing.", "Loading Error");
+      if (footersTableBody && tableElement) {
         const colSpan = tableElement.querySelector("thead tr")?.childElementCount || 3;
-        headersTableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading headers.</td></tr>`;
+        footersTableBody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px; color: var(--danger-color);">Error loading footers.</td></tr>`;
       }
       currentPage = 1;
       totalPages = 0;
@@ -145,24 +143,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleFormSubmit(event) {
     const form = event.target;
-    if (!form.classList.contains("delete-doc-header-form")) {
+    if (!form.classList.contains("delete-cl-footer-form")) {
       return;
     }
 
     event.preventDefault();
-    const headerName = form.closest("tr")?.querySelector("td[data-label='Name']")?.textContent || "this header";
+    const footerName = form.closest("tr")?.querySelector("td[data-label='Name']")?.textContent || "this footer";
     window.showConfirmModal({
       form: form,
       title: "Confirm Deletion",
-      message: `Are you sure you want to delete the documentation header "<strong>${escapeHtml(headerName)}</strong>"?`,
+      message: `Are you sure you want to delete the footer "<strong>${window.escapeHtml(footerName)}</strong>"?`,
       action: "delete",
       confirmText: "Delete",
     });
   }
 
   function attachActionListeners() {
-    headersTableBody?.removeEventListener("submit", handleFormSubmit);
-    headersTableBody?.addEventListener("submit", handleFormSubmit);
+    footersTableBody?.removeEventListener("submit", handleFormSubmit);
+    footersTableBody?.addEventListener("submit", handleFormSubmit);
   }
 
   function attachSortListeners() {
@@ -197,37 +195,32 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
 
-        fetchHeaders();
+        fetchFooters();
       });
     }
   }
 
   refreshButton?.addEventListener("click", () => {
     if (!isLoading) {
-      fetchHeaders();
+      fetchFooters();
     }
   });
 
   prevPageBtn?.addEventListener("click", () => {
     if (currentPage > 1 && !isLoading) {
       currentPage--;
-      fetchHeaders();
+      fetchFooters();
     }
   });
 
   nextPageBtn?.addEventListener("click", () => {
     if (currentPage < totalPages && !isLoading) {
       currentPage++;
-      fetchHeaders();
+      fetchFooters();
     }
   });
 
-  function initializeDocHeaders() {
-    if (!projectId) {
-      console.warn("Project ID missing, cannot initialize documentation headers.");
-      return;
-    }
-
+  function initializeFooters() {
     const initialSortHeader = document.querySelector(`.data-table th[data-sort-key="${currentSortKey}"]`);
     if (initialSortHeader) {
       const icon = initialSortHeader.querySelector(".sort-icon i");
@@ -259,14 +252,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updatePaginationControls();
 
-    const needsInitialFetch = (headersTableBody && headersTableBody.children.length === 0 && (!emptyStateCard || emptyStateCard.style.display === "none")) || totalPages > 1;
+    const needsInitialFetch = (footersTableBody && footersTableBody.children.length === 0 && (!emptyStateCard || emptyStateCard.style.display === "none")) || totalPages > 1;
 
     if (needsInitialFetch) {
-      fetchHeaders();
-    } else if (headersTableBody && headersTableBody.children.length > 0) {
+      fetchFooters();
+    } else if (footersTableBody && footersTableBody.children.length > 0) {
       attachActionListeners();
     }
   }
 
-  initializeDocHeaders();
+  initializeFooters();
 });

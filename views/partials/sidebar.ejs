@@ -17,6 +17,16 @@
         <span>Projects</span>
       </a>
 
+      <a href="/headers" class="nav-link <% if (currentPath === '/headers') { %>active<% } %>" data-nav-id="headers">
+        <i class="far fa-arrow-alt-circle-up fa-fw"></i>
+        <span>Headers</span>
+      </a>
+
+      <a href="/footers" class="nav-link <% if (currentPath === '/footers') { %>active<% } %>" data-nav-id="footers">
+        <i class="far fa-arrow-alt-circle-down fa-fw"></i>
+        <span>Footers</span>
+      </a>
+
       <a href="/files" class="nav-link <% if (currentPath === '/files') { %>active<% } %>" data-nav-id="files">
         <i class="fas fa-images fa-fw"></i>
         <span>Files</span>
@@ -53,13 +63,6 @@
         <i class="fas fa-book fa-fw"></i>
         <span>Documentation</span>
       </a>
-
-      <% if (user && user.isAdmin && locals.enableAuditLog) { %>
-        <a href="/audit-log" class="nav-link <% if (currentPath === '/audit-log') { %>active<% } %>" data-nav-id="audit-log">
-          <i class="fas fa-history fa-fw"></i>
-          <span>Global Log</span>
-        </a>
-      <% } %>
 
       <a href="/settings" class="nav-link <% if (currentPath === '/settings') { %>active<% } %>" data-nav-id="settings">
         <i class="fas fa-cog fa-fw"></i>

@@ -1,9 +1,9 @@
-<% locals.pageTitle='New Changelog Footer - ' + project.name %>
+<% locals.pageTitle='New Global Footer - ' + project.name %>
 
 <%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: project.id }) %>
 
 <div class="content-header">
-  <h1>New Changelog Footer for Project: <span class="text-muted"><%= project.name %></span></h1>
+  <h1>New Global Footer <span class="text-muted">(Project Context: <%= project.name %>)</span></h1>
 </div>
 
 <% if (locals.errors) { %>
@@ -21,7 +21,7 @@
 <% } %>
 
 <div class="card form-card">
-  <form action="/projects/<%= project.id %>/changelog_footers/new" method="POST" class="footer-form" novalidate autocomplete="off">
+  <form action="/projects/<%= project.id %>/footers/new" method="POST" class="footer-form" novalidate autocomplete="off">
     <div class="form-group form-group-full" style="margin-bottom: 15px;">
       <label for="name">Footer Name <span class="required">*</span></label>
       <input type="text" id="name" name="name" required class="form-control <%= locals.errors?.name ? 'is-invalid' : '' %>" value="<%= locals.asset ? asset.name : '' %>" autofocus>
@@ -55,9 +55,9 @@
 
     <div class="form-actions">
       <button type="submit" class="btn btn-primary btn-lg">
-        <i class="fas fa-check"></i> Create Changelog Footer
+        <i class="fas fa-check"></i> Create Footer
       </button>
-      <a href="/projects/<%= project.id %>/changelog_footers" class="btn btn-secondary btn-lg">Cancel</a>
+      <a href="/projects/<%= project.id %>/footers" class="btn btn-secondary btn-lg">Cancel</a>
     </div>
   </form>
 </div>

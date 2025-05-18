@@ -162,8 +162,8 @@ router.get("/view/:id", async (req, res, next) => {
     const entry = await pbAdmin
       .collection("entries_main")
       .getFirstListItem(`id = '${entryId}' && status = 'published'`, {
-        expand: "project,custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer",
-        fields: "*,expand.project.*," + "expand.custom_documentation_header.id,expand.custom_documentation_header.content,expand.custom_documentation_header.apply_full_width,expand.custom_documentation_header.is_sticky,expand.custom_documentation_header.custom_css,expand.custom_documentation_header.custom_js," + "expand.custom_documentation_footer.id,expand.custom_documentation_footer.content,expand.custom_documentation_footer.apply_full_width,expand.custom_documentation_footer.custom_css,expand.custom_documentation_footer.custom_js," + "expand.custom_changelog_header.id,expand.custom_changelog_header.content,expand.custom_changelog_header.apply_full_width,expand.custom_changelog_header.is_sticky,expand.custom_changelog_header.custom_css,expand.custom_changelog_header.custom_js," + "expand.custom_changelog_footer.id,expand.custom_changelog_footer.content,expand.custom_changelog_footer.apply_full_width,expand.custom_changelog_footer.custom_css,expand.custom_changelog_footer.custom_js",
+        expand: "project,custom_header,custom_footer",
+        fields: "*,expand.project.*," + "expand.custom_header.id,expand.custom_header.content,expand.custom_header.apply_full_width,expand.custom_header.is_sticky,expand.custom_header.custom_css,expand.custom_header.custom_js," + "expand.custom_footer.id,expand.custom_footer.content,expand.custom_footer.apply_full_width,expand.custom_footer.custom_css,expand.custom_footer.custom_js",
       })
       .catch((err) => {
         if (err.status === 404) return null;
@@ -236,16 +236,8 @@ router.get("/view/:id", async (req, res, next) => {
     const cleanMainHtml = parseMarkdownWithThemeImages(entry.content);
     const readingTime = calculateReadingTime(entry.content);
 
-    let headerRecord = null;
-    let footerRecord = null;
-
-    if (entry.type === "documentation") {
-      headerRecord = entry.expand?.custom_documentation_header;
-      footerRecord = entry.expand?.custom_documentation_footer;
-    } else if (entry.type === "changelog") {
-      headerRecord = entry.expand?.custom_changelog_header;
-      footerRecord = entry.expand?.custom_changelog_footer;
-    }
+    const headerRecord = entry.expand?.custom_header;
+    const footerRecord = entry.expand?.custom_footer;
 
     const customHeaderHtml = headerRecord?.content ? parseMarkdownWithThemeImages(headerRecord.content) : null;
     const headerApplyFullWidth = headerRecord?.apply_full_width === true;
@@ -488,16 +480,8 @@ router.get("/preview/:token", async (req, res, next) => {
     const cleanMainHtml = parseMarkdownWithThemeImages(entryContent);
     const readingTime = calculateReadingTime(entryContent);
 
-    let headerRecordToUse = null;
-    let footerRecordToUse = null;
-
-    if (entryType === "documentation") {
-      headerRecordToUse = useStaged ? (entry.expand?.staged_documentation_header ?? entry.expand?.custom_documentation_header) : entry.expand?.custom_documentation_header;
-      footerRecordToUse = useStaged ? (entry.expand?.staged_documentation_footer ?? entry.expand?.custom_documentation_footer) : entry.expand?.custom_documentation_footer;
-    } else if (entryType === "changelog") {
-      headerRecordToUse = useStaged ? (entry.expand?.staged_changelog_header ?? entry.expand?.custom_changelog_header) : entry.expand?.custom_changelog_header;
-      footerRecordToUse = useStaged ? (entry.expand?.staged_changelog_footer ?? entry.expand?.custom_changelog_footer) : entry.expand?.custom_changelog_footer;
-    }
+    const headerRecordToUse = useStaged ? (entry.expand?.staged_header ?? entry.expand?.custom_header) : entry.expand?.custom_header;
+    const footerRecordToUse = useStaged ? (entry.expand?.staged_footer ?? entry.expand?.custom_footer) : entry.expand?.custom_footer;
 
     let customHeaderHtml = null;
     if (headerRecordToUse?.content) {

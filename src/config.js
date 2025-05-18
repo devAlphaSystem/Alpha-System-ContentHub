@@ -212,6 +212,7 @@ export const configuredHelmet = helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "'unsafe-inline'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "https://*", "'unsafe-inline'"],
       fontSrc: ["'self'", "https://*", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", POCKETBASE_URL, "https://*"],

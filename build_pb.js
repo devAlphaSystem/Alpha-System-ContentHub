@@ -11,7 +11,7 @@ const SCHEMA_FILE = "pb_schema.json";
 
 const REQUIRED_ENV_VARS = ["POCKETBASE_URL", "POCKETBASE_ADMIN_EMAIL", "POCKETBASE_ADMIN_PASSWORD"];
 
-const IMPORT_ORDER = ["app_settings", "projects", "changelog_headers", "changelog_footers", "documentation_headers", "documentation_footers", "templates", "audit_logs", "entries_main", "entries_archived", "entries_previews", "feedback_votes"];
+const IMPORT_ORDER = ["app_settings", "projects", "headers", "footers", "templates", "audit_logs", "entries_main", "entries_archived", "entries_previews", "feedback_votes"];
 
 function validateEnv() {
   console.log("Validating environment variables...");

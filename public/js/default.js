@@ -394,7 +394,13 @@ document.addEventListener("DOMContentLoaded", () => {
       isActive = true;
     } else if (navId === "projects" && (currentPath === "/projects" || currentPath === "/projects/import")) {
       isActive = true;
-    } else if (navId === "audit-log" && currentPath === "/audit-log") {
+    } else if (navId === "headers" && (currentPath === "/headers" || currentPath.startsWith("/headers/new") || currentPath.startsWith("/headers/edit/"))) {
+      isActive = true;
+    } else if (navId === "footers" && (currentPath === "/footers" || currentPath.startsWith("/footers/new") || currentPath.startsWith("/footers/edit/"))) {
+      isActive = true;
+    } else if (navId === "headers" && (currentPath === "/headers" || currentPath.startsWith("/headers/edit/") || currentPath === "/headers/new")) {
+      isActive = true;
+    } else if (navId === "footers" && (currentPath === "/footers" || currentPath.startsWith("/footers/edit/") || currentPath === "/footers/new")) {
       isActive = true;
     } else if (currentProjectId && projectSubpageRegex.test(currentPath)) {
       const match = currentPath.match(projectSubpageRegex);
@@ -417,23 +423,11 @@ document.addEventListener("DOMContentLoaded", () => {
           case "project-documentation":
             isActive = currentPath === `${expectedBasePath}/documentation`;
             break;
-          case "project-doc-headers":
-            isActive = currentPath.startsWith(`${expectedBasePath}/documentation_headers`);
-            break;
-          case "project-doc-footers":
-            isActive = currentPath.startsWith(`${expectedBasePath}/documentation_footers`);
-            break;
           case "project-archived-doc":
             isActive = currentPath.startsWith(`${expectedBasePath}/archived_documentation`);
             break;
           case "project-changelogs":
             isActive = currentPath === `${expectedBasePath}/changelogs`;
-            break;
-          case "project-cl-headers":
-            isActive = currentPath.startsWith(`${expectedBasePath}/changelog_headers`);
-            break;
-          case "project-cl-footers":
-            isActive = currentPath.startsWith(`${expectedBasePath}/changelog_footers`);
             break;
           case "project-archived-cl":
             isActive = currentPath.startsWith(`${expectedBasePath}/archived_changelogs`);

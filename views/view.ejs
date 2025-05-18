@@ -63,7 +63,7 @@
       </style>
     <% } %>
 
-    <% if (locals.isStagedPreview) { %>
+    <% if (locals.isStagedPreview || locals.isPreview) { %>
       <style>
         .preview-banner {
           background-color: #fdba74;

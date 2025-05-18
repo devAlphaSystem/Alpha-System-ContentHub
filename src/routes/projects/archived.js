@@ -168,10 +168,8 @@ router.post("/:projectId/unarchive/:entryId", async (req, res, next) => {
 
     const mainData = {
       ...originalRecord,
-      custom_documentation_header: originalRecord.custom_documentation_header || null,
-      custom_documentation_footer: originalRecord.custom_documentation_footer || null,
-      custom_changelog_header: originalRecord.custom_changelog_header || null,
-      custom_changelog_footer: originalRecord.custom_changelog_footer || null,
+      custom_header: originalRecord.custom_header || null,
+      custom_footer: originalRecord.custom_footer || null,
       roadmap_stage: originalRecord.roadmap_stage || null,
       content_updated_at: originalRecord.content_updated_at,
     };
@@ -186,10 +184,8 @@ router.post("/:projectId/unarchive/:entryId", async (req, res, next) => {
     mainData.staged_content = null;
     mainData.staged_tags = null;
     mainData.staged_collection = null;
-    mainData.staged_documentation_header = null;
-    mainData.staged_documentation_footer = null;
-    mainData.staged_changelog_header = null;
-    mainData.staged_changelog_footer = null;
+    mainData.staged_header = null;
+    mainData.staged_footer = null;
     mainData.staged_roadmap_stage = null;
 
     const newMainRecord = await pbAdmin.collection("entries_main").create(mainData);

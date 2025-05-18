@@ -2,7 +2,7 @@ import express from "express";
 import { marked } from "marked";
 import { pb, pbAdmin, ITEMS_PER_PAGE } from "../../config.js";
 import { requireLogin } from "../../middleware.js";
-import { getProjectForOwner, getEntryForOwnerAndProject, getUserTemplates, getUserDocumentationHeaders, getUserDocumentationFooters, getUserChangelogHeaders, getUserChangelogFooters, logAuditEvent, sanitizeHtml, calculateReadingTime, clearEntryViewLogs } from "../../utils.js";
+import { getProjectForOwner, getEntryForOwnerAndProject, getUserTemplates, getUserHeaders, getUserFooters, logAuditEvent, sanitizeHtml, calculateReadingTime, clearEntryViewLogs } from "../../utils.js";
 import { logger } from "../../logger.js";
 
 const router = express.Router();
@@ -239,9 +239,9 @@ router.get("/:projectId/new", async (req, res) => {
 
   try {
     logger.time(`[PROJ][Entries] FetchNewEntryAssets ${projectId}`);
-    const [templates, documentationHeaders, documentationFooters, changelogHeaders, changelogFooters] = await Promise.all([getUserTemplates(userId, projectId), getUserDocumentationHeaders(userId, projectId), getUserDocumentationFooters(userId, projectId), getUserChangelogHeaders(userId, projectId), getUserChangelogFooters(userId, projectId)]);
+    const [templates, headers, footers] = await Promise.all([getUserTemplates(userId, projectId), getUserHeaders(userId), getUserFooters(userId)]);
     logger.timeEnd(`[PROJ][Entries] FetchNewEntryAssets ${projectId}`);
-    logger.trace(`[PROJ][Entries] Fetched assets for new entry page: ${templates.length} templates, ${documentationHeaders.length} doc headers, etc.`);
+    logger.trace(`[PROJ][Entries] Fetched assets for new entry page: ${templates.length} templates, ${headers.length} headers, ${footers.length} footers.`);
 
     logger.timeEnd(`[PROJ][Entries] GET /projects/${projectId}/new ${userId}`);
     res.render("projects/new_entry", {
@@ -252,10 +252,8 @@ router.get("/:projectId/new", async (req, res) => {
       },
       errors: null,
       templates: templates,
-      documentationHeaders: documentationHeaders,
-      documentationFooters: documentationFooters,
-      changelogHeaders: changelogHeaders,
-      changelogFooters: changelogFooters,
+      headers: headers,
+      footers: footers,
       entryType: preselectType,
       roadmapStages: ["Planned", "Next Up", "In Progress", "Done"],
     });
@@ -276,10 +274,8 @@ router.get("/:projectId/new", async (req, res) => {
         general: "Could not load page data (templates/headers/footers).",
       },
       templates: [],
-      documentationHeaders: [],
-      documentationFooters: [],
-      changelogHeaders: [],
-      changelogFooters: [],
+      headers: [],
+      footers: [],
       entryType: preselectType,
       roadmapStages: ["Planned", "Next Up", "In Progress", "Done"],
     });
@@ -289,33 +285,38 @@ router.get("/:projectId/new", async (req, res) => {
 router.post("/:projectId/new", async (req, res) => {
   const projectId = req.params.projectId;
   const userId = req.session.user.id;
-  const { title, type, content, status, tags, collection, url, custom_documentation_header, custom_documentation_footer, custom_changelog_header, custom_changelog_footer, show_in_project_sidebar, roadmap_stage } = req.body;
+  const { title, type, content, status, tags, collection, url, custom_header, custom_footer, show_in_project_sidebar, roadmap_stage } = req.body;
   logger.info(`[PROJ][Entries] POST /projects/${projectId}/new attempt by user ${userId}. Type: ${type}, Title: ${title}`);
   logger.time(`[PROJ][Entries] POST /projects/${projectId}/new ${userId}`);
   const pbErrors = {};
 
   const trimmedUrl = url ? url.trim() : "";
 
-  if (trimmedUrl && trimmedUrl.length !== 15)
+  if (trimmedUrl && trimmedUrl.length !== 15) {
     pbErrors.url = {
       message: "URL (ID) must be exactly 15 characters long if provided.",
     };
-  if (!title || title.trim() === "")
+  }
+  if (!title || title.trim() === "") {
     pbErrors.title = {
       message: "Title is required.",
     };
-  if (!type)
+  }
+  if (!type) {
     pbErrors.type = {
       message: "Type is required.",
     };
-  if (type !== "roadmap" && type !== "knowledge_base" && (!content || content.trim() === ""))
+  }
+  if (type !== "roadmap" && type !== "knowledge_base" && type !== "sidebar_header" && (!content || content.trim() === "")) {
     pbErrors.content = {
       message: "Content is required.",
     };
-  if (type === "knowledge_base" && (!content || content.trim() === ""))
+  }
+  if (type === "knowledge_base" && (!content || content.trim() === "")) {
     pbErrors.content = {
       message: "Answer content is required.",
     };
+  }
   if (type === "roadmap" && (!roadmap_stage || roadmap_stage.trim() === "")) {
     pbErrors.roadmap_stage = {
       message: "Roadmap Stage is required.",
@@ -326,7 +327,7 @@ router.post("/:projectId/new", async (req, res) => {
     logger.warn(`[PROJ][Entries] New entry validation failed for project ${projectId}:`, pbErrors);
     try {
       logger.time(`[PROJ][Entries] FetchNewEntryAssetsOnError ${projectId}`);
-      const [templates, documentationHeaders, documentationFooters, changelogHeaders, changelogFooters] = await Promise.all([getUserTemplates(userId, projectId), getUserDocumentationHeaders(userId, projectId), getUserDocumentationFooters(userId, projectId), getUserChangelogHeaders(userId, projectId), getUserChangelogFooters(userId, projectId)]);
+      const [templates, headers, footers] = await Promise.all([getUserTemplates(userId, projectId), getUserHeaders(userId), getUserFooters(userId)]);
       logger.timeEnd(`[PROJ][Entries] FetchNewEntryAssetsOnError ${projectId}`);
       const submittedData = {
         title,
@@ -336,10 +337,8 @@ router.post("/:projectId/new", async (req, res) => {
         tags: tags || "",
         collection: collection || "",
         url: url || "",
-        custom_documentation_header: custom_documentation_header || "",
-        custom_documentation_footer: custom_documentation_footer || "",
-        custom_changelog_header: custom_changelog_header || "",
-        custom_changelog_footer: custom_changelog_footer || "",
+        custom_header: custom_header || "",
+        custom_footer: custom_footer || "",
         show_in_project_sidebar: show_in_project_sidebar === "true",
         roadmap_stage: roadmap_stage || "",
         content_updated_at: new Date().toISOString(),
@@ -351,10 +350,8 @@ router.post("/:projectId/new", async (req, res) => {
         entry: submittedData,
         errors: pbErrors,
         templates: templates,
-        documentationHeaders: documentationHeaders,
-        documentationFooters: documentationFooters,
-        changelogHeaders: changelogHeaders,
-        changelogFooters: changelogFooters,
+        headers: headers,
+        footers: footers,
         entryType: type,
         roadmapStages: ["Planned", "Next Up", "In Progress", "Done"],
       });
@@ -369,10 +366,8 @@ router.post("/:projectId/new", async (req, res) => {
         tags: tags || "",
         collection: collection || "",
         url: url || "",
-        custom_documentation_header: custom_documentation_header || "",
-        custom_documentation_footer: custom_documentation_footer || "",
-        custom_changelog_header: custom_changelog_header || "",
-        custom_changelog_footer: custom_changelog_footer || "",
+        custom_header: custom_header || "",
+        custom_footer: custom_footer || "",
         show_in_project_sidebar: show_in_project_sidebar === "true",
         roadmap_stage: roadmap_stage || "",
         content_updated_at: new Date().toISOString(),
@@ -387,10 +382,8 @@ router.post("/:projectId/new", async (req, res) => {
           general: "Could not load page data.",
         },
         templates: [],
-        documentationHeaders: [],
-        documentationFooters: [],
-        changelogHeaders: [],
-        changelogFooters: [],
+        headers: [],
+        footers: [],
         entryType: type,
         roadmapStages: ["Planned", "Next Up", "In Progress", "Done"],
       });
@@ -407,10 +400,8 @@ router.post("/:projectId/new", async (req, res) => {
     views: 0,
     owner: userId,
     project: projectId,
-    custom_documentation_header: type === "documentation" ? custom_documentation_header || null : null,
-    custom_documentation_footer: type === "documentation" ? custom_documentation_footer || null : null,
-    custom_changelog_header: type === "changelog" ? custom_changelog_header || null : null,
-    custom_changelog_footer: type === "changelog" ? custom_changelog_footer || null : null,
+    custom_header: custom_header || null,
+    custom_footer: custom_footer || null,
     show_in_project_sidebar: show_in_project_sidebar === "true",
     roadmap_stage: type === "roadmap" ? roadmap_stage || null : null,
     has_staged_changes: false,
@@ -419,10 +410,8 @@ router.post("/:projectId/new", async (req, res) => {
     staged_content: null,
     staged_tags: null,
     staged_collection: null,
-    staged_documentation_header: null,
-    staged_documentation_footer: null,
-    staged_changelog_header: null,
-    staged_changelog_footer: null,
+    staged_header: null,
+    staged_footer: null,
     staged_roadmap_stage: null,
     content_updated_at: new Date().toISOString(),
   };
@@ -483,7 +472,7 @@ router.post("/:projectId/new", async (req, res) => {
       };
     }
 
-    const headerFooterFields = ["custom_documentation_header", "custom_documentation_footer", "custom_changelog_header", "custom_changelog_footer"];
+    const headerFooterFields = ["custom_header", "custom_footer"];
     for (const field of headerFooterFields) {
       if (creationErrors[field]) {
         creationErrors[field] = {
@@ -494,7 +483,7 @@ router.post("/:projectId/new", async (req, res) => {
 
     try {
       logger.time(`[PROJ][Entries] FetchNewEntryAssetsOnError ${projectId}`);
-      const [templates, documentationHeaders, documentationFooters, changelogHeaders, changelogFooters] = await Promise.all([getUserTemplates(userId, projectId), getUserDocumentationHeaders(userId, projectId), getUserDocumentationFooters(userId, projectId), getUserChangelogHeaders(userId, projectId), getUserChangelogFooters(userId, projectId)]);
+      const [templates, headers, footers] = await Promise.all([getUserTemplates(userId, projectId), getUserHeaders(userId), getUserFooters(userId)]);
       logger.timeEnd(`[PROJ][Entries] FetchNewEntryAssetsOnError ${projectId}`);
       const submittedData = {
         title,
@@ -504,10 +493,8 @@ router.post("/:projectId/new", async (req, res) => {
         tags: tags || "",
         collection: collection || "",
         url: url || "",
-        custom_documentation_header: custom_documentation_header || "",
-        custom_documentation_footer: custom_documentation_footer || "",
-        custom_changelog_header: custom_changelog_header || "",
-        custom_changelog_footer: custom_changelog_footer || "",
+        custom_header: custom_header || "",
+        custom_footer: custom_footer || "",
         show_in_project_sidebar: show_in_project_sidebar === "true",
         roadmap_stage: roadmap_stage || "",
         content_updated_at: new Date().toISOString(),
@@ -518,10 +505,8 @@ router.post("/:projectId/new", async (req, res) => {
         entry: submittedData,
         errors: creationErrors,
         templates: templates,
-        documentationHeaders: documentationHeaders,
-        documentationFooters: documentationFooters,
-        changelogHeaders: changelogHeaders,
-        changelogFooters: changelogFooters,
+        headers: headers,
+        footers: footers,
         entryType: type,
         roadmapStages: ["Planned", "Next Up", "In Progress", "Done"],
       });
@@ -536,10 +521,8 @@ router.post("/:projectId/new", async (req, res) => {
         tags: tags || "",
         collection: collection || "",
         url: url || "",
-        custom_documentation_header: custom_documentation_header || "",
-        custom_documentation_footer: custom_documentation_footer || "",
-        custom_changelog_header: custom_changelog_header || "",
-        custom_changelog_footer: custom_changelog_footer || "",
+        custom_header: custom_header || "",
+        custom_footer: custom_footer || "",
         show_in_project_sidebar: show_in_project_sidebar === "true",
         roadmap_stage: roadmap_stage || "",
         content_updated_at: new Date().toISOString(),
@@ -553,10 +536,8 @@ router.post("/:projectId/new", async (req, res) => {
           general: "Could not load page data.",
         },
         templates: [],
-        documentationHeaders: [],
-        documentationFooters: [],
-        changelogHeaders: [],
-        changelogFooters: [],
+        headers: [],
+        footers: [],
         entryType: type,
         roadmapStages: ["Planned", "Next Up", "In Progress", "Done"],
       });
@@ -573,7 +554,7 @@ router.get("/:projectId/edit/:entryId", async (req, res, next) => {
 
   try {
     logger.time(`[PROJ][Entries] FetchEditEntryAssets ${entryId}`);
-    const [record, documentationHeaders, documentationFooters, changelogHeaders, changelogFooters] = await Promise.all([getEntryForOwnerAndProject(entryId, userId, projectId), getUserDocumentationHeaders(userId, projectId), getUserDocumentationFooters(userId, projectId), getUserChangelogHeaders(userId, projectId), getUserChangelogFooters(userId, projectId)]);
+    const [record, headers, footers] = await Promise.all([getEntryForOwnerAndProject(entryId, userId, projectId), getUserHeaders(userId), getUserFooters(userId)]);
     logger.timeEnd(`[PROJ][Entries] FetchEditEntryAssets ${entryId}`);
     logger.trace(`[PROJ][Entries] Fetched entry ${entryId} and assets for edit page.`);
 
@@ -592,18 +573,9 @@ router.get("/:projectId/edit/:entryId", async (req, res, next) => {
       entryDataForForm.tags = record.staged_tags ?? record.tags;
       entryDataForForm.collection = record.collection;
       entryDataForForm.show_in_project_sidebar = record.show_in_project_sidebar;
+      entryDataForForm.custom_header = record.staged_header ?? record.custom_header;
+      entryDataForForm.custom_footer = record.staged_footer ?? record.custom_footer;
 
-      if (stagedType === "documentation") {
-        entryDataForForm.custom_documentation_header = record.staged_documentation_header ?? record.custom_documentation_header;
-        entryDataForForm.custom_documentation_footer = record.staged_documentation_footer ?? record.custom_documentation_footer;
-        entryDataForForm.custom_changelog_header = record.custom_changelog_header;
-        entryDataForForm.custom_changelog_footer = record.custom_changelog_footer;
-      } else if (stagedType === "changelog") {
-        entryDataForForm.custom_changelog_header = record.staged_changelog_header ?? record.custom_changelog_header;
-        entryDataForForm.custom_changelog_footer = record.staged_changelog_footer ?? record.custom_changelog_footer;
-        entryDataForForm.custom_documentation_header = record.custom_documentation_header;
-        entryDataForForm.custom_documentation_footer = record.custom_documentation_footer;
-      }
       if (stagedType === "roadmap") {
         entryDataForForm.roadmap_stage = record.staged_roadmap_stage ?? record.roadmap_stage;
       } else {
@@ -622,10 +594,8 @@ router.get("/:projectId/edit/:entryId", async (req, res, next) => {
       hasStagedChanges: record.has_staged_changes,
       isEditingStaged: isEditingStaged,
       errors: null,
-      documentationHeaders: documentationHeaders,
-      documentationFooters: documentationFooters,
-      changelogHeaders: changelogHeaders,
-      changelogFooters: changelogFooters,
+      headers: headers,
+      footers: footers,
       entryType: entryDataForForm.type,
       roadmapStages: ["Planned", "Next Up", "In Progress", "Done"],
     });
@@ -648,7 +618,7 @@ router.post("/:projectId/edit/:entryId", async (req, res, next) => {
   const entryId = req.params.entryId;
   const projectId = req.params.projectId;
   const userId = req.session.user.id;
-  const { title, type, content, status, tags, collection, custom_documentation_header, custom_documentation_footer, custom_changelog_header, custom_changelog_footer, show_in_project_sidebar, roadmap_stage } = req.body;
+  const { title, type, content, status, tags, collection, custom_header, custom_footer, show_in_project_sidebar, roadmap_stage } = req.body;
   const submittedStatus = status || "draft";
   const submittedType = type;
   const showInSidebarValue = show_in_project_sidebar === "true";
@@ -690,7 +660,7 @@ router.post("/:projectId/edit/:entryId", async (req, res, next) => {
     if (Object.keys(pbErrors).length > 0) {
       logger.warn(`[PROJ][Entries] Edit entry validation failed for ${entryId}, project ${projectId}:`, pbErrors);
       logger.time(`[PROJ][Entries] FetchEditEntryAssetsOnError ${entryId}`);
-      const [documentationHeaders, documentationFooters, changelogHeaders, changelogFooters] = await Promise.all([getUserDocumentationHeaders(userId, projectId), getUserDocumentationFooters(userId, projectId), getUserChangelogHeaders(userId, projectId), getUserChangelogFooters(userId, projectId)]);
+      const [headers, footers] = await Promise.all([getUserHeaders(userId), getUserFooters(userId)]);
       logger.timeEnd(`[PROJ][Entries] FetchEditEntryAssetsOnError ${entryId}`);
       const entryDataForForm = {
         ...originalRecord,
@@ -700,10 +670,8 @@ router.post("/:projectId/edit/:entryId", async (req, res, next) => {
         status: submittedStatus,
         tags,
         collection,
-        custom_documentation_header,
-        custom_documentation_footer,
-        custom_changelog_header,
-        custom_changelog_footer,
+        custom_header,
+        custom_footer,
         show_in_project_sidebar: showInSidebarValue,
         roadmap_stage,
       };
@@ -716,10 +684,8 @@ router.post("/:projectId/edit/:entryId", async (req, res, next) => {
         hasStagedChanges: originalRecord.has_staged_changes,
         isEditingStaged: originalRecord.status === "published" && originalRecord.has_staged_changes,
         errors: pbErrors,
-        documentationHeaders,
-        documentationFooters,
-        changelogHeaders,
-        changelogFooters,
+        headers,
+        footers,
         entryType: submittedType,
         roadmapStages: ["Planned", "Next Up", "In Progress", "Done"],
       });
@@ -738,10 +704,8 @@ router.post("/:projectId/edit/:entryId", async (req, res, next) => {
         staged_type: submittedType,
         staged_content: submittedType === "sidebar_header" ? "" : content,
         staged_tags: submittedType === "sidebar_header" ? "" : tags || "",
-        staged_documentation_header: submittedType === "documentation" ? custom_documentation_header || null : null,
-        staged_documentation_footer: submittedType === "documentation" ? custom_documentation_footer || null : null,
-        staged_changelog_header: submittedType === "changelog" ? custom_changelog_header || null : null,
-        staged_changelog_footer: submittedType === "changelog" ? custom_changelog_footer || null : null,
+        staged_header: custom_header || null,
+        staged_footer: custom_footer || null,
         staged_roadmap_stage: submittedType === "roadmap" ? roadmap_stage || null : null,
         has_staged_changes: true,
         collection: submittedType === "sidebar_header" ? "" : collection || "",
@@ -756,10 +720,8 @@ router.post("/:projectId/edit/:entryId", async (req, res, next) => {
         tags: submittedType === "sidebar_header" ? "" : tags || "",
         collection: submittedType === "sidebar_header" ? "" : collection || "",
         status: submittedType === "sidebar_header" ? "published" : submittedStatus,
-        custom_documentation_header: submittedType === "documentation" ? custom_documentation_header || null : null,
-        custom_documentation_footer: submittedType === "documentation" ? custom_documentation_footer || null : null,
-        custom_changelog_header: submittedType === "changelog" ? custom_changelog_header || null : null,
-        custom_changelog_footer: submittedType === "changelog" ? custom_changelog_footer || null : null,
+        custom_header: custom_header || null,
+        custom_footer: custom_footer || null,
         roadmap_stage: submittedType === "roadmap" ? roadmap_stage || null : null,
         show_in_project_sidebar: submittedType === "sidebar_header" ? true : showInSidebarValue,
         has_staged_changes: false,
@@ -768,10 +730,8 @@ router.post("/:projectId/edit/:entryId", async (req, res, next) => {
         staged_content: null,
         staged_tags: null,
         staged_collection: null,
-        staged_documentation_header: null,
-        staged_documentation_footer: null,
-        staged_changelog_header: null,
-        staged_changelog_footer: null,
+        staged_header: null,
+        staged_footer: null,
         staged_roadmap_stage: null,
         content_updated_at: new Date().toISOString(),
       };
@@ -817,7 +777,7 @@ router.post("/:projectId/edit/:entryId", async (req, res, next) => {
       general: "Failed to save changes. Please check the form.",
     };
 
-    const headerFooterFields = ["custom_documentation_header", "custom_documentation_footer", "custom_changelog_header", "custom_changelog_footer", "staged_documentation_header", "staged_documentation_footer", "staged_changelog_header", "staged_changelog_footer", "roadmap_stage", "staged_roadmap_stage"];
+    const headerFooterFields = ["custom_header", "custom_footer", "staged_header", "staged_footer", "roadmap_stage", "staged_roadmap_stage"];
     for (const field of headerFooterFields) {
       if (pbErrors[field]) {
         pbErrors[field] = {
@@ -828,7 +788,7 @@ router.post("/:projectId/edit/:entryId", async (req, res, next) => {
 
     try {
       logger.time(`[PROJ][Entries] FetchEditEntryAssetsOnError ${entryId}`);
-      const [recordForRender, documentationHeaders, documentationFooters, changelogHeaders, changelogFooters] = await Promise.all([originalRecord || pbAdmin.collection("entries_main").getOne(entryId), getUserDocumentationHeaders(userId, projectId), getUserDocumentationFooters(userId, projectId), getUserChangelogHeaders(userId, projectId), getUserChangelogFooters(userId, projectId)]);
+      const [recordForRender, headers, footers] = await Promise.all([originalRecord || pbAdmin.collection("entries_main").getOne(entryId), getUserHeaders(userId), getUserFooters(userId)]);
       logger.timeEnd(`[PROJ][Entries] FetchEditEntryAssetsOnError ${entryId}`);
 
       if (recordForRender.owner !== userId || recordForRender.project !== projectId) {
@@ -844,10 +804,8 @@ router.post("/:projectId/edit/:entryId", async (req, res, next) => {
         status: submittedStatus,
         tags,
         collection,
-        custom_documentation_header: custom_documentation_header || "",
-        custom_documentation_footer: custom_documentation_footer || "",
-        custom_changelog_header: custom_changelog_header || "",
-        custom_changelog_footer: custom_changelog_footer || "",
+        custom_header: custom_header || "",
+        custom_footer: custom_footer || "",
         show_in_project_sidebar: showInSidebarValue,
         roadmap_stage: roadmap_stage || "",
       };
@@ -859,10 +817,8 @@ router.post("/:projectId/edit/:entryId", async (req, res, next) => {
         entryDataForForm.type = submittedType;
         entryDataForForm.content = content || "";
         entryDataForForm.tags = tags;
-        entryDataForForm.custom_documentation_header = custom_documentation_header || "";
-        entryDataForForm.custom_documentation_footer = custom_documentation_footer || "";
-        entryDataForForm.custom_changelog_header = custom_changelog_header || "";
-        entryDataForForm.custom_changelog_footer = custom_changelog_footer || "";
+        entryDataForForm.custom_header = custom_header || "";
+        entryDataForForm.custom_footer = custom_footer || "";
         entryDataForForm.show_in_project_sidebar = showInSidebarValue;
         entryDataForForm.roadmap_stage = roadmap_stage || "";
       }
@@ -875,10 +831,8 @@ router.post("/:projectId/edit/:entryId", async (req, res, next) => {
         hasStagedChanges: recordForRender.has_staged_changes,
         isEditingStaged: isEditingStaged,
         errors: pbErrors,
-        documentationHeaders: documentationHeaders,
-        documentationFooters: documentationFooters,
-        changelogHeaders: changelogHeaders,
-        changelogFooters: changelogFooters,
+        headers: headers,
+        footers: footers,
         entryType: entryDataForForm.type,
         roadmapStages: ["Planned", "Next Up", "In Progress", "Done"],
       });
@@ -951,17 +905,8 @@ router.get("/:projectId/preview-staged/:entryId", async (req, res, next) => {
 
   try {
     const record = await pbAdmin.collection("entries_main").getOne(entryId, {
-      expand: "project,custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer,staged_documentation_header,staged_documentation_footer,staged_changelog_header,staged_changelog_footer",
-      fields:
-        "*,expand.project.*," +
-        "expand.custom_documentation_header.id,expand.custom_documentation_header.content,expand.custom_documentation_header.apply_full_width,expand.custom_documentation_header.is_sticky,expand.custom_documentation_header.custom_css,expand.custom_documentation_header.custom_js," +
-        "expand.custom_documentation_footer.id,expand.custom_documentation_footer.content,expand.custom_documentation_footer.apply_full_width,expand.custom_documentation_footer.custom_css,expand.custom_documentation_footer.custom_js," +
-        "expand.custom_changelog_header.id,expand.custom_changelog_header.content,expand.custom_changelog_header.apply_full_width,expand.custom_changelog_header.is_sticky,expand.custom_changelog_header.custom_css,expand.custom_changelog_header.custom_js," +
-        "expand.custom_changelog_footer.id,expand.custom_changelog_footer.content,expand.custom_changelog_footer.apply_full_width,expand.custom_changelog_footer.custom_css,expand.custom_changelog_footer.custom_js," +
-        "expand.staged_documentation_header.id,expand.staged_documentation_header.content,expand.staged_documentation_header.apply_full_width,expand.staged_documentation_header.is_sticky,expand.staged_documentation_header.custom_css,expand.staged_documentation_header.custom_js," +
-        "expand.staged_documentation_footer.id,expand.staged_documentation_footer.content,expand.staged_documentation_footer.apply_full_width,expand.staged_documentation_footer.custom_css,expand.staged_documentation_footer.custom_js," +
-        "expand.staged_changelog_header.id,expand.staged_changelog_header.content,expand.staged_changelog_header.apply_full_width,expand.staged_changelog_header.is_sticky,expand.staged_changelog_header.custom_css,expand.staged_changelog_header.custom_js," +
-        "expand.staged_changelog_footer.id,expand.staged_changelog_footer.content,expand.staged_changelog_footer.apply_full_width,expand.staged_changelog_footer.custom_css,expand.staged_changelog_footer.custom_js",
+      expand: "project,custom_header,custom_footer,staged_header,staged_footer",
+      fields: "*,expand.project.*," + "expand.custom_header.id,expand.custom_header.content,expand.custom_header.apply_full_width,expand.custom_header.is_sticky,expand.custom_header.custom_css,expand.custom_header.custom_js," + "expand.custom_footer.id,expand.custom_footer.content,expand.custom_footer.apply_full_width,expand.custom_footer.custom_css,expand.custom_footer.custom_js," + "expand.staged_header.id,expand.staged_header.content,expand.staged_header.apply_full_width,expand.staged_header.is_sticky,expand.staged_header.custom_css,expand.staged_header.custom_js," + "expand.staged_footer.id,expand.staged_footer.content,expand.staged_footer.apply_full_width,expand.staged_footer.custom_css,expand.staged_footer.custom_js",
     });
 
     if (record.owner !== userId || record.project !== projectId) {
@@ -989,16 +934,8 @@ router.get("/:projectId/preview-staged/:entryId", async (req, res, next) => {
     const cleanMainHtml = parseMarkdownWithThemeImages(stagedContent);
     const readingTime = calculateReadingTime(stagedContent);
 
-    let headerRecordToUse = null;
-    let footerRecordToUse = null;
-
-    if (stagedType === "documentation") {
-      headerRecordToUse = record.expand?.staged_documentation_header ?? record.expand?.custom_documentation_header;
-      footerRecordToUse = record.expand?.staged_documentation_footer ?? record.expand?.custom_documentation_footer;
-    } else if (stagedType === "changelog") {
-      headerRecordToUse = record.expand?.staged_changelog_header ?? record.expand?.custom_changelog_header;
-      footerRecordToUse = record.expand?.staged_changelog_footer ?? record.expand?.custom_changelog_footer;
-    }
+    const headerRecordToUse = record.expand?.staged_header ?? record.expand?.custom_header;
+    const footerRecordToUse = record.expand?.staged_footer ?? record.expand?.custom_footer;
 
     const customHeaderHtml = headerRecordToUse?.content ? parseMarkdownWithThemeImages(headerRecordToUse.content) : null;
     const headerApplyFullWidth = headerRecordToUse?.apply_full_width === true;
@@ -1184,10 +1121,8 @@ router.post("/:projectId/archive/:entryId", async (req, res, next) => {
     const archiveData = {
       ...originalRecord,
       original_id: originalRecord.id,
-      custom_documentation_header: originalRecord.custom_documentation_header || null,
-      custom_documentation_footer: originalRecord.custom_documentation_footer || null,
-      custom_changelog_header: originalRecord.custom_changelog_header || null,
-      custom_changelog_footer: originalRecord.custom_changelog_footer || null,
+      custom_header: originalRecord.custom_header || null,
+      custom_footer: originalRecord.custom_footer || null,
       roadmap_stage: originalRecord.roadmap_stage || null,
       content_updated_at: originalRecord.content_updated_at,
     };
@@ -1202,10 +1137,8 @@ router.post("/:projectId/archive/:entryId", async (req, res, next) => {
     archiveData.staged_content = null;
     archiveData.staged_tags = null;
     archiveData.staged_collection = null;
-    archiveData.staged_documentation_header = null;
-    archiveData.staged_documentation_footer = null;
-    archiveData.staged_changelog_header = null;
-    archiveData.staged_changelog_footer = null;
+    archiveData.staged_header = null;
+    archiveData.staged_footer = null;
     archiveData.staged_roadmap_stage = null;
 
     const archivedRecord = await pbAdmin.collection("entries_archived").create(archiveData);

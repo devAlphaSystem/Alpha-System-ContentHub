@@ -80,48 +80,24 @@
         <% if (locals.errors?.url) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.url.message %></small> <% } %>
       </div>
 
-      <div class="form-group form-group-type-specific" id="documentation-header-group" style="display: <%= locals.entry?.type === 'documentation' ? 'block' : 'none' %>;">
-        <label for="custom_documentation_header">Documentation Header</label>
-        <select id="custom_documentation_header" name="custom_documentation_header" class="form-control <%= locals.errors?.custom_documentation_header ? 'is-invalid' : '' %>">
+      <div class="form-group form-group-type-specific" id="header-group" style="display: <%= locals.entry?.type === 'changelog' || locals.entry?.type === 'documentation' ? 'block' : 'none' %>;">
+        <label for="custom_header">Header</label>
+        <select id="custom_header" name="custom_header" class="form-control <%= locals.errors?.custom_header ? 'is-invalid' : '' %>">
           <option value="">Default Header</option>
-          <% for (const header of documentationHeaders) { %>
-            <option value="<%= header.id %>" <%= locals.entry?.custom_documentation_header === header.id ? 'selected' : '' %>>
+          <% for (const header of headers) { %>
+            <option value="<%= header.id %>" <%= locals.entry?.custom_header === header.id ? 'selected' : '' %>>
               <%= header.name %>
             </option>
           <% } %>
         </select>
       </div>
 
-      <div class="form-group form-group-type-specific" id="documentation-footer-group" style="display: <%= locals.entry?.type === 'documentation' ? 'block' : 'none' %>;">
-        <label for="custom_documentation_footer">Documentation Footer</label>
-        <select id="custom_documentation_footer" name="custom_documentation_footer" class="form-control <%= locals.errors?.custom_documentation_footer ? 'is-invalid' : '' %>">
+      <div class="form-group form-group-type-specific" id="footer-group" style="display: <%= locals.entry?.type === 'changelog' || locals.entry?.type === 'documentation' ? 'block' : 'none' %>;">
+        <label for="custom_footer">Footer</label>
+        <select id="custom_footer" name="custom_footer" class="form-control <%= locals.errors?.custom_footer ? 'is-invalid' : '' %>">
           <option value="">Default Footer</option>
-          <% for (const footer of documentationFooters) { %>
-            <option value="<%= footer.id %>" <%= locals.entry?.custom_documentation_footer === footer.id ? 'selected' : '' %>>
-              <%= footer.name %>
-            </option>
-          <% } %>
-        </select>
-      </div>
-
-      <div class="form-group form-group-type-specific" id="changelog-header-group" style="display: <%= locals.entry?.type === 'changelog' ? 'block' : 'none' %>;">
-        <label for="custom_changelog_header">Changelog Header</label>
-        <select id="custom_changelog_header" name="custom_changelog_header" class="form-control <%= locals.errors?.custom_changelog_header ? 'is-invalid' : '' %>">
-          <option value="">Default Header</option>
-          <% for (const header of changelogHeaders) { %>
-            <option value="<%= header.id %>" <%= locals.entry?.custom_changelog_header === header.id ? 'selected' : '' %>>
-              <%= header.name %>
-            </option>
-          <% } %>
-        </select>
-      </div>
-
-      <div class="form-group form-group-type-specific" id="changelog-footer-group" style="display: <%= locals.entry?.type === 'changelog' ? 'block' : 'none' %>;">
-        <label for="custom_changelog_footer">Changelog Footer</label>
-        <select id="custom_changelog_footer" name="custom_changelog_footer" class="form-control <%= locals.errors?.custom_changelog_footer ? 'is-invalid' : '' %>">
-          <option value="">Default Footer</option>
-          <% for (const footer of changelogFooters) { %>
-            <option value="<%= footer.id %>" <%= locals.entry?.custom_changelog_footer === footer.id ? 'selected' : '' %>>
+          <% for (const footer of footers) { %>
+            <option value="<%= footer.id %>" <%= locals.entry?.custom_footer === footer.id ? 'selected' : '' %>>
               <%= footer.name %>
             </option>
           <% } %>
@@ -149,7 +125,7 @@
         </select>
       </div>
 
-      <div class="form-group form-group-full form-group-content" style="display: <%= locals.entry?.type === 'roadmap' ? 'none' : 'block' %>;">
+      <div class="form-group form-group-full form-group-content" style="display: <%= locals.entry?.type === 'roadmap' || locals.entry?.type === 'sidebar_header' ? 'none' : 'block' %>;">
         <label for="content">
           <% if (locals.entry?.type === 'knowledge_base') { %>
             Answer (Markdown) <span class="required">*</span>

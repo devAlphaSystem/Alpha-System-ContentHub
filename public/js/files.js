@@ -79,7 +79,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (totalSizeDisplay) {
       if (totalSize !== null) {
         totalSizeDisplay.textContent = `Total Storage Used: ${formatBytes(totalSize)}`;
-        totalSizeDisplay.style.display = totalItems > 0 ? "block" : "none";
+        if (totalItems > 0) {
+          totalSizeDisplay.style.display = "block";
+        } else {
+          totalSizeDisplay.textContent = "Total Storage Used: No files found.";
+          totalSizeDisplay.style.display = "block";
+        }
       } else {
         totalSizeDisplay.textContent = "Total Storage Used: Calculation disabled in settings.";
         totalSizeDisplay.style.display = "block";
@@ -139,8 +144,6 @@ document.addEventListener("DOMContentLoaded", () => {
       totalPages = data.totalPages;
       totalItems = data.totalItems;
       totalSize = data.totalSize;
-
-      console.log(`[FILES JS] fetchFiles success: Received totalSize = ${totalSize}, totalItems = ${totalItems}`);
 
       renderTable(data.items);
       updatePaginationControls();

@@ -81,14 +81,6 @@
                 <i class="fas fa-file-alt fa-fw"></i>
                 <span>Docs Entries</span>
               </a>
-              <a href="<%= projectBasePath %>/documentation_headers" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/documentation_headers')) { %>active<% } %>" data-nav-id="project-doc-headers">
-                <i class="far fa-arrow-alt-circle-up fa-fw"></i>
-                <span>Doc Headers</span>
-              </a>
-              <a href="<%= projectBasePath %>/documentation_footers" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/documentation_footers')) { %>active<% } %>" data-nav-id="project-doc-footers">
-                <i class="far fa-arrow-alt-circle-down fa-fw"></i>
-                <span>Doc Footers</span>
-              </a>
               <a href="<%= projectBasePath %>/archived_documentation" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/archived_documentation')) { %>active<% } %>" data-nav-id="project-archived-doc">
                 <i class="fas fa-archive fa-fw"></i>
                 <span>Archived Docs</span>
@@ -103,14 +95,6 @@
               <a href="<%= projectBasePath %>/changelogs" class="nav-link <% if (currentPath === projectBasePath + '/changelogs' || (currentPath.startsWith(projectBasePath + '/edit/') && locals.entryType === 'changelog') || (currentPath.startsWith(projectBasePath + '/new') && locals.entryType === 'changelog')) { %>active<% } %>" data-nav-id="project-changelogs">
                 <i class="fas fa-history fa-fw"></i>
                 <span>Changelog Entries</span>
-              </a>
-              <a href="<%= projectBasePath %>/changelog_headers" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/changelog_headers')) { %>active<% } %>" data-nav-id="project-cl-headers">
-                <i class="far fa-arrow-alt-circle-up fa-fw"></i>
-                <span>Changelog Headers</span>
-              </a>
-              <a href="<%= projectBasePath %>/changelog_footers" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/changelog_footers')) { %>active<% } %>" data-nav-id="project-cl-footers">
-                <i class="far fa-arrow-alt-circle-down fa-fw"></i>
-                <span>Changelog Footers</span>
               </a>
               <a href="<%= projectBasePath %>/archived_changelogs" class="nav-link <% if (currentPath.startsWith(projectBasePath + '/archived_changelogs')) { %>active<% } %>" data-nav-id="project-archived-cl">
                 <i class="fas fa-archive fa-fw"></i>

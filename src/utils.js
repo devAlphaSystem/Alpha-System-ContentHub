@@ -76,7 +76,7 @@ export async function getPublicEntryById(id) {
   logger.time(`[UTIL] getPublicEntryById ${id}`);
   try {
     const record = await pbAdmin.collection("entries_main").getFirstListItem(`id = '${id}' && status = 'published'`, {
-      expand: "project,custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer",
+      expand: "project,custom_header,custom_footer",
     });
     logger.timeEnd(`[UTIL] getPublicEntryById ${id}`);
     logger.trace(`Public entry ${id} fetched successfully.`);
@@ -100,7 +100,7 @@ export async function getDraftEntryForPreview(id) {
   logger.time(`[UTIL] getDraftEntryForPreview ${id}`);
   try {
     const record = await pbAdmin.collection("entries_main").getOne(id, {
-      expand: "project,custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer,staged_documentation_header,staged_documentation_footer,staged_changelog_header,staged_changelog_footer",
+      expand: "project,custom_header,custom_footer,staged_header,staged_footer",
     });
     logger.timeEnd(`[UTIL] getDraftEntryForPreview ${id}`);
     logger.trace(`Entry ${id} for preview fetched successfully.`);
@@ -176,7 +176,7 @@ export async function getEntryForOwnerAndProject(entryId, userId, projectId) {
   logger.time(`[UTIL] getEntryForOwnerAndProject ${entryId}`);
   try {
     const record = await pb.collection("entries_main").getOne(entryId, {
-      expand: "custom_documentation_header,custom_documentation_footer,custom_changelog_header,custom_changelog_footer,staged_documentation_header,staged_documentation_footer,staged_changelog_header,staged_changelog_footer",
+      expand: "custom_header,custom_footer,staged_header,staged_footer",
     });
     if (record.owner !== userId || record.project !== projectId) {
       logger.warn(`Forbidden access attempt: User ${userId} tried to access entry ${entryId} (Owner: ${record.owner}, Project: ${record.project}) in project ${projectId}.`);
@@ -223,14 +223,10 @@ export async function getArchivedEntryForOwnerAndProject(entryId, userId, projec
   }
 }
 
-async function getProjectAssets(collectionName, userId, projectId) {
-  const filterParts = [`owner = '${userId}'`];
-  if (projectId) {
-    filterParts.push(`project = '${projectId}'`);
-  }
-  const filter = filterParts.join(" && ");
-  logger.debug(`Fetching ${collectionName} for user ${userId}, project ${projectId || "N/A"} with filter: ${filter}`);
-  logger.time(`[UTIL] getProjectAssets ${collectionName} ${userId} ${projectId || "N/A"}`);
+async function getGlobalAssets(collectionName, userId) {
+  const filter = `owner = '${userId}'`;
+  logger.debug(`Fetching global ${collectionName} for user ${userId} with filter: ${filter}`);
+  logger.time(`[UTIL] getGlobalAssets ${collectionName} ${userId}`);
   try {
     const assets = await pb.collection(collectionName).getFullList({
       filter: filter,
@@ -238,71 +234,55 @@ async function getProjectAssets(collectionName, userId, projectId) {
       fields: "id,name",
       $autoCancel: false,
     });
-    logger.timeEnd(`[UTIL] getProjectAssets ${collectionName} ${userId} ${projectId || "N/A"}`);
-    logger.trace(`Fetched ${assets.length} ${collectionName} for user ${userId}, project ${projectId || "N/A"}.`);
+    logger.timeEnd(`[UTIL] getGlobalAssets ${collectionName} ${userId}`);
+    logger.trace(`Fetched ${assets.length} global ${collectionName} for user ${userId}.`);
     return assets;
   } catch (error) {
-    logger.timeEnd(`[UTIL] getProjectAssets ${collectionName} ${userId} ${projectId || "N/A"}`);
-    logger.error(`Error fetching ${collectionName} for user ${userId}, project ${projectId || "N/A"}: Status ${error?.status || "N/A"}`, error?.message || error);
+    logger.timeEnd(`[UTIL] getGlobalAssets ${collectionName} ${userId}`);
+    logger.error(`Error fetching global ${collectionName} for user ${userId}: Status ${error?.status || "N/A"}`, error?.message || error);
     return [];
   }
 }
 
-async function getProjectAssetForEdit(collectionName, assetId, userId, projectId) {
-  logger.debug(`Fetching ${collectionName} ${assetId} for edit by user ${userId} in project ${projectId}.`);
-  logger.time(`[UTIL] getProjectAssetForEdit ${collectionName} ${assetId}`);
+async function getGlobalAssetForEdit(collectionName, assetId, userId) {
+  logger.debug(`Fetching global ${collectionName} ${assetId} for edit by user ${userId}.`);
+  logger.time(`[UTIL] getGlobalAssetForEdit ${collectionName} ${assetId}`);
   try {
     const asset = await pb.collection(collectionName).getOne(assetId);
-    if (asset.owner !== userId || asset.project !== projectId) {
-      logger.warn(`Forbidden access attempt: User ${userId} tried to edit ${collectionName} ${assetId} (Owner: ${asset.owner}, Project: ${asset.project}) in project ${projectId}.`);
+    if (asset.owner !== userId) {
+      logger.warn(`Forbidden access attempt: User ${userId} tried to edit global ${collectionName} ${assetId} (Owner: ${asset.owner}).`);
       const err = new Error("Forbidden");
       err.status = 403;
       throw err;
     }
-    logger.timeEnd(`[UTIL] getProjectAssetForEdit ${collectionName} ${assetId}`);
-    logger.trace(`${collectionName} ${assetId} fetched successfully for edit by user ${userId}.`);
+    logger.timeEnd(`[UTIL] getGlobalAssetForEdit ${collectionName} ${assetId}`);
+    logger.trace(`Global ${collectionName} ${assetId} fetched successfully for edit by user ${userId}.`);
     return asset;
   } catch (error) {
-    logger.timeEnd(`[UTIL] getProjectAssetForEdit ${collectionName} ${assetId}`);
+    logger.timeEnd(`[UTIL] getGlobalAssetForEdit ${collectionName} ${assetId}`);
     if (error.status !== 404 && error.status !== 403) {
-      logger.error(`Failed to fetch ${collectionName} ${assetId} for edit in project ${projectId}: Status ${error?.status || "N/A"}`, error?.message || error);
+      logger.error(`Failed to fetch global ${collectionName} ${assetId} for edit by user ${userId}: Status ${error?.status || "N/A"}`, error?.message || error);
     } else if (error.status === 404) {
-      logger.debug(`${collectionName} ${assetId} not found for edit.`);
+      logger.debug(`Global ${collectionName} ${assetId} not found for edit.`);
     }
     throw error;
   }
 }
 
-export async function getUserDocumentationHeaders(userId, projectId) {
-  return getProjectAssets("documentation_headers", userId, projectId);
+export async function getUserHeaders(userId) {
+  return getGlobalAssets("headers", userId);
 }
 
-export async function getUserDocumentationFooters(userId, projectId) {
-  return getProjectAssets("documentation_footers", userId, projectId);
+export async function getUserFooters(userId) {
+  return getGlobalAssets("footers", userId);
 }
 
-export async function getUserChangelogHeaders(userId, projectId) {
-  return getProjectAssets("changelog_headers", userId, projectId);
+export async function getHeaderForEdit(headerId, userId) {
+  return getGlobalAssetForEdit("headers", headerId, userId);
 }
 
-export async function getUserChangelogFooters(userId, projectId) {
-  return getProjectAssets("changelog_footers", userId, projectId);
-}
-
-export async function getDocumentationHeaderForEditAndProject(headerId, userId, projectId) {
-  return getProjectAssetForEdit("documentation_headers", headerId, userId, projectId);
-}
-
-export async function getDocumentationFooterForEditAndProject(footerId, userId, projectId) {
-  return getProjectAssetForEdit("documentation_footers", footerId, userId, projectId);
-}
-
-export async function getChangelogHeaderForEditAndProject(headerId, userId, projectId) {
-  return getProjectAssetForEdit("changelog_headers", headerId, userId, projectId);
-}
-
-export async function getChangelogFooterForEditAndProject(footerId, userId, projectId) {
-  return getProjectAssetForEdit("changelog_footers", footerId, userId, projectId);
+export async function getFooterForEdit(footerId, userId) {
+  return getGlobalAssetForEdit("footers", footerId, userId);
 }
 
 export function logEntryView(req, entryId) {

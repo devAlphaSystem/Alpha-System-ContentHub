@@ -1,15 +1,15 @@
-<% locals.pageTitle='Documentation Footers - ' + project.name %>
+<% locals.pageTitle='Global Footers' %>
 
-<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: project.id }) %>
+<%- include('../partials/header', { pageTitle: locals.pageTitle, currentProjectId: null }) %>
 
 <div class="content-header">
-  <h1>Documentation Footers: <span class="text-muted"><%= project.name %></span></h1>
+  <h1><%= locals.pageTitle %></h1>
   <div class="header-actions">
-    <button id="refresh-doc-footers-btn" class="btn btn-secondary" title="Refresh Table">
+    <button id="refresh-cl-footers-btn" class="btn btn-secondary" title="Refresh Table">
       <i class="fas fa-sync-alt"></i> <span>Refresh</span>
     </button>
-    <a href="/projects/<%= project.id %>/documentation_footers/new" class="btn btn-primary">
-      <i class="fas fa-plus"></i> Create New Doc Footer
+    <a href="/footers/new" class="btn btn-primary">
+      <i class="fas fa-plus"></i> Create New Global Footer
     </a>
   </div>
 </div>
@@ -21,10 +21,10 @@
   </div>
 <% } %>
 
-<% if (locals.error && locals.error === 'Could not load documentation footers.') { %>
+<% if (locals.error && locals.error === 'Could not load footers.') { %>
   <div class="alert alert-danger">
     <i class="fas fa-exclamation-triangle alert-icon"></i>
-    <span>Error loading documentation footers for this project. Please try refreshing the page or contact support.</span>
+    <span>Error loading global footers. Please try refreshing the page or contact support.</span>
   </div>
 <% } %>
 
@@ -38,14 +38,14 @@
           <th class="actions-column">Actions</th>
         </tr>
       </thead>
-      <tbody id="doc-footers-table-body">
+      <tbody id="cl-footers-table-body">
         <% for (const footer of assets) { %>
           <tr data-footer-id="<%= footer.id %>" data-updated-timestamp="<%= new Date(footer.updated).getTime() %>">
             <td data-label="Name"> <%= footer.name %> </td>
             <td data-label="Updated"> <%= footer.formattedUpdated %> </td>
             <td data-label="Actions" class="actions-cell">
-              <a href="/projects/<%= project.id %>/documentation_footers/edit/<%= footer.id %>" class="btn btn-icon btn-edit" title="Edit Documentation Footer"> <i class="fas fa-pencil-alt"></i> </a>
-              <form action="/projects/<%= project.id %>/documentation_footers/delete/<%= footer.id %>" method="POST" class="delete-doc-footer-form" title="Delete Documentation Footer">
+              <a href="/footers/edit/<%= footer.id %>" class="btn btn-icon btn-edit" title="Edit Footer"> <i class="fas fa-pencil-alt"></i> </a>
+              <form action="/footers/delete/<%= footer.id %>" method="POST" class="delete-cl-footer-form" title="Delete Footer">
                 <button type="submit" class="btn btn-icon btn-delete"> <i class="fas fa-trash-alt"></i> </button>
               </form>
             </td>
@@ -71,10 +71,10 @@
 <% if (assets.length === 0 && !locals.error) { %>
   <div class="card empty-state-card">
     <i class="far fa-arrow-alt-circle-down empty-state-icon"></i>
-    <h2>No custom documentation footers yet for this project</h2>
-    <p>Create reusable footers to customize the bottom of your documentation entry view pages.</p>
-    <a href="/projects/<%= project.id %>/documentation_footers/new" class="btn btn-primary">Create First Doc Footer</a>
+    <h2>No global footers yet</h2>
+    <p>Create reusable footers to customize the bottom of your entry view pages across all projects.</p>
+    <a href="/footers/new" class="btn btn-primary">Create First Global Footer</a>
   </div>
 <% } %>
 
-<%- include('../partials/footer', { scriptPath: '/js/documentation_footers.js' }) %>
+<%- include('../partials/footer', { scriptPath: '/js/footers.js' }) %>
