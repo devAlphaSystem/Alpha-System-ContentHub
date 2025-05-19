@@ -2,6 +2,7 @@ import express from "express";
 import { pb, pbAdmin } from "../config.js";
 import { requireLogin } from "../middleware.js";
 import { logAuditEvent, checkAppVersion } from "../utils.js";
+import { getVersionInfoCache } from "../cron.js";
 import { logger } from "../logger.js";
 
 const router = express.Router();
@@ -44,7 +45,7 @@ router.get("/", requireLogin, async (req, res) => {
     logger.debug(`[DASH] Found ${allEntries.length} total entries (excluding headers) for user ${userId}.`);
 
     let totalEntriesDocsCl = 0;
-    let publishedCountDocsCl = 0;
+    let publishedCount = 0;
     let draftCount = 0;
     let stagedCount = 0;
     let totalViewsDocsCl = 0;
@@ -55,25 +56,24 @@ router.get("/", requireLogin, async (req, res) => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+    const totalEntries = allEntries.length;
+
     for (const entry of allEntries) {
       const isDocOrCl = entry.type === "documentation" || entry.type === "changelog";
 
       if (isDocOrCl) {
         totalEntriesDocsCl++;
         totalViewsDocsCl += entry.views || 0;
+      }
 
-        if (entry.status === "published") {
-          publishedCountDocsCl++;
-          if (entry.has_staged_changes) {
-            stagedCount++;
-          }
-        } else if (entry.status === "draft") {
-          draftCount++;
+      if (entry.status === "published") {
+        if (entry.has_staged_changes) {
+          stagedCount++;
+        } else {
+          publishedCount++;
         }
       } else if (entry.status === "draft") {
         draftCount++;
-      } else if (entry.status === "published" && entry.has_staged_changes) {
-        stagedCount++;
       }
 
       if (entry.type === "documentation") {
@@ -113,8 +113,9 @@ router.get("/", requireLogin, async (req, res) => {
 
     const metrics = {
       totalProjects: totalProjects,
-      totalEntries: totalEntriesDocsCl,
-      publishedCount: publishedCountDocsCl,
+      totalEntries: totalEntries,
+      totalEntriesDocsCl: totalEntriesDocsCl,
+      publishedCount: publishedCount,
       draftCount: draftCount,
       stagedCount: stagedCount,
       totalViews: totalViewsDocsCl,
@@ -125,9 +126,12 @@ router.get("/", requireLogin, async (req, res) => {
       activityData: activityData,
     };
 
-    logger.time(`[DASH] CheckAppVersion ${userId}`);
-    const versionInfo = await checkAppVersion(req.app.locals.appVersion);
-    logger.timeEnd(`[DASH] CheckAppVersion ${userId}`);
+    let versionInfo = getVersionInfoCache();
+    if (!versionInfo || !versionInfo.latestVersion || Date.now() - (versionInfo.timestamp || 0) > 40 * 60 * 1000) {
+      logger.time(`[DASH] CheckAppVersion ${userId} (fallback)`);
+      versionInfo = await checkAppVersion(req.app.locals.appVersion);
+      logger.timeEnd(`[DASH] CheckAppVersion ${userId} (fallback)`);
+    }
 
     logger.debug(`[DASH] Rendering global dashboard for user ${userId}.`);
     logger.timeEnd(`[DASH] GET / ${userId}`);

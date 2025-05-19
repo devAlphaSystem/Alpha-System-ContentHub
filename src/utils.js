@@ -503,6 +503,18 @@ async function fetchLatestCommitVersion() {
 
 function parseVersionString(versionStr) {
   if (!versionStr) return null;
+
+  const codeRegex = /Version\s+(\d+)\.(\d+)(?:\s+Code\s+(\d+))?/i;
+  const codeMatch = versionStr.match(codeRegex);
+
+  if (codeMatch) {
+    return {
+      major: Number.parseInt(codeMatch[1], 10) || 0,
+      minor: Number.parseInt(codeMatch[2], 10) || 0,
+      code: codeMatch[3] ? Number.parseInt(codeMatch[3], 10) : 0,
+    };
+  }
+
   const mainParts = versionStr.split("-");
   const versionParts = mainParts[0].split(".");
   const codePart = mainParts.length > 1 ? mainParts[1] : null;
@@ -523,30 +535,40 @@ export async function checkAppVersion(currentVersionStr) {
   }
 
   const currentVersion = parseVersionString(currentVersionStr);
+  logger.debug(`[UTIL] Parsed current version: major=${currentVersion?.major}, minor=${currentVersion?.minor}, code=${currentVersion?.code}`);
 
   const latestCommitInfo = await fetchLatestCommitVersion();
   const latestVersionStr = latestCommitInfo.version;
   const latestCode = latestCommitInfo.code;
+
+  logger.debug(`[UTIL] Latest commit info: version=${latestVersionStr}, code=${latestCode}`);
 
   if (!latestVersionStr || !currentVersion || latestCode === null) {
     logger.warn("[UTIL] Could not compare versions - missing data (current, latest version string, or latest code).");
     return { updateAvailable: false };
   }
 
-  const latestVersionParts = latestVersionStr.split(".");
-  const latestMajor = Number.parseInt(latestVersionParts[0], 10) || 0;
-  const latestMinor = Number.parseInt(latestVersionParts[1], 10) || 0;
+  const latestVersion = {
+    major: Number.parseInt(latestVersionStr.split(".")[0], 10) || 0,
+    minor: Number.parseInt(latestVersionStr.split(".")[1], 10) || 0,
+    code: latestCode,
+  };
+
+  logger.debug(`[UTIL] Parsed latest version: major=${latestVersion.major}, minor=${latestVersion.minor}, code=${latestVersion.code}`);
 
   let updateAvailable = false;
   const latestVersionDisplay = `Version ${latestVersionStr}${latestCode !== null ? ` Code ${latestCode}` : ""}`;
   const currentVersionDisplay = `Version ${currentVersion.major}.${currentVersion.minor}${currentVersion.code !== 0 ? ` Code ${currentVersion.code}` : ""}`;
 
-  if (latestMajor > currentVersion.major) {
+  if (latestVersion.major > currentVersion.major) {
     updateAvailable = true;
-  } else if (latestMajor === currentVersion.major && latestMinor > currentVersion.minor) {
+    logger.debug("[UTIL] Update available: Latest major version is higher");
+  } else if (latestVersion.major === currentVersion.major && latestVersion.minor > currentVersion.minor) {
     updateAvailable = true;
-  } else if (latestMajor === currentVersion.major && latestMinor === currentVersion.minor && latestCode > currentVersion.code) {
+    logger.debug("[UTIL] Update available: Latest minor version is higher");
+  } else if (latestVersion.major === currentVersion.major && latestVersion.minor === currentVersion.minor && latestVersion.code > currentVersion.code) {
     updateAvailable = true;
+    logger.debug("[UTIL] Update available: Latest code version is higher");
   }
 
   logger.debug(`[UTIL] Version check: Current=${currentVersionDisplay}, Latest=${latestVersionDisplay}, Update Available=${updateAvailable}`);

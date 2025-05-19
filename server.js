@@ -8,7 +8,7 @@ import { logger } from "./src/logger.js";
 const server = http.createServer(app);
 logger.debug("HTTP server created.");
 
-initializeCronJobs();
+initializeCronJobs(app.locals.appVersion);
 
 server.listen(PORT, () => {
   logger.info(`Server running at http://localhost:${PORT}`);

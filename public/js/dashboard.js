@@ -116,9 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
                   show: true,
                   label: "Total Entries",
                   formatter: (w) => {
-                    return w.globals.seriesTotals.reduce((a, b) => {
-                      return a + b;
-                    }, 0);
+                    return w.globals.seriesTotals.reduce((a, b) => a + b, 0);
                   },
                 },
               },

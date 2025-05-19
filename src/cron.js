@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import PocketBase from "pocketbase";
 import { POCKETBASE_URL, POCKETBASE_ADMIN_EMAIL, POCKETBASE_ADMIN_PASSWORD } from "./config.js";
+import { checkAppVersion } from "./utils.js";
 import { logger } from "./logger.js";
 
 const BATCH_SIZE = 200;
@@ -175,8 +176,39 @@ async function cleanupExpiredPreviews() {
   }
 }
 
-export function initializeCronJobs() {
+let versionInfoCache = {
+  updateAvailable: false,
+  latestVersion: null,
+  currentVersion: null,
+  timestamp: 0,
+};
+
+export function getVersionInfoCache() {
+  return versionInfoCache;
+}
+
+export function initializeCronJobs(appVersion) {
   logger.info("[CRON] Initializing cron jobs...");
+  cron.schedule(
+    "0 */6 * * *",
+    async () => {
+      logger.info(`[CRON] Version check cycle starting at ${new Date().toISOString()}`);
+      try {
+        const info = await checkAppVersion(appVersion);
+        versionInfoCache = {
+          ...info,
+          timestamp: Date.now(),
+        };
+        logger.info(`[CRON] Version check complete. Update available: ${info.updateAvailable ? "YES" : "NO"}. Latest: ${info.latestVersion}`);
+      } catch (err) {
+        logger.error("[CRON] Version check failed:", err?.message || err);
+      }
+    },
+    {
+      scheduled: true,
+      timezone: "America/Sao_Paulo",
+    },
+  );
 
   cron.schedule(
     "0 * * * *",
@@ -193,4 +225,5 @@ export function initializeCronJobs() {
   );
 
   logger.info("[CRON] Scheduled combined cleanup job for minute 0 of every hour (America/Sao_Paulo).");
+  logger.info("[CRON] Scheduled version check job for every 30 minutes (America/Sao_Paulo).");
 }

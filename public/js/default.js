@@ -461,7 +461,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  if (!activeLinkFound && currentPath !== "/login") {
+  if (!activeLinkFound && currentPath !== "/login" && currentPath !== "/audit-log") {
     if (projectSubpageRegex.test(currentPath)) {
       const overviewLink = document.querySelector(`.sidebar-nav .nav-link[data-nav-id="project-overview"]`);
       if (overviewLink) {
