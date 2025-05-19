@@ -1,6 +1,6 @@
 {
   "name": "alpha_system_contenthub",
-  "version": "2.4-1",
+  "version": "2.4-2",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

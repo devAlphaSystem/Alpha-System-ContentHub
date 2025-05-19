@@ -1,7 +1,7 @@
 import express from "express";
+import { projectModuleAccess } from "../../middleware/projectModuleAccess.js";
 import { marked } from "marked";
 import { pb, pbAdmin, ITEMS_PER_PAGE } from "../../config.js";
-import { requireLogin } from "../../middleware.js";
 import { getProjectForOwner, getEntryForOwnerAndProject, getUserTemplates, getUserHeaders, getUserFooters, logAuditEvent, sanitizeHtml, calculateReadingTime, clearEntryViewLogs } from "../../utils.js";
 import { logger } from "../../logger.js";
 
@@ -213,19 +213,19 @@ async function renderEntriesList(req, res, entryType) {
   }
 }
 
-router.get("/:projectId/documentation", (req, res) => {
+router.get("/:projectId/documentation", projectModuleAccess("documentation"), (req, res) => {
   renderEntriesList(req, res, "documentation");
 });
 
-router.get("/:projectId/changelogs", (req, res) => {
+router.get("/:projectId/changelogs", projectModuleAccess("changelog"), (req, res) => {
   renderEntriesList(req, res, "changelog");
 });
 
-router.get("/:projectId/roadmaps", (req, res) => {
+router.get("/:projectId/roadmaps", projectModuleAccess("roadmap"), (req, res) => {
   renderEntriesList(req, res, "roadmap");
 });
 
-router.get("/:projectId/knowledge_base", (req, res) => {
+router.get("/:projectId/knowledge_base", projectModuleAccess("knowledge_base"), (req, res) => {
   renderEntriesList(req, res, "knowledge_base");
 });
 
@@ -234,6 +234,21 @@ router.get("/:projectId/new", async (req, res) => {
   const userId = req.session.user.id;
   const validTypes = ["documentation", "changelog", "roadmap", "knowledge_base"];
   const preselectType = validTypes.includes(req.query.type) ? req.query.type : "documentation";
+
+  const moduleFieldMap = {
+    documentation: "documentation_enabled",
+    changelog: "changelog_enabled",
+    roadmap: "roadmap_enabled",
+    knowledge_base: "knowledge_base_enabled",
+  };
+
+  const moduleField = moduleFieldMap[preselectType];
+  if (moduleField && req.project[moduleField] === false) {
+    logger.info(`[Entries] Attempt to access new entry page for disabled module '${preselectType}' in project ${projectId}.`);
+    logger.timeEnd(`[PROJ][Entries] GET /projects/${projectId}/new ${userId}`);
+    return res.status(403).render("errors/403", { message: `The ${preselectType.replace("_", " ")} module is disabled for this project.` });
+  }
+
   logger.debug(`[PROJ][Entries] GET /projects/${projectId}/new requested by user ${userId}, type: ${preselectType}`);
   logger.time(`[PROJ][Entries] GET /projects/${projectId}/new ${userId}`);
 

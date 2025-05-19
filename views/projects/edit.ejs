@@ -66,15 +66,41 @@
       <% if (locals.errors?.access_password) { %> <small class="form-text" style="color: var(--danger-color);"><%= errors.access_password.message %></small> <% } %>
     </div>
 
-    <h3 style="margin: 15px 0; font-size: 1.1rem; font-weight: 600;">Features</h3>
+    <h3 style="margin: 15px 0; font-size: 1.1rem; font-weight: 600;">Modules</h3>
 
     <div class="form-group form-group-full" style="margin-bottom: 15px;">
       <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" role="switch" id="roadmap_enabled" name="roadmap_enabled" value="true" <%= project.roadmap_enabled ? 'checked' : '' %>>
+        <input class="form-check-input" type="checkbox" role="switch" id="documentation_enabled" name="documentation_enabled" value="true" <%= project.documentation_enabled !== false ? 'checked' : '' %>>
+        <label class="form-check-label" for="documentation_enabled">Enable Documentation</label>
+      </div>
+      <small class="form-text">If enabled, Documentation will be accessible and visible in the project navigation.</small>
+    </div>
+
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="changelog_enabled" name="changelog_enabled" value="true" <%= project.changelog_enabled !== false ? 'checked' : '' %>>
+        <label class="form-check-label" for="changelog_enabled">Enable Changelog</label>
+      </div>
+      <small class="form-text">If enabled, Changelog will be accessible and visible in the project navigation.</small>
+    </div>
+
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="roadmap_enabled" name="roadmap_enabled" value="true" <%= project.roadmap_enabled !== false ? 'checked' : '' %>>
         <label class="form-check-label" for="roadmap_enabled">Enable Public Roadmap</label>
       </div>
-      <small class="form-text">If enabled, the public `/roadmap/:projectId` page will be accessible (subject to overall Public View and Password settings).</small>
+      <small class="form-text">If enabled, Roadmap will be accessible and visible in the project navigation.</small>
     </div>
+
+    <div class="form-group form-group-full" style="margin-bottom: 15px;">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="knowledge_base_enabled" name="knowledge_base_enabled" value="true" <%= project.knowledge_base_enabled !== false ? 'checked' : '' %>>
+        <label class="form-check-label" for="knowledge_base_enabled">Enable Knowledge Base</label>
+      </div>
+      <small class="form-text">If enabled, Knowledge Base will be accessible and visible in the project navigation.</small>
+    </div>
+
+    <h3 style="margin: 15px 0; font-size: 1.1rem; font-weight: 600;">Tracking</h3>
 
     <div class="form-group form-group-full" style="margin-bottom: 15px;">
       <div class="form-check form-switch">

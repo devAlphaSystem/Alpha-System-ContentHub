@@ -53,10 +53,18 @@
       <div class="form-group">
         <label for="type">Type <span class="required">*</span></label>
         <select id="type" name="type" required class="form-control <%= locals.errors?.type || locals.errors?.staged_type ? 'is-invalid' : '' %>">
-          <option value="documentation" <%= entry.type === 'documentation' ? 'selected' : '' %>> Documentation </option>
-          <option value="changelog" <%= entry.type === 'changelog' ? 'selected' : '' %>> Changelog </option>
-          <option value="roadmap" <%= entry.type === 'roadmap' ? 'selected' : '' %>> Roadmap </option>
-          <option value="knowledge_base" <%= entry.type === 'knowledge_base' ? 'selected' : '' %>> Knowledge Base </option>
+          <% if (project.documentation_enabled !== false) { %>
+            <option value="documentation" <%= entry.type === 'documentation' ? 'selected' : '' %>> Documentation </option>
+          <% } %>
+          <% if (project.changelog_enabled !== false) { %>
+            <option value="changelog" <%= entry.type === 'changelog' ? 'selected' : '' %>> Changelog </option>
+          <% } %>
+          <% if (project.roadmap_enabled !== false) { %>
+            <option value="roadmap" <%= entry.type === 'roadmap' ? 'selected' : '' %>> Roadmap </option>
+          <% } %>
+          <% if (project.knowledge_base_enabled !== false) { %>
+            <option value="knowledge_base" <%= entry.type === 'knowledge_base' ? 'selected' : '' %>> Knowledge Base </option>
+          <% } %>
         </select>
       </div>
 

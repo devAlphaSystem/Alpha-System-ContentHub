@@ -1,6 +1,6 @@
 import express from "express";
+import { projectModuleAccess } from "../../middleware/projectModuleAccess.js";
 import { pb, pbAdmin, ITEMS_PER_PAGE } from "../../config.js";
-import { requireLogin } from "../../middleware.js";
 import { getProjectForOwner, getArchivedEntryForOwnerAndProject, logAuditEvent, clearEntryViewLogs } from "../../utils.js";
 import { logger } from "../../logger.js";
 
@@ -136,19 +136,19 @@ async function renderArchivedList(req, res, entryType) {
   }
 }
 
-router.get("/:projectId/archived_documentation", (req, res) => {
+router.get("/:projectId/archived_documentation", projectModuleAccess("documentation"), (req, res) => {
   renderArchivedList(req, res, "documentation");
 });
 
-router.get("/:projectId/archived_changelogs", (req, res) => {
+router.get("/:projectId/archived_changelogs", projectModuleAccess("changelog"), (req, res) => {
   renderArchivedList(req, res, "changelog");
 });
 
-router.get("/:projectId/archived_roadmaps", (req, res) => {
+router.get("/:projectId/archived_roadmaps", projectModuleAccess("roadmap"), (req, res) => {
   renderArchivedList(req, res, "roadmap");
 });
 
-router.get("/:projectId/archived_knowledge_base", (req, res) => {
+router.get("/:projectId/archived_knowledge_base", projectModuleAccess("knowledge_base"), (req, res) => {
   renderArchivedList(req, res, "knowledge_base");
 });
 

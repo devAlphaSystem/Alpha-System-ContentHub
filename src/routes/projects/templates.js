@@ -1,6 +1,5 @@
 import express from "express";
 import { pb, ITEMS_PER_PAGE } from "../../config.js";
-import { requireLogin } from "../../middleware.js";
 import { getProjectForOwner, getTemplateForEditAndProject, logAuditEvent } from "../../utils.js";
 import { logger } from "../../logger.js";
 

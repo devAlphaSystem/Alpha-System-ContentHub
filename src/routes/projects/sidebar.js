@@ -1,6 +1,5 @@
 import express from "express";
 import { pb } from "../../config.js";
-import { requireLogin } from "../../middleware.js";
 import { getProjectForOwner, logAuditEvent } from "../../utils.js";
 import { logger } from "../../logger.js";
 
@@ -42,10 +41,20 @@ router.get("/:projectId/sidebar-order", async (req, res, next) => {
   logger.time(`[PROJ][Sidebar] GET /projects/${projectId}/sidebar-order ${userId}`);
 
   try {
-    const sidebarEntries = await pb.collection("entries_main").getFullList({
+    const moduleFieldMap = {
+      documentation: "documentation_enabled",
+      changelog: "changelog_enabled",
+      roadmap: "roadmap_enabled",
+      knowledge_base: "knowledge_base_enabled",
+    };
+    let sidebarEntries = await pb.collection("entries_main").getFullList({
       filter: `project = '${projectId}' && owner = '${userId}' && show_in_project_sidebar = true && type != 'roadmap' && type != 'knowledge_base'`,
       sort: "+sidebar_order,+title",
       fields: "id,title,sidebar_order,type",
+    });
+    sidebarEntries = sidebarEntries.filter((entry) => {
+      const field = moduleFieldMap[entry.type];
+      return !field || req.project[field] !== false;
     });
     logger.debug(`[PROJ][Sidebar] Fetched ${sidebarEntries.length} entries for sidebar ordering in project ${projectId}.`);
 

@@ -1,6 +1,5 @@
 import express from "express";
 import multer from "multer";
-import path from "node:path";
 import { pb, pbAdmin, ITEMS_PER_PAGE, getSettings } from "../../config.js";
 import { requireLogin } from "../../middleware.js";
 import { logAuditEvent } from "../../utils.js";

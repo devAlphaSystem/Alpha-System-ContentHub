@@ -2,7 +2,6 @@ import express from "express";
 import multer from "multer";
 import path from "node:path";
 import { pb, pbAdmin, POCKETBASE_URL } from "../../config.js";
-import { requireLogin } from "../../middleware.js";
 import { getProjectForOwner, logAuditEvent, hashPreviewPassword, clearEntryViewLogs } from "../../utils.js";
 import { logger } from "../../logger.js";
 
@@ -66,26 +65,53 @@ router.get("/:projectId", async (req, res) => {
   let hasPublishedKbEntries = false;
 
   try {
-    try {
-      logger.trace(`[PROJ] Checking for published KB entries in project ${projectId}`);
-      await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && type = 'knowledge_base' && status = 'published'`, {
-        fields: "id",
-        $autoCancel: false,
-      });
-      hasPublishedKbEntries = true;
-      logger.trace(`[PROJ] Found published KB entries for project ${projectId}`);
-    } catch (kbError) {
-      if (kbError.status !== 404) {
-        logger.warn(`[PROJ] Error checking for published KB entries for project ${projectId}: Status ${kbError?.status || "N/A"}`, kbError.message);
-      } else {
-        logger.trace(`[PROJ] No published KB entries found for project ${projectId}`);
+    if (req.project.knowledge_base_enabled !== false) {
+      try {
+        logger.trace(`[PROJ] Checking for published KB entries in project ${projectId}`);
+        await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && type = 'knowledge_base' && status = 'published'`, {
+          fields: "id",
+          $autoCancel: false,
+        });
+        hasPublishedKbEntries = true;
+        logger.trace(`[PROJ] Found published KB entries for project ${projectId}`);
+      } catch (kbError) {
+        if (kbError.status !== 404) {
+          logger.warn(`[PROJ] Error checking for published KB entries for project ${projectId}: Status ${kbError?.status || "N/A"}`, kbError.message);
+        } else {
+          logger.trace(`[PROJ] No published KB entries found for project ${projectId}`);
+        }
+        hasPublishedKbEntries = false;
       }
+    } else {
+      logger.trace(`[PROJ] Knowledge Base module is disabled for project ${projectId}, skipping KB entries check`);
       hasPublishedKbEntries = false;
     }
 
     try {
       logger.trace(`[PROJ] Fetching first sidebar entry for project ${projectId}`);
-      const firstEntryResult = await pbAdmin.collection("entries_main").getFirstListItem(`project = '${projectId}' && show_in_project_sidebar = true && status = 'published' && type != 'roadmap' && type != 'knowledge_base' && type != 'sidebar_header'`, {
+      const filterConditions = [`project = '${projectId}' && show_in_project_sidebar = true && status = 'published'`];
+
+      filterConditions.push(`type != 'sidebar_header'`);
+
+      if (req.project.roadmap_enabled === false) {
+        filterConditions.push(`type != 'roadmap'`);
+      }
+
+      if (req.project.knowledge_base_enabled === false) {
+        filterConditions.push(`type != 'knowledge_base'`);
+      }
+
+      if (req.project.documentation_enabled === false) {
+        filterConditions.push(`type != 'documentation'`);
+      }
+
+      if (req.project.changelog_enabled === false) {
+        filterConditions.push(`type != 'changelog'`);
+      }
+
+      const firstEntryFilter = filterConditions.join(" && ");
+
+      const firstEntryResult = await pbAdmin.collection("entries_main").getFirstListItem(firstEntryFilter, {
         sort: "+sidebar_order,+title",
         fields: "id",
         $autoCancel: false,
@@ -115,8 +141,28 @@ router.get("/:projectId", async (req, res) => {
     let helpfulYesCount = 0;
     let helpfulNoCount = 0;
 
+    const moduleFilters = [`project = '${projectId}'`, `type != 'sidebar_header'`];
+
+    if (req.project.documentation_enabled === false) {
+      moduleFilters.push(`type != 'documentation'`);
+    }
+
+    if (req.project.changelog_enabled === false) {
+      moduleFilters.push(`type != 'changelog'`);
+    }
+
+    if (req.project.roadmap_enabled === false) {
+      moduleFilters.push(`type != 'roadmap'`);
+    }
+
+    if (req.project.knowledge_base_enabled === false) {
+      moduleFilters.push(`type != 'knowledge_base'`);
+    }
+
+    const entriesFilter = moduleFilters.join(" && ");
+
     const projectEntries = await pbAdmin.collection("entries_main").getFullList({
-      filter: `project = '${projectId}' && type != 'roadmap' && type != 'sidebar_header'`,
+      filter: entriesFilter,
       fields: "id, views, type, created, total_view_duration, view_duration_count, helpful_yes, helpful_no",
       $autoCancel: false,
     });
@@ -162,7 +208,7 @@ router.get("/:projectId", async (req, res) => {
 
     logger.time(`[PROJ] FetchRecentEntries ${projectId}`);
     const recentEntriesResult = await pbAdmin.collection("entries_main").getList(1, 5, {
-      filter: `project = '${projectId}' && type != 'roadmap' && type != 'sidebar_header'`,
+      filter: entriesFilter,
       sort: "-content_updated_at",
       fields: "id, title, updated, type, content_updated_at",
       $autoCancel: false,
@@ -235,7 +281,13 @@ router.get("/:projectId/edit", async (req, res, next) => {
     logger.timeEnd(`[PROJ] GET /projects/${projectId}/edit ${userId}`);
     res.render("projects/edit", {
       pageTitle: `Edit Project: ${projectData.name}`,
-      project: projectData,
+      project: {
+        ...projectData,
+        roadmap_enabled: projectData.roadmap_enabled !== false,
+        documentation_enabled: projectData.documentation_enabled !== false,
+        changelog_enabled: projectData.changelog_enabled !== false,
+        knowledge_base_enabled: projectData.knowledge_base_enabled !== false,
+      },
       faviconUrl: faviconUrl,
       errors: null,
       message: req.query.message,
@@ -254,7 +306,7 @@ router.post("/:projectId/edit", upload.single("favicon"), async (req, res, next)
   logger.info(`[PROJ] POST /projects/${projectId}/edit attempt by user ${userId}`);
   logger.time(`[PROJ] POST /edit ${projectId}`);
 
-  const { name, description, is_publicly_viewable, password_protected, access_password, roadmap_enabled, view_tracking_enabled, view_time_tracking_enabled, use_full_width_content, remove_favicon } = req.body;
+  const { name, description, is_publicly_viewable, password_protected, access_password, roadmap_enabled, documentation_enabled, changelog_enabled, knowledge_base_enabled, view_tracking_enabled, view_time_tracking_enabled, use_full_width_content, remove_favicon } = req.body;
 
   const errors = {};
   const data = {};
@@ -268,6 +320,9 @@ router.post("/:projectId/edit", upload.single("favicon"), async (req, res, next)
   data.is_publicly_viewable = is_publicly_viewable === "true";
   data.password_protected = password_protected === "true";
   data.roadmap_enabled = roadmap_enabled === "true";
+  data.documentation_enabled = documentation_enabled === "true";
+  data.changelog_enabled = changelog_enabled === "true";
+  data.knowledge_base_enabled = knowledge_base_enabled === "true";
   data.view_tracking_enabled = view_tracking_enabled === "true";
   data.view_time_tracking_enabled = view_time_tracking_enabled === "true";
   data.use_full_width_content = use_full_width_content === "true";

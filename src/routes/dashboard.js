@@ -18,7 +18,7 @@ router.get("/", requireLogin, async (req, res) => {
     const projectsResult = await pb.collection("projects").getFullList({
       filter: `owner = '${userId}'`,
       sort: "-updated",
-      fields: "id, name, updated",
+      fields: "id, name, updated, documentation_enabled, changelog_enabled, roadmap_enabled, knowledge_base_enabled",
       $autoCancel: false,
     });
     logger.timeEnd(`[DASH] FetchProjects ${userId}`);
@@ -33,6 +33,16 @@ router.get("/", requireLogin, async (req, res) => {
     }));
     logger.debug(`[DASH] Found ${totalProjects} projects for user ${userId}.`);
 
+    const projectModuleSettings = new Map();
+    for (const project of projectsResult) {
+      projectModuleSettings.set(project.id, {
+        documentation_enabled: project.documentation_enabled !== false,
+        changelog_enabled: project.changelog_enabled !== false,
+        roadmap_enabled: project.roadmap_enabled !== false,
+        knowledge_base_enabled: project.knowledge_base_enabled !== false,
+      });
+    }
+
     logger.time(`[DASH] FetchAllEntries ${userId}`);
     const allEntries = await pb.collection("entries_main").getFullList({
       filter: `owner = '${userId}' && type != 'sidebar_header'`,
@@ -43,6 +53,28 @@ router.get("/", requireLogin, async (req, res) => {
     });
     logger.timeEnd(`[DASH] FetchAllEntries ${userId}`);
     logger.debug(`[DASH] Found ${allEntries.length} total entries (excluding headers) for user ${userId}.`);
+
+    const filteredEntries = allEntries.filter((entry) => {
+      if (!entry.project) return true;
+
+      const moduleSettings = projectModuleSettings.get(entry.project);
+      if (!moduleSettings) return true;
+
+      switch (entry.type) {
+        case "documentation":
+          return moduleSettings.documentation_enabled;
+        case "changelog":
+          return moduleSettings.changelog_enabled;
+        case "roadmap":
+          return moduleSettings.roadmap_enabled;
+        case "knowledge_base":
+          return moduleSettings.knowledge_base_enabled;
+        default:
+          return true;
+      }
+    });
+
+    logger.debug(`[DASH] Filtered to ${filteredEntries.length} entries (excluding disabled module entries) for user ${userId}.`);
 
     let totalEntriesDocsCl = 0;
     let publishedCount = 0;
@@ -56,9 +88,9 @@ router.get("/", requireLogin, async (req, res) => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const totalEntries = allEntries.length;
+    const totalEntries = filteredEntries.length;
 
-    for (const entry of allEntries) {
+    for (const entry of filteredEntries) {
       const isDocOrCl = entry.type === "documentation" || entry.type === "changelog";
 
       if (isDocOrCl) {
@@ -98,7 +130,7 @@ router.get("/", requireLogin, async (req, res) => {
       .sort((a, b) => new Date(a.x) - new Date(b.x));
     logger.trace(`[DASH] Processed ${activityData.length} days of activity data.`);
 
-    const topViewedEntriesDocsCl = allEntries
+    const topViewedEntriesDocsCl = filteredEntries
       .filter((e) => e.type === "documentation" || e.type === "changelog")
       .slice(0, 5)
       .map((e) => ({

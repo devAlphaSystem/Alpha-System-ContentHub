@@ -176,6 +176,20 @@ router.get("/view/:id", async (req, res, next) => {
       return next();
     }
 
+    const moduleFieldMap = {
+      documentation: "documentation_enabled",
+      changelog: "changelog_enabled",
+      roadmap: "roadmap_enabled",
+      knowledge_base: "knowledge_base_enabled",
+    };
+
+    const project = entry.expand?.project;
+    const moduleField = moduleFieldMap[entry.type];
+    if (project && moduleField && project[moduleField] === false) {
+      logger.info(`[PUBLIC] Blocked access to entry ${entryId} of disabled module '${entry.type}' for project ${project.id}`);
+      return res.status(404).render("errors/404");
+    }
+
     if (entry.type === "roadmap") {
       if (entry.project) {
         logger.debug(`[PUBLIC] Redirecting roadmap entry ${entryId} to project roadmap /roadmap/${entry.project}`);
@@ -201,8 +215,6 @@ router.get("/view/:id", async (req, res, next) => {
       logger.timeEnd(`[PUBLIC] /view/${entryId}`);
       return next();
     }
-
-    const project = entry.expand?.project;
 
     if (!project || !project.is_publicly_viewable) {
       logAuditEvent(req, "PUBLIC_VIEW_DENIED", "projects", project?.id, {
@@ -255,11 +267,22 @@ router.get("/view/:id", async (req, res, next) => {
     if (project) {
       try {
         logger.time(`[PUBLIC] FetchSidebar /view/${entryId}`);
-        sidebarEntries = await pbAdmin.collection("entries_main").getFullList({
-          filter: `project = '${project.id}' && status = 'published' && show_in_project_sidebar = true && type != 'roadmap' && type != 'knowledge_base'`,
-          sort: "+sidebar_order,+title",
-          fields: "id, title, type",
-          $autoCancel: false,
+        const moduleFieldMap = {
+          documentation: "documentation_enabled",
+          changelog: "changelog_enabled",
+          roadmap: "roadmap_enabled",
+          knowledge_base: "knowledge_base_enabled",
+        };
+        sidebarEntries = (
+          await pbAdmin.collection("entries_main").getFullList({
+            filter: `project = '${project.id}' && status = 'published' && show_in_project_sidebar = true && type != 'roadmap' && type != 'knowledge_base'`,
+            sort: "+sidebar_order,+title",
+            fields: "id, title, type",
+            $autoCancel: false,
+          })
+        ).filter((entry) => {
+          const field = moduleFieldMap[entry.type];
+          return !field || project[field] !== false;
         });
         logger.timeEnd(`[PUBLIC] FetchSidebar /view/${entryId}`);
       } catch (sidebarError) {

@@ -78,22 +78,26 @@
         </div>
       </div>
     <% } %>
-    <div class="col" style="margin-bottom: 25px; flex: 1 1 180px;">
-      <div class="card">
-        <div class="card-body text-center" style="padding: 20px;">
-          <div style="font-size: 1.8rem; font-weight: 600; color: var(--badge-docs-text); margin-bottom: 5px;"><%= metrics.entriesByType.documentation %></div>
-          <div style="font-size: 0.9rem; color: var(--text-secondary);">Documentation</div>
+    <% if (project.documentation_enabled !== false) { %>
+      <div class="col" style="margin-bottom: 25px; flex: 1 1 180px;">
+        <div class="card">
+          <div class="card-body text-center" style="padding: 20px;">
+            <div style="font-size: 1.8rem; font-weight: 600; color: var(--badge-documentation-text); margin-bottom: 5px;"><%= metrics.entriesByType.documentation %></div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary);">Documentation</div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="col" style="margin-bottom: 25px; flex: 1 1 180px;">
-      <div class="card">
-        <div class="card-body text-center" style="padding: 20px;">
-          <div style="font-size: 1.8rem; font-weight: 600; color: var(--badge-changelog-text); margin-bottom: 5px;"><%= metrics.entriesByType.changelog %></div>
-          <div style="font-size: 0.9rem; color: var(--text-secondary);">Changelogs</div>
+    <% } %>
+    <% if (project.changelog_enabled !== false) { %>
+      <div class="col" style="margin-bottom: 25px; flex: 1 1 180px;">
+        <div class="card">
+          <div class="card-body text-center" style="padding: 20px;">
+            <div style="font-size: 1.8rem; font-weight: 600; color: var(--badge-changelog-text); margin-bottom: 5px;"><%= metrics.entriesByType.changelog %></div>
+            <div style="font-size: 0.9rem; color: var(--text-secondary);">Changelogs</div>
+          </div>
         </div>
       </div>
-    </div>
+    <% } %>
   </div>
 
   <div class="row">
