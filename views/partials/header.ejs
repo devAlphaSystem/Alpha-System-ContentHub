@@ -8,6 +8,8 @@
 
     <link rel="preload" href="/img/logo_white.png" as="image">
     <link rel="preload" href="/img/logo.png" as="image">
+    <link rel="preload" href="/img/icon_white.png" as="image">
+    <link rel="preload" href="/img/icon.png" as="image">
 
     <% if (locals.project && locals.project.favicon) { %>
       <%
@@ -44,6 +46,8 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/webui-popover/1.2.18/jquery.webui-popover.min.css" />
+
     <link rel="stylesheet" href="/css/vendors/easymde.min.css">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"> </script>
@@ -52,22 +56,33 @@
 
     <link rel="stylesheet" href="/css/style.css">
 
-    <style>
-      .github-link {
-        color: var(--text-muted);
-        font-size: 1.5rem;
-        margin-left: 0.5rem;
-      }
-    </style>
+    <link rel="stylesheet" href="/css/custom.css">
   </head>
 
   <body class="admin-body <%= (locals.theme === 'dark' ? 'dark-mode' : '') %>" data-project-id="<%= locals.currentProjectId || '' %>" data-entry-type="<%= locals.entryType || (locals.entry && locals.entry.type) || '' %>">
-
+    <script>
+      (function () {
+        try {
+          const sidebarCollapsed = localStorage.getItem("sidebarCollapsed");
+          if (sidebarCollapsed === "true") {
+            document.body.classList.add("sidebar-collapsed");
+          }
+        } catch (e) {
+          console.warn("Error applying initial sidebar state from localStorage:", e);
+        }
+      })();
+    </script>
+    
     <div class="page-wrapper">
       <%- include('sidebar') %>
       <div class="main-content-wrapper">
         <header class="top-bar">
-          <button class="mobile-nav-toggle" aria-label="Toggle Navigation"> <i class="fas fa-bars"></i> </button>
+          <button id="sidebar-toggle-btn" class="d-none d-lg-block" aria-label="Toggle Sidebar">
+            <i class="fas fa-outdent"></i>
+          </button>
+          <button class="mobile-nav-toggle" aria-label="Toggle Navigation">
+            <i class="fas fa-bars"></i>
+          </button>
 
           <% if (locals.currentProjectId) { %>
             <% const projectBasePath = `/projects/${locals.currentProjectId}` %>
@@ -148,11 +163,11 @@
                 <button type="submit" class="global-search-button" aria-label="Search"> <i class="fas fa-search"></i> </button>
               </form>
             <% } %>
-          </div>
 
-          <a href="https://github.com/devAlphaSystem/Alpha-System-ContentHub" class="github-link" aria-label="GitHub Repository" target="_blank">
-            <i class="fab fa-github"></i>
-          </a>
+            <a href="https://github.com/devAlphaSystem/Alpha-System-ContentHub" class="github-link" aria-label="GitHub Repository" target="_blank">
+              <i class="fab fa-github"></i>
+            </a>
+          </div>
         </header>
 
         <main class="page-content">

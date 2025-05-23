@@ -34,6 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const themeToggleButton = document.getElementById("theme-toggle");
   const sidebarLogoImg = document.getElementById("sidebar-logo-img");
+  const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
 
   const mobileNavToggle = document.querySelector(".mobile-nav-toggle");
   const sidebar = document.querySelector(".sidebar");
@@ -201,17 +202,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const applyTheme = (theme) => {
     document.body.classList.toggle("dark-mode", theme === "dark");
     if (sidebarLogoImg) {
-      sidebarLogoImg.src = theme === "dark" ? "/img/logo_white.png" : "/img/logo.png";
+      const isSidebarCollapsed = document.body.classList.contains("sidebar-collapsed");
+      if (isSidebarCollapsed) {
+        sidebarLogoImg.src = theme === "dark" ? "/img/icon_white.png" : "/img/icon.png";
+      } else {
+        sidebarLogoImg.src = theme === "dark" ? "/img/logo_white.png" : "/img/logo.png";
+      }
     }
     const codeMirrors = document.querySelectorAll(".EasyMDEContainer .CodeMirror");
     for (const cm of codeMirrors) {
       cm.classList.toggle("cm-s-easymde-dark", theme === "dark");
     }
-    document.dispatchEvent(
-      new CustomEvent("themeChanged", {
-        detail: theme,
-      }),
-    );
+    document.dispatchEvent(new CustomEvent("themeChanged", { detail: theme }));
   };
 
   async function setThemePreference(theme) {
@@ -226,23 +228,79 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const response = await fetch("/api/set-theme", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          theme: theme,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: theme }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Failed to set theme preference on server:", response.status, errorData.error || response.statusText);
-        showAlertModal("Could not save your theme preference to the server.", "Theme Error");
+        window.showAlertModal("Could not save your theme preference to the server.", "Theme Error");
       }
     } catch (error) {
       console.error("Network error sending theme preference:", error);
-      showAlertModal("Network error saving your theme preference.", "Theme Error");
+      window.showAlertModal("Network error saving your theme preference.", "Theme Error");
     }
+  }
+
+  const applySidebarState = (isCollapsed) => {
+    document.body.classList.toggle("sidebar-collapsed", isCollapsed);
+    if (sidebarLogoImg) {
+      const currentTheme = document.body.classList.contains("dark-mode") ? "dark" : "light";
+      if (isCollapsed) {
+        sidebarLogoImg.src = currentTheme === "dark" ? "/img/icon_white.png" : "/img/icon.png";
+      } else {
+        sidebarLogoImg.src = currentTheme === "dark" ? "/img/logo_white.png" : "/img/logo.png";
+      }
+    }
+    if (sidebarToggleBtn) {
+      const icon = sidebarToggleBtn.querySelector("i");
+      if (icon) {
+        icon.className = isCollapsed ? "fas fa-indent" : "fas fa-outdent";
+      }
+    }
+
+    if (typeof $ !== "undefined" && typeof $.fn.webuiPopover !== "undefined") {
+      const allSidebarLinks = document.querySelectorAll(".sidebar-nav .nav-link, .sidebar-bottom-links .nav-link");
+
+      for (const link of allSidebarLinks) {
+        const span = link.querySelector("span");
+        const linkText = span ? span.textContent.trim() : null;
+
+        if (linkText && linkText !== "") {
+          if (isCollapsed) {
+            if (!$(link).data("webuiPopoverInstance")) {
+              $(link).webuiPopover({
+                content: linkText,
+                trigger: "hover",
+                placement: "right",
+                delay: { show: 150, hide: 50 },
+                width: "auto",
+                animation: "pop",
+                container: "body",
+              });
+              $(link).data("webuiPopoverInstance", true);
+            }
+          } else {
+            if ($(link).data("webuiPopoverInstance")) {
+              $(link).webuiPopover("destroy");
+              $(link).removeData("webuiPopoverInstance");
+            }
+          }
+        }
+      }
+    } else {
+      console.warn("jQuery or WebUI Popover not available for sidebar popovers.");
+    }
+  };
+
+  async function setSidebarPreference(isCollapsed) {
+    try {
+      localStorage.setItem("sidebarCollapsed", isCollapsed ? "true" : "false");
+    } catch (e) {
+      console.warn("Could not save sidebar state to localStorage:", e);
+    }
+    window.location.reload();
   }
 
   confirmModalConfirmBtn?.addEventListener("click", () => {
@@ -339,6 +397,11 @@ document.addEventListener("DOMContentLoaded", () => {
     setThemePreference(newTheme);
   });
 
+  sidebarToggleBtn?.addEventListener("click", () => {
+    const isCollapsed = document.body.classList.contains("sidebar-collapsed");
+    setSidebarPreference(!isCollapsed);
+  });
+
   mobileNavToggle?.addEventListener("click", () => {
     const isOpen = sidebar?.classList.toggle("is-open");
     mobileNavBackdrop?.classList.toggle("is-visible", isOpen);
@@ -354,6 +417,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const savedTheme = localStorage.getItem("theme");
   const serverTheme = document.body.classList.contains("dark-mode") ? "dark" : "light";
   applyTheme(savedTheme || serverTheme);
+
+  const savedSidebarState = localStorage.getItem("sidebarCollapsed");
+  applySidebarState(savedSidebarState === "true");
 
   const currentPath = window.location.pathname;
   const sidebarLinks = document.querySelectorAll(".sidebar-inner .nav-link");

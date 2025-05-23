@@ -1,0 +1,40 @@
+.github-link {
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  margin-left: 1rem;
+  padding: 8px;
+}
+
+.webui-popover {
+  background: var(--content-bg) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-light) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+.webui-popover .webui-arrow {
+  border-right-color: var(--border-light) !important;
+}
+.webui-popover .webui-arrow:after {
+  border-right-color: var(--content-bg) !important;
+}
+.webui-popover .webui-popover-content {
+  color: var(--text-primary) !important;
+  background: transparent !important;
+}
+
+body.dark-mode .webui-popover {
+  background: var(--dark-content-bg) !important;
+  color: var(--dark-text-primary) !important;
+  border: 1px solid var(--dark-border-light) !important;
+  box-shadow: var(--dark-shadow-md) !important;
+}
+body.dark-mode .webui-popover .webui-arrow {
+  border-right-color: var(--dark-border-light) !important;
+}
+body.dark-mode .webui-popover .webui-arrow:after {
+  border-right-color: var(--dark-content-bg) !important;
+}
+body.dark-mode .webui-popover .webui-popover-content {
+  color: var(--dark-text-primary) !important;
+  background: transparent !important;
+}
