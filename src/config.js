@@ -10,7 +10,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { logger } from "./logger.js";
 
-const requiredEnvVars = ["SESSION_SECRET", "IP_HASH_SALT", "POCKETBASE_ADMIN_EMAIL", "POCKETBASE_ADMIN_PASSWORD", "POCKETBASE_URL", "APP_SETTINGS_RECORD_ID"];
+const requiredEnvVars = ["SESSION_SECRET", "IP_HASH_SALT", "POCKETBASE_ADMIN_EMAIL", "POCKETBASE_ADMIN_PASSWORD", "POCKETBASE_URL"];
 
 for (const envVar of requiredEnvVars) {
   if (!process.env[envVar]) {
@@ -26,7 +26,6 @@ export const POCKETBASE_ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD;
 export const POCKETBASE_URL = process.env.POCKETBASE_URL;
 export const NODE_ENV = process.env.NODE_ENV || "development";
 export const PORT = process.env.PORT || 3000;
-export const APP_SETTINGS_RECORD_ID = process.env.APP_SETTINGS_RECORD_ID;
 
 export const ITEMS_PER_PAGE = Number.parseInt(process.env.ITEMS_PER_PAGE || "10", 10);
 export const SESSION_MAX_AGE_DAYS = Number.parseInt(process.env.SESSION_MAX_AGE_DAYS || "7", 10);
@@ -37,18 +36,29 @@ const DEFAULT_ENABLE_PROJECT_VIEW_TRACKING_DEFAULT = process.env.ENABLE_PROJECT_
 const DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT = process.env.ENABLE_PROJECT_TIME_TRACKING_DEFAULT !== "false";
 const DEFAULT_ENABLE_PROJECT_FULL_WIDTH_DEFAULT = process.env.ENABLE_PROJECT_FULL_WIDTH_DEFAULT === "true";
 const DEFAULT_ENABLE_FILE_SIZE_CALCULATION = process.env.ENABLE_FILE_SIZE_CALCULATION === "true";
-const DEFAULT_BOT_USER_AGENTS = ["googleimageproxy", "googlebot", "adsbot-google", "mediapartners-google", "apis-google", "feedfetcher-google", "bingbot", "duckduckbot", "baiduspider", "yandexbot", "slurp", "facebookexternalhit", "facebot", "twitterbot", "linkedinbot", "pinterestbot", "slackbot", "discordbot", "applebot", "petalbot", "bytespider", "semrushbot", "ahrefsbot", "mj12bot", "dotbot", "uptimerobot", "pingdom", "statuscake", "curl", "wget", "postman", "python-requests", "headlesschrome", "puppeteer", "playwright", "selenium", "electron", "bot", "crawler", "spider", "probe", "scan"];
+const DEFAULT_BOT_USER_AGENTS_STRING = "googleimageproxy\ngooglebot\nadsbot-google\nmediapartners-google\napis-google\nfeedfetcher-google\nbingbot\nduckduckbot\nbaiduspider\nyandexbot\nslurp\nfacebookexternalhit\nfacebot\ntwitterbot\nlinkedinbot\npinterestbot\nslackbot\ndiscordbot\napplebot\npetalbot\nbytespider\nsemrushbot\nahrefsbot\nmj12bot\ndotbot\nuptimerobot\npingdom\nstatuscake\ncurl\nwget\npostman\npython-requests\nheadlesschrome\npuppeteer\nplaywright\nselenium\nelectron\nbot\ncrawler\nspider\nprobe\nscan";
 
-let currentSettings = {
-  previewTokenExpiryHours: DEFAULT_PREVIEW_TOKEN_EXPIRY_HOURS,
-  enableGlobalSearch: DEFAULT_ENABLE_GLOBAL_SEARCH,
-  enableAuditLog: DEFAULT_ENABLE_AUDIT_LOG,
-  enableProjectViewTrackingDefault: DEFAULT_ENABLE_PROJECT_VIEW_TRACKING_DEFAULT,
-  enableProjectTimeTrackingDefault: DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT,
-  enableProjectFullWidthDefault: DEFAULT_ENABLE_PROJECT_FULL_WIDTH_DEFAULT,
-  enableFileSizeCalculation: DEFAULT_ENABLE_FILE_SIZE_CALCULATION,
-  botUserAgents: DEFAULT_BOT_USER_AGENTS,
-};
+let defaultAppSettings = {};
+
+function initializeDefaultSettings() {
+  defaultAppSettings = {
+    previewTokenExpiryHours: DEFAULT_PREVIEW_TOKEN_EXPIRY_HOURS,
+    enableGlobalSearch: DEFAULT_ENABLE_GLOBAL_SEARCH,
+    enableAuditLog: DEFAULT_ENABLE_AUDIT_LOG,
+    enableProjectViewTrackingDefault: DEFAULT_ENABLE_PROJECT_VIEW_TRACKING_DEFAULT,
+    enableProjectTimeTrackingDefault: DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT,
+    enableProjectFullWidthDefault: DEFAULT_ENABLE_PROJECT_FULL_WIDTH_DEFAULT,
+    enableFileSizeCalculation: DEFAULT_ENABLE_FILE_SIZE_CALCULATION,
+    botUserAgents: DEFAULT_BOT_USER_AGENTS_STRING.split("\n")
+      .map((ua) => ua.trim().toLowerCase())
+      .filter((ua) => ua.length > 0),
+  };
+  logger.info("Default application settings initialized.");
+  logger.debug("Default settings:", {
+    ...defaultAppSettings,
+    botUserAgents: `[${defaultAppSettings.botUserAgents.length} items]`,
+  });
+}
 
 export const VIEW_TIMEFRAME_HOURS = Number.parseInt(process.env.VIEW_TIMEFRAME_HOURS || "24", 10);
 export const AVERAGE_WPM = Number.parseInt(process.env.AVERAGE_WPM || "225", 10);
@@ -93,60 +103,79 @@ async function ensureAdminAuth() {
   }
 }
 
-export async function loadAppSettings() {
-  logger.info("Attempting to load application settings from PocketBase...");
-  if (!APP_SETTINGS_RECORD_ID) {
-    logger.error("APP_SETTINGS_RECORD_ID is not defined in .env. Cannot load dynamic settings.");
-    logger.warn("Using default settings based on environment variables.");
-    return;
+export async function getSettings(userId = null) {
+  if (!userId) {
+    logger.trace("[CONFIG] getSettings: No userId provided, returning default app settings.");
+    return { ...defaultAppSettings };
   }
+
   try {
     if (!pbAdmin.authStore.isValid) {
-      logger.warn("Admin client not authenticated during settings load. Attempting auth...");
+      logger.warn("[CONFIG] getSettings: Admin client not authenticated. Attempting auth...");
       await ensureAdminAuth();
       if (!pbAdmin.authStore.isValid) {
-        throw new Error("Admin client authentication failed.");
+        logger.error("[CONFIG] getSettings: Admin client authentication failed. Returning defaults.");
+        return { ...defaultAppSettings };
       }
     }
-    const settingsRecord = await pbAdmin.collection("app_settings").getOne(APP_SETTINGS_RECORD_ID);
 
-    const botUserAgentsString = settingsRecord.bot_user_agents || DEFAULT_BOT_USER_AGENTS.join("\n");
-    const botUserAgentsList = botUserAgentsString
-      .split("\n")
-      .map((ua) => ua.trim().toLowerCase())
-      .filter((ua) => ua.length > 0);
+    let userSettingsRecord;
+    try {
+      userSettingsRecord = await pbAdmin.collection("app_settings").getFirstListItem(`user = "${userId}"`);
+      logger.trace(`[CONFIG] getSettings: Found settings for user ${userId}`);
+    } catch (error) {
+      if (error.status === 404) {
+        logger.info(`[CONFIG] getSettings: No settings found for user ${userId}. Creating with defaults.`);
+        const newSettingsData = {
+          user: userId,
+          enable_global_search: defaultAppSettings.enableGlobalSearch,
+          enable_audit_log: defaultAppSettings.enableAuditLog,
+          enable_project_view_tracking_default: defaultAppSettings.enableProjectViewTrackingDefault,
+          enable_project_time_tracking_default: defaultAppSettings.enableProjectTimeTrackingDefault,
+          enable_project_full_width_default: defaultAppSettings.enableProjectFullWidthDefault,
+          enable_file_size_calculation: defaultAppSettings.enableFileSizeCalculation,
+          bot_user_agents: defaultAppSettings.botUserAgents.join("\n"),
+        };
+        userSettingsRecord = await pbAdmin.collection("app_settings").create(newSettingsData);
+        logger.info(`[CONFIG] getSettings: Created default settings for user ${userId} with ID ${userSettingsRecord.id}`);
+      } else {
+        logger.error(`[CONFIG] getSettings: Error fetching settings for user ${userId}: ${error.message}. Returning defaults.`);
+        return { ...defaultAppSettings };
+      }
+    }
 
-    currentSettings = {
-      previewTokenExpiryHours: settingsRecord.preview_token_expiry_hours ?? DEFAULT_PREVIEW_TOKEN_EXPIRY_HOURS,
-      enableGlobalSearch: settingsRecord.enable_global_search ?? DEFAULT_ENABLE_GLOBAL_SEARCH,
-      enableAuditLog: settingsRecord.enable_audit_log ?? DEFAULT_ENABLE_AUDIT_LOG,
-      enableProjectViewTrackingDefault: settingsRecord.enable_project_view_tracking_default ?? DEFAULT_ENABLE_PROJECT_VIEW_TRACKING_DEFAULT,
-      enableProjectTimeTrackingDefault: settingsRecord.enable_project_time_tracking_default ?? DEFAULT_ENABLE_PROJECT_TIME_TRACKING_DEFAULT,
-      enableProjectFullWidthDefault: settingsRecord.enable_project_full_width_default ?? DEFAULT_ENABLE_PROJECT_FULL_WIDTH_DEFAULT,
-      enableFileSizeCalculation: settingsRecord.enable_file_size_calculation ?? DEFAULT_ENABLE_FILE_SIZE_CALCULATION,
-      botUserAgents: botUserAgentsList,
+    const userBotUserAgentsString = userSettingsRecord.bot_user_agents;
+    let finalBotUserAgentsList;
+    if (userBotUserAgentsString && userBotUserAgentsString.trim() !== "") {
+      finalBotUserAgentsList = userBotUserAgentsString
+        .split("\n")
+        .map((ua) => ua.trim().toLowerCase())
+        .filter((ua) => ua.length > 0);
+    } else {
+      finalBotUserAgentsList = defaultAppSettings.botUserAgents;
+    }
+
+    return {
+      enableGlobalSearch: userSettingsRecord.enable_global_search ?? defaultAppSettings.enableGlobalSearch,
+      enableAuditLog: userSettingsRecord.enable_audit_log ?? defaultAppSettings.enableAuditLog,
+      enableProjectViewTrackingDefault: userSettingsRecord.enable_project_view_tracking_default ?? defaultAppSettings.enableProjectViewTrackingDefault,
+      enableProjectTimeTrackingDefault: userSettingsRecord.enable_project_time_tracking_default ?? defaultAppSettings.enableProjectTimeTrackingDefault,
+      enableProjectFullWidthDefault: userSettingsRecord.enable_project_full_width_default ?? defaultAppSettings.enableProjectFullWidthDefault,
+      enableFileSizeCalculation: userSettingsRecord.enable_file_size_calculation ?? defaultAppSettings.enableFileSizeCalculation,
+      botUserAgents: finalBotUserAgentsList,
+      previewTokenExpiryHours: defaultAppSettings.previewTokenExpiryHours,
     };
-    logger.info("Successfully loaded application settings from PocketBase.");
-    logger.debug("Current runtime settings:", {
-      ...currentSettings,
-      botUserAgents: `[${currentSettings.botUserAgents.length} items]`,
-    });
   } catch (error) {
-    logger.error(`Failed to load settings from PocketBase (Record ID: ${APP_SETTINGS_RECORD_ID}): ${error.message}`);
-    logger.warn("Using default settings based on environment variables.");
+    logger.error(`[CONFIG] getSettings: General error for user ${userId}: ${error.message}. Returning defaults.`);
+    return { ...defaultAppSettings };
   }
-}
-
-export function getSettings() {
-  return { ...currentSettings };
 }
 
 (async () => {
   try {
+    initializeDefaultSettings();
     await pbAdmin.collection("_superusers").authWithPassword(POCKETBASE_ADMIN_EMAIL, POCKETBASE_ADMIN_PASSWORD);
     logger.info("PocketBase Admin client authenticated successfully at startup.");
-
-    await loadAppSettings();
 
     if (adminAuthIntervalId) {
       clearInterval(adminAuthIntervalId);
@@ -188,8 +217,11 @@ export const viewDb = new sqlite3.Database(viewDbPath, (err) => {
       } else {
         logger.trace("view_logs table ensured.");
         viewDb.run("CREATE INDEX IF NOT EXISTS idx_view_logs_entry_ip_time ON view_logs (entry_id, ip_address, viewed_at)", (indexErr) => {
-          if (indexErr) logger.error("Error creating view_logs index:", indexErr.message);
-          else logger.trace("view_logs index ensured.");
+          if (indexErr) {
+            logger.error("Error creating view_logs index:", indexErr.message);
+          } else {
+            logger.trace("view_logs index ensured.");
+          }
         });
       }
     });
@@ -199,8 +231,11 @@ export const viewDb = new sqlite3.Database(viewDbPath, (err) => {
       } else {
         logger.trace("view_durations table ensured.");
         viewDb.run("CREATE INDEX IF NOT EXISTS idx_view_durations_entry ON view_durations (entry_id)", (indexErr) => {
-          if (indexErr) logger.error("Error creating view_durations index:", indexErr.message);
-          else logger.trace("view_durations index ensured.");
+          if (indexErr) {
+            logger.error("Error creating view_durations index:", indexErr.message);
+          } else {
+            logger.trace("view_durations index ensured.");
+          }
         });
       }
     });

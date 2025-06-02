@@ -3,6 +3,7 @@ import authRouter from "./auth.js";
 import publicRouter from "./public.js";
 import dashboardRouter from "./dashboard.js";
 import projectsRouter from "./projects.js";
+import entriesRouter from "./entries.js";
 import auditLogRouter from "./audit_log.js";
 import settingsRouter from "./settings.js";
 import apiRouter from "./api.js";
@@ -26,6 +27,9 @@ logger.trace("Global dashboard routes configured (requires login).");
 
 router.use("/projects", projectsRouter);
 logger.trace("Project routes configured (requires login).");
+
+router.use("/entries", requireLogin, entriesRouter);
+logger.trace("Global entries routes configured (requires login).");
 
 router.use("/headers", requireLogin, headersRouter);
 logger.trace("Global headers routes configured.");

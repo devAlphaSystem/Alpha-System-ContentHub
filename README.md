@@ -114,10 +114,6 @@ Configuration is managed through a `.env` file in the project root.
     SESSION_SECRET=your-very-strong-random-secret-key-here
     IP_HASH_SALT=another-very-strong-random-secret-for-hashing-ips
 
-    # Record ID of the single record in the 'app_settings' collection in PocketBase
-    # IMPORTANT: Get this ID AFTER running the `node build_pb.js` setup script!
-    APP_SETTINGS_RECORD_ID=YOUR_APP_SETTINGS_RECORD_ID_HERE
-
     # --- Optional ---
     # Set to "production" for production environments, otherwise "development"
     NODE_ENV=development
@@ -181,7 +177,6 @@ Configuration is managed through a `.env` file in the project root.
       node build_pb.js
       ```
     - The script will connect to your PocketBase instance, authenticate as the admin user, and attempt to import the collections defined in `pb_schema.json`. It will skip collections that already exist by name.
-    - **CRITICAL STEP:** After the script runs successfully, **note the Record ID** printed for the `app_settings` collection. You **must** copy this ID and paste it into your `.env` file as the value for `APP_SETTINGS_RECORD_ID`.
     - Review the script's output for any errors. If errors occur, ensure PocketBase is running and accessible, and admin credentials are correct. If collections were partially created, you might need to manually delete them from the PocketBase Admin UI (`http://YOUR_POCKETBASE_URL/_/`) before re-running the script.
 
 3.  **Configure `users` Collection (Manual Step):**
@@ -196,7 +191,7 @@ Configuration is managed through a `.env` file in the project root.
 
 ## Running the Application
 
-1.  **Ensure PocketBase is running** and the collections have been configured (using `node build_pb.js`) and the `APP_SETTINGS_RECORD_ID` is set in `.env`.
+1.  **Ensure PocketBase is running** and the collections have been configured (using `node build_pb.js`).
 2.  **Start the Node.js application:**
 
     - **Development Mode (with automatic restarts using `nodemon`):**

@@ -58,9 +58,15 @@ export function requireLogin(req, res, next) {
   }
 }
 
-export function setLocals(req, res, next) {
+export async function setLocals(req, res, next) {
   logger.trace(`setLocals middleware for path: ${req.path}`);
-  const settings = getSettings();
+  let settings;
+  if (req.session.user && req.session.user.id) {
+    settings = await getSettings(req.session.user.id);
+  } else {
+    settings = getSettings();
+  }
+
   res.locals.user = req.session.user || null;
   res.locals.pocketbaseUrl = POCKETBASE_URL;
   res.locals.theme = req.session.theme || "light";

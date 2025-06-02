@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import multer from "multer";
 import path from "node:path";
 import Papa from "papaparse";
-import { pb, pbAdmin, apiLimiter, getSettings, APP_SETTINGS_RECORD_ID, ITEMS_PER_PAGE, POCKETBASE_URL } from "../config.js";
+import { pb, pbAdmin, apiLimiter, getSettings, ITEMS_PER_PAGE, POCKETBASE_URL } from "../config.js";
 import { requireLogin, requireAdmin } from "../middleware.js";
 import { getEntryForOwnerAndProject, getArchivedEntryForOwnerAndProject, getTemplateForEditAndProject, clearEntryViewLogs, hashPreviewPassword, logAuditEvent, getProjectForOwner, getHeaderForEdit, getFooterForEdit, getIP, hashIP } from "../utils.js";
 import { logger } from "../logger.js";
@@ -68,6 +68,75 @@ async function checkProjectAccessApi(req, res, next) {
     });
   }
 }
+
+router.get("/entries", requireLogin, async (req, res) => {
+  const userId = req.session.user.id;
+  logger.debug(`[API] GET /api/entries requested by user ${userId}`);
+  logger.time(`[API] GET /api/entries ${userId}`);
+  try {
+    const page = Number.parseInt(req.query.page) || 1;
+    const perPage = Number.parseInt(req.query.perPage) || ITEMS_PER_PAGE;
+    const sort = req.query.sort || "-updated";
+    const projectIdFilter = req.query.project;
+    const statusFilter = req.query.status;
+    const searchTerm = req.query.search;
+
+    const filterParts = [`owner = '${userId}'`, `type != 'sidebar_header'`];
+
+    if (projectIdFilter) {
+      filterParts.push(`project = '${projectIdFilter}'`);
+    }
+
+    if (statusFilter) {
+      if (statusFilter === "published") {
+        filterParts.push(`status = 'published' && (has_staged_changes = false || has_staged_changes = null)`);
+      } else if (statusFilter === "draft") {
+        filterParts.push(`status = 'draft'`);
+      } else if (statusFilter === "staged") {
+        filterParts.push(`status = 'published' && has_staged_changes = true`);
+      }
+    }
+
+    if (searchTerm && searchTerm.trim() !== "") {
+      const escapedSearch = searchTerm.trim().replace(/'/g, "''");
+      filterParts.push(`(title ~ '${escapedSearch}' || collection ~ '${escapedSearch}' || tags ~ '${escapedSearch}')`);
+    }
+
+    const combinedFilter = filterParts.join(" && ");
+    logger.trace(`[API] Global entries filter: ${combinedFilter}`);
+
+    const resultList = await pb.collection("entries_main").getList(page, perPage, {
+      filter: combinedFilter,
+      sort: sort,
+      fields: "id,title,type,project,updated,status,collection,tags,has_staged_changes,expand",
+      expand: "project",
+    });
+
+    logger.debug(`[API] Fetched ${resultList.items.length} global entries (page ${page}/${resultList.totalPages}) for user ${userId}`);
+
+    const entriesWithDetails = resultList.items.map((entry) => ({
+      ...entry,
+      projectName: entry.expand?.project?.name || "N/A",
+      formattedUpdated: new Date(entry.updated).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    }));
+
+    logger.timeEnd(`[API] GET /api/entries ${userId}`);
+    res.json({
+      ...resultList,
+      items: entriesWithDetails,
+    });
+  } catch (error) {
+    logger.timeEnd(`[API] GET /api/entries ${userId}`);
+    logger.error(`[API] Error fetching global entries for user ${userId}: Status ${error?.status || "N/A"}`, error?.message || error);
+    res.status(500).json({
+      error: "Failed to fetch entries list",
+    });
+  }
+});
 
 router.get("/projects", requireLogin, async (req, res) => {
   const userId = req.session.user.id;

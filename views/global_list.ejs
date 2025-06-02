@@ -1,0 +1,99 @@
+<% locals.pageTitle = locals.pageTitle || 'All Entries' %>
+
+<%- include('partials/header', { pageTitle: locals.pageTitle, currentProjectId: null }) %>
+
+<div class="content-header">
+  <h1><%= locals.pageTitle %></h1>
+  <div class="header-actions">
+    <div class="filter-group">
+      <label for="project-filter-select" class="sr-only">Filter by Project</label>
+      <select id="project-filter-select" class="form-control filter-select">
+        <option value="">All Projects</option>
+        <% if (locals.projects && projects.length > 0) { %>
+          <% for (const project of projects) { %>
+            <option value="<%= project.id %>"><%= project.name %></option>
+          <% } %>
+        <% } %>
+      </select>
+    </div>
+    <div class="search-group">
+      <label for="search-input" class="sr-only">Search Entries</label>
+      <input type="search" id="search-input" class="form-control" placeholder="Search entries..." title="Search by Title, Collection, Tags">
+    </div>
+    <button id="refresh-entries-btn" class="btn btn-secondary" title="Refresh Table">
+      <i class="fas fa-sync-alt"></i> <span>Refresh</span>
+    </button>
+  </div>
+</div>
+
+<% if (locals.error) { %>
+  <div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle alert-icon"></i>
+    <span><%= error %></span>
+  </div>
+<% } %>
+
+<div class="card data-card <% if (entries.length === 0 && !locals.error) { %>hidden<% } %>" data-status-filter="<%= statusFilter %>">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-sort-key="title" style="cursor: pointer;">Title <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="type" style="cursor: pointer;">Type <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="project.name" style="cursor: pointer;">Project <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="status" style="cursor: pointer;">Status <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="collection" style="cursor: pointer;">Collection <span class="sort-icon"><i class="fas fa-sort"></i></span></th>
+          <th data-sort-key="updated" style="cursor: pointer;">Last Updated <span class="sort-icon"><i class="fas fa-sort-down"></i></span></th>
+          <th class="actions-column">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="entries-table-body">
+        <% for (const entry of entries) { %>
+          <tr data-entry-id="<%= entry.id %>" data-project-id="<%= entry.project %>">
+            <td data-label="Title"><%= entry.title %></td>
+            <td data-label="Type"><span class="badge type-badge type-<%= entry.type.replace('_', '-') %>"><%= entry.type.replace('_', ' ') %></span></td>
+            <td data-label="Project"><%= entry.projectName %></td>
+            <td data-label="Status">
+              <span class="badge status-badge status-<%= entry.status.toLowerCase() %>"><%= entry.status %></span>
+              <% if (entry.has_staged_changes) { %>
+                <span class="badge status-badge status-staged" title="Unpublished changes exist">Staged</span>
+              <% } %>
+            </td>
+            <td data-label="Collection"><%= entry.collection || '-' %></td>
+            <td data-label="Updated"><%= entry.formattedUpdated %></td>
+            <td data-label="Actions" class="actions-cell">
+              <% if (entry.editUrl !== '#') { %>
+                <a href="<%= entry.editUrl %>" class="btn btn-icon btn-edit" title="Edit Entry"><i class="fas fa-pencil-alt"></i></a>
+              <% } %>
+              <% if (entry.viewUrl) { %>
+                <a href="<%= entry.viewUrl %>" target="_blank" class="btn btn-icon btn-view" title="View Public Page"><i class="fas fa-eye"></i></a>
+              <% } %>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination-controls card-footer">
+    <button id="prev-page-btn" class="btn btn-secondary" <% if (pagination.page <= 1) { %>disabled<% } %>>
+      <i class="fas fa-chevron-left"></i> Previous
+    </button>
+    <span id="page-info" class="page-info-text">
+      Page <%= pagination.page %> of <%= pagination.totalPages %> (<%= pagination.totalItems %> entries)
+    </span>
+    <button id="next-page-btn" class="btn btn-secondary" <% if (pagination.page >= pagination.totalPages) { %>disabled<% } %>>
+      Next <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+</div>
+
+<% if (entries.length === 0 && !locals.error) { %>
+  <div class="card empty-state-card">
+    <i class="fas fa-file-alt empty-state-icon"></i>
+    <h2>No entries found</h2>
+    <p>There are no entries matching the current criteria.</p>
+  </div>
+<% } %>
+
+<%- include('partials/footer', { scriptPath: '/js/global_list.js' }) %>

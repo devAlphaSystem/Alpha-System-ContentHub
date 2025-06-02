@@ -28,54 +28,64 @@
 <% if (metrics) { %>
   <div class="row" style="margin-bottom: 25px;">
     <div class="col" style="flex: 1 1 150px;">
-      <div class="card">
-        <div class="card-body text-center" style="padding: 15px;">
-          <div style="font-size: 1.6rem; font-weight: 600; color: var(--primary-color);">
-            <%= metrics.totalProjects %>
+      <a href="/projects" class="card-link">
+        <div class="card">
+          <div class="card-body text-center" style="padding: 15px;">
+            <div style="font-size: 1.6rem; font-weight: 600; color: var(--primary-color);">
+              <%= metrics.totalProjects %>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Projects</div>
           </div>
-          <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Projects</div>
         </div>
-      </div>
+      </a>
     </div>
     <div class="col" style="flex: 1 1 150px;">
-      <div class="card">
-        <div class="card-body text-center" style="padding: 15px;">
-          <div style="font-size: 1.6rem; font-weight: 600; color: var(--text-primary);">
-            <%= metrics.totalEntries %>
+      <a href="/entries?status=all" class="card-link">
+        <div class="card">
+          <div class="card-body text-center" style="padding: 15px;">
+            <div style="font-size: 1.6rem; font-weight: 600; color: var(--text-primary);">
+              <%= metrics.totalEntries %>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Entries (Docs & CL)</div>
           </div>
-          <div style="font-size: 0.8rem; color: var(--text-secondary);">Total Entries (Docs & CL)</div>
         </div>
-      </div>
+      </a>
     </div>
     <div class="col" style="flex: 1 1 150px;">
-      <div class="card">
-        <div class="card-body text-center" style="padding: 15px;">
-          <div style="font-size: 1.6rem; font-weight: 600; color: var(--success-color);">
-            <%= metrics.publishedCount %>
+      <a href="/entries?status=published" class="card-link">
+        <div class="card">
+          <div class="card-body text-center" style="padding: 15px;">
+            <div style="font-size: 1.6rem; font-weight: 600; color: var(--success-color);">
+              <%= metrics.publishedCount %>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">Published (Docs & CL)</div>
           </div>
-          <div style="font-size: 0.8rem; color: var(--text-secondary);">Published (Docs & CL)</div>
         </div>
-      </div>
+      </a>
     </div>
     <div class="col" style="flex: 1 1 150px;">
-      <div class="card">
-        <div class="card-body text-center" style="padding: 15px;">
-          <div style="font-size: 1.6rem; font-weight: 600; color: var(--secondary-color);">
-            <%= metrics.draftCount %>
+      <a href="/entries?status=draft" class="card-link">
+        <div class="card">
+          <div class="card-body text-center" style="padding: 15px;">
+            <div style="font-size: 1.6rem; font-weight: 600; color: var(--secondary-color);">
+              <%= metrics.draftCount %>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">Drafts (All Types)</div>
           </div>
-          <div style="font-size: 0.8rem; color: var(--text-secondary);">Drafts (All Types)</div>
         </div>
-      </div>
+      </a>
     </div>
     <div class="col" style="flex: 1 1 150px;">
-      <div class="card">
-        <div class="card-body text-center" style="padding: 15px;">
-          <div style="font-size: 1.6rem; font-weight: 600; color: var(--warning-color);">
-            <%= metrics.stagedCount %>
+      <a href="/entries?status=staged" class="card-link">
+        <div class="card">
+          <div class="card-body text-center" style="padding: 15px;">
+            <div style="font-size: 1.6rem; font-weight: 600; color: var(--warning-color);">
+              <%= metrics.stagedCount %>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">Staged Changes (Docs & CL)</div>
           </div>
-          <div style="font-size: 0.8rem; color: var(--text-secondary);">Staged Changes (Docs & CL)</div>
         </div>
-      </div>
+      </a>
     </div>
     <div class="col" style="flex: 1 1 150px;">
       <div class="card">

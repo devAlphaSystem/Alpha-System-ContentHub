@@ -371,9 +371,23 @@ export function clearEntryViewLogs(entryId) {
 }
 
 export async function logAuditEvent(req, action, targetCollection, targetRecord, details) {
-  const settings = getSettings();
+  let settings;
+  let userId = null;
+  let ipAddress = null;
+
+  if (req?.session?.user && req.session.user.id) {
+    userId = req.session.user.id;
+    settings = await getSettings(userId);
+    ipAddress = getIP(req);
+  } else {
+    settings = getSettings();
+    if (req) {
+      ipAddress = getIP(req);
+    }
+  }
+
   if (!settings.enableAuditLog) {
-    logger.trace(`Audit logging disabled. Skipping log for action: ${action}`);
+    logger.trace(`Audit logging disabled (user/default). Skipping log for action: ${action}`);
     return;
   }
 
@@ -382,19 +396,8 @@ export async function logAuditEvent(req, action, targetCollection, targetRecord,
     return;
   }
 
-  let userId = null;
-  let ipAddress = null;
-
-  if (req?.session?.user) {
-    userId = req.session.user.id;
-  }
-
-  if (req) {
-    ipAddress = getIP(req);
-  }
-
   if (!userId && action !== "SYSTEM_ADMIN_AUTH" && action !== "POCKETBASE_ADMIN_AUTH_SUCCESS") {
-    const allowedSystemActions = ["PREVIEW_PASSWORD_SUCCESS", "PREVIEW_PASSWORD_FAILURE", "PROJECT_PASSWORD_SUCCESS", "PROJECT_PASSWORD_FAILURE"];
+    const allowedSystemActions = ["PREVIEW_PASSWORD_SUCCESS", "PREVIEW_PASSWORD_FAILURE", "PROJECT_PASSWORD_SUCCESS", "PROJECT_PASSWORD_FAILURE", "FEEDBACK_VOTE_SUCCESS", "FEEDBACK_VOTE_FAILURE", "FEEDBACK_VOTE_DUPLICATE"];
     if (!allowedSystemActions.includes(action)) {
       logger.warn(`Audit log for action '${action}' is missing user ID.`);
     }
