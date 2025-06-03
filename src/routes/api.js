@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import multer from "multer";
 import path from "node:path";
 import Papa from "papaparse";
-import { pb, pbAdmin, apiLimiter, getSettings, ITEMS_PER_PAGE, POCKETBASE_URL } from "../config.js";
+import { pb, pbAdmin, apiLimiter, getSettings, ITEMS_PER_PAGE, POCKETBASE_URL, PUBLIC_POCKETBASE_URL } from "../config.js";
 import { requireLogin, requireAdmin } from "../middleware.js";
 import { getEntryForOwnerAndProject, getArchivedEntryForOwnerAndProject, getTemplateForEditAndProject, clearEntryViewLogs, hashPreviewPassword, logAuditEvent, getProjectForOwner, getHeaderForEdit, getFooterForEdit, getIP, hashIP } from "../utils.js";
 import { logger } from "../logger.js";
@@ -915,9 +915,7 @@ router.post("/projects/:projectId/entries/:id/upload-image", requireLogin, check
   const entryId = req.params.id;
   const projectId = req.params.projectId;
   const userId = req.session.user.id;
-  const imageFieldName = "files";
   const originalFilename = req.file?.originalname;
-  const collectionName = "entries_main";
   logger.info(`[API] Attempting image upload for entry ${entryId}, project ${projectId}, user ${userId}. File: ${originalFilename}`);
   logger.time(`[API] POST /upload-image ${entryId}`);
 
@@ -960,7 +958,7 @@ router.post("/projects/:projectId/entries/:id/upload-image", requireLogin, check
       throw new Error("Failed to confirm stored filename after upload append.");
     }
 
-    const fileUrl = `${POCKETBASE_URL}/api/files/${collectionName}/${entryId}/${actualFilename}`;
+    const fileUrl = `${PUBLIC_POCKETBASE_URL}/api/files/${collectionName}/${entryId}/${actualFilename}`;
     logger.trace(`[API] Manually constructed file URL: ${fileUrl}`);
 
     logAuditEvent(req, "IMAGE_UPLOAD_SUCCESS", collectionName, entryId, {
@@ -1014,7 +1012,7 @@ router.post("/projects/:projectId/entries/:id/upload-image", requireLogin, check
 
 router.get("/files", requireLogin, async (req, res) => {
   const userId = req.session.user.id;
-  const settings = getSettings();
+  const settings = await getSettings(userId);
   logger.debug(`[API] GET /files requested by user ${userId}. Size calc enabled: ${settings.enableFileSizeCalculation}`);
   logger.time(`[API] GET /files ${userId}`);
 
@@ -1043,19 +1041,20 @@ router.get("/files", requireLogin, async (req, res) => {
       for (const entry of allEntriesWithFiles) {
         if (entry.files && Array.isArray(entry.files)) {
           for (const filename of entry.files) {
-            const fileUrl = `${POCKETBASE_URL}/api/files/${collectionName}/${entry.id}/${filename}`;
+            const internalFileUrlForSize = `${POCKETBASE_URL}/api/files/${collectionName}/${entry.id}/${filename}`;
+            const publicFileUrl = `${PUBLIC_POCKETBASE_URL}/api/files/${collectionName}/${entry.id}/${filename}`;
             allFilesPromises.push(
               (async () => {
                 let size = 0;
                 try {
-                  const headResponse = await fetch(fileUrl, { method: "HEAD" });
+                  const headResponse = await fetch(internalFileUrlForSize, { method: "HEAD" });
                   if (headResponse.ok) {
                     size = Number.parseInt(headResponse.headers.get("content-length"), 10) || 0;
                   } else {
-                    logger.warn(`[API] HEAD request failed for ${fileUrl}: Status ${headResponse.status}`);
+                    logger.warn(`[API] HEAD request failed for ${internalFileUrlForSize}: Status ${headResponse.status}`);
                   }
                 } catch (headError) {
-                  logger.warn(`[API] Error fetching HEAD for ${fileUrl}: ${headError.message}`);
+                  logger.warn(`[API] Error fetching HEAD for ${internalFileUrlForSize}: ${headError.message}`);
                 }
                 return {
                   entryId: entry.id,
@@ -1063,7 +1062,7 @@ router.get("/files", requireLogin, async (req, res) => {
                   projectId: entry.project,
                   projectName: entry.expand?.project?.name || "Unknown Project",
                   filename: filename,
-                  fileUrl: fileUrl,
+                  fileUrl: publicFileUrl,
                   size: size,
                   created: entry.content_updated_at || entry.updated,
                 };
@@ -1088,7 +1087,7 @@ router.get("/files", requireLogin, async (req, res) => {
               projectId: entry.project,
               projectName: entry.expand?.project?.name || "Unknown Project",
               filename: filename,
-              fileUrl: `${POCKETBASE_URL}/api/files/${collectionName}/${entry.id}/${filename}`,
+              fileUrl: `${PUBLIC_POCKETBASE_URL}/api/files/${collectionName}/${entry.id}/${filename}`,
               size: 0,
               created: entry.content_updated_at || entry.updated,
             });

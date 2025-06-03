@@ -1089,7 +1089,7 @@
         "hidden": false,
         "id": "file104153177",
         "maxSelect": 99,
-        "maxSize": 0,
+        "maxSize": 10485760,
         "mimeTypes": [
           "image/jpeg",
           "image/png",

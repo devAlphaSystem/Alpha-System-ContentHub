@@ -33,12 +33,8 @@ logger.debug("Static files middleware configured.");
 
 app.use(configuredHelmet);
 logger.debug("Helmet security middleware configured.");
-app.use(
-  express.urlencoded({
-    extended: true,
-  }),
-);
-app.use(express.json());
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
+app.use(express.json({ limit: "10mb" }));
 logger.debug("Body parsing middleware configured.");
 
 app.use(

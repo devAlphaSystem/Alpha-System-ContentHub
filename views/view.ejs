@@ -248,11 +248,11 @@
         <% if (!locals.isPreview && !locals.isStagedPreview && project?.view_tracking_enabled) { %>
           <section class="feedback-section">
             <h4>Was this page helpful?</h4>
-            <button class="btn btn-secondary feedback-btn" data-entry-id="<%= entry.id %>" data-vote-type="yes">
-              <i class="fas fa-thumbs-up"></i> Yes
+            <button class="feedback-btn feedback-btn-yes" data-entry-id="<%= entry.id %>" data-vote-type="yes" aria-label="Helpful">
+              <i class="fas fa-thumbs-up"></i>
             </button>
-            <button class="btn btn-secondary feedback-btn" data-entry-id="<%= entry.id %>" data-vote-type="no">
-              <i class="fas fa-thumbs-down"></i> No
+            <button class="feedback-btn feedback-btn-no" data-entry-id="<%= entry.id %>" data-vote-type="no" aria-label="Not helpful">
+              <i class="fas fa-thumbs-down"></i>
             </button>
             <p class="feedback-message"></p>
           </section>

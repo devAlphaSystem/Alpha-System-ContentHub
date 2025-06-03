@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import path from "node:path";
-import { pb, pbAdmin, POCKETBASE_URL } from "../../config.js";
+import { pb, pbAdmin, POCKETBASE_URL, PUBLIC_POCKETBASE_URL } from "../../config.js";
 import { getProjectForOwner, logAuditEvent, hashPreviewPassword, clearEntryViewLogs } from "../../utils.js";
 import { logger } from "../../logger.js";
 
@@ -274,7 +274,7 @@ router.get("/:projectId/edit", async (req, res, next) => {
 
     let faviconUrl = null;
     if (projectData.favicon) {
-      faviconUrl = `${POCKETBASE_URL}/api/files/projects/${projectId}/${projectData.favicon}`;
+      faviconUrl = `${PUBLIC_POCKETBASE_URL}/api/files/projects/${projectId}/${projectData.favicon}`;
       logger.trace(`[PROJ] Constructed favicon URL: ${faviconUrl}`);
     }
 

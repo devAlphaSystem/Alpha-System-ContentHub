@@ -377,12 +377,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const feedbackMessage = feedbackSection.querySelector(".feedback-message");
     const entryIdForFeedback = feedbackButtons[0]?.dataset.entryId;
 
-    const disableFeedbackButtons = (message) => {
+    const disableFeedbackButtons = (messageText) => {
       for (const button of feedbackButtons) {
         button.disabled = true;
       }
       if (feedbackMessage) {
-        feedbackMessage.textContent = message;
+        feedbackMessage.textContent = messageText;
         feedbackMessage.style.display = "block";
       }
     };
@@ -397,10 +397,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     for (const button of feedbackButtons) {
       button.addEventListener("click", async () => {
-        const entryId = button.dataset.entryId;
+        const currentEntryId = button.dataset.entryId;
         const voteType = button.dataset.voteType;
 
-        if (!entryId || !voteType) {
+        if (!currentEntryId || !voteType) {
           console.error("Missing data attributes on feedback button.");
           return;
         }
@@ -414,17 +414,17 @@ document.addEventListener("DOMContentLoaded", () => {
               "Content-Type": "application/json",
               Accept: "application/json",
             },
-            body: JSON.stringify({ entryId, voteType }),
+            body: JSON.stringify({ entryId: currentEntryId, voteType }),
           });
 
           const result = await response.json();
 
           if (response.ok || response.status === 409) {
-            const message = response.status === 409 ? "You've already provided feedback for this page." : "Thank you for your feedback!";
-            disableFeedbackButtons(message);
-            const storageKey = `feedback_voted_${entryId}`;
+            const messageText = response.status === 409 ? "You've already provided feedback for this page." : "Thank you for your feedback!";
+            disableFeedbackButtons(messageText);
+            const storageKey = `feedback_voted_${currentEntryId}`;
             localStorage.setItem(storageKey, "true");
-            console.log(`Feedback submitted or duplicate detected for ${entryId}. Setting localStorage flag.`);
+            console.log(`Feedback submitted or duplicate detected for ${currentEntryId}. Setting localStorage flag.`);
           } else {
             throw new Error(result.error || "Failed to submit feedback.");
           }
@@ -457,14 +457,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const roadmapModalCloseBtn = document.getElementById("roadmap-modal-close-btn");
   const roadmapModalOkBtn = document.getElementById("roadmap-modal-ok-btn");
 
-  function showRoadmapModal(title, content) {
+  function showRoadmapModal(titleText, contentText) {
     if (!roadmapModal || !roadmapModalTitle || !roadmapModalContent || !marked) return;
 
-    roadmapModalTitle.textContent = title || "Roadmap Item Details";
+    roadmapModalTitle.textContent = titleText || "Roadmap Item Details";
 
-    if (content && content.trim() !== "") {
+    if (contentText && contentText.trim() !== "") {
       try {
-        const unsafeHtml = marked.parse(content);
+        const unsafeHtml = marked.parse(contentText);
         roadmapModalContent.innerHTML = DOMPurify.sanitize(unsafeHtml, {
           USE_PROFILES: { html: true },
         });
@@ -493,19 +493,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  roadmapCards.forEach((card) => {
+  for (const card of roadmapCards) {
     card.addEventListener("click", () => {
       const contentEncoded = card.dataset.content;
-      const title = card.dataset.title || "Details";
-      let content = "";
+      const titleText = card.dataset.title || "Details";
+      let contentText = "";
       if (contentEncoded) {
         try {
-          content = decodeURIComponent(contentEncoded);
+          contentText = decodeURIComponent(contentEncoded);
         } catch (e) {
           console.error("Failed to decode roadmap content:", e);
         }
       }
-      showRoadmapModal(title, content);
+      showRoadmapModal(titleText, contentText);
     });
     card.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -513,7 +513,7 @@ document.addEventListener("DOMContentLoaded", () => {
         card.click();
       }
     });
-  });
+  }
 
   roadmapModalCloseBtn?.addEventListener("click", hideRoadmapModal);
   roadmapModalOkBtn?.addEventListener("click", hideRoadmapModal);

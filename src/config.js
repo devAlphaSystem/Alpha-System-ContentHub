@@ -24,6 +24,7 @@ export const IP_HASH_SALT = process.env.IP_HASH_SALT;
 export const POCKETBASE_ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL;
 export const POCKETBASE_ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD;
 export const POCKETBASE_URL = process.env.POCKETBASE_URL;
+export const PUBLIC_POCKETBASE_URL = process.env.PUBLIC_POCKETBASE_URL || POCKETBASE_URL;
 export const NODE_ENV = process.env.NODE_ENV || "development";
 export const PORT = process.env.PORT || 3000;
 
@@ -54,10 +55,6 @@ function initializeDefaultSettings() {
       .filter((ua) => ua.length > 0),
   };
   logger.info("Default application settings initialized.");
-  logger.debug("Default settings:", {
-    ...defaultAppSettings,
-    botUserAgents: `[${defaultAppSettings.botUserAgents.length} items]`,
-  });
 }
 
 export const VIEW_TIMEFRAME_HOURS = Number.parseInt(process.env.VIEW_TIMEFRAME_HOURS || "24", 10);
@@ -250,8 +247,8 @@ export const configuredHelmet = helmet({
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "https://*", "'unsafe-inline'"],
       fontSrc: ["'self'", "https://*", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", POCKETBASE_URL, "https://*"],
-      connectSrc: ["'self'", POCKETBASE_URL, "https://api.languagetool.org"],
+      imgSrc: ["'self'", "data:", POCKETBASE_URL, PUBLIC_POCKETBASE_URL, "https://*"],
+      connectSrc: ["'self'", POCKETBASE_URL, PUBLIC_POCKETBASE_URL, "https://api.languagetool.org"],
       formAction: ["'self'"],
     },
   },
