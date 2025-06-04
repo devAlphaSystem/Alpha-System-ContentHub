@@ -567,7 +567,7 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
     });
   }
 
-  const validActions = ["archive", "unarchive", "delete", "permanent-delete"];
+  const validActions = ["archive", "delete", "permanent-delete"];
   if (!validActions.includes(action)) {
     logger.warn(`[API] Invalid bulk action specified: ${action}`);
     logger.timeEnd(`[API] POST /bulk-action ${action} ${projectId}`);
@@ -596,7 +596,7 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
     logger.trace(`[API] Processing bulk action '${action}' for ID: ${id}`);
 
     try {
-      if (action === "unarchive" || action === "permanent-delete") {
+      if (action === "permanent-delete") {
         sourceCollectionName = "entries_archived";
         record = await getArchivedEntryForOwnerAndProject(id, userId, projectId);
       } else {
@@ -607,8 +607,6 @@ router.post("/projects/:projectId/entries/bulk-action", requireLogin, checkProje
 
       if (action === "archive") {
         targetCollectionName = "entries_archived";
-      } else if (action === "unarchive") {
-        targetCollectionName = "entries_main";
       }
 
       logDetails.title = record.title;

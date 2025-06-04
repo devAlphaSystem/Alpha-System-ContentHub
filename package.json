@@ -1,6 +1,6 @@
 {
   "name": "alpha_system_contenthub",
-  "version": "2.4-5",
+  "version": "2.4-6",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -13,25 +13,25 @@
   "description": "Our mission is to provide the simplest way for teams and individuals to create, manage, and publish elegant changelog notes and documentation using the power of Markdown.",
   "dependencies": {
     "connect-sqlite3": "^0.9.15",
-    "dompurify": "^3.2.5",
-    "dotenv": "^16.4.7",
+    "dompurify": "^3.2.6",
+    "dotenv": "^16.5.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
     "helmet": "^8.1.0",
     "highlight.js": "^11.11.1",
-    "jsdom": "^26.0.0",
-    "marked": "^15.0.7",
+    "jsdom": "^26.1.0",
+    "marked": "^15.0.12",
     "multer": "^1.4.5-lts.2",
     "node-cron": "^3.0.3",
     "node-fetch": "^3.3.2",
-    "papaparse": "^5.5.2",
-    "pocketbase": "^0.25.2",
+    "papaparse": "^5.5.3",
+    "pocketbase": "^0.26.0",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9",
+    "nodemon": "^3.1.10",
     "prettier": "3.5.3"
   }
 }
